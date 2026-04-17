@@ -1,0 +1,6 @@
+{
+  "download_root": "/data/downloads",
+  "proxy": "",
+  "schedule_time": "03:00",
+  "max_daily_downloads": 20
+}

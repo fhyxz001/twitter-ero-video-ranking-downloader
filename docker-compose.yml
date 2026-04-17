@@ -1,0 +1,16 @@
+version: "3.8"
+
+services:
+  twitter-ero-video-ranking-downloader:
+    build: .
+    container_name: twitter-ero-video-ranking-downloader
+    restart: unless-stopped
+    ports:
+      - "2617:2617"
+    volumes:
+      # 配置文件持久化
+      - ./config.json:/app/config.json
+      # NAS 下载目录挂载（按需改成你的真实NAS路径）
+      - ./nas_downloads:/data/downloads
+    environment:
+      - TZ=Asia/Shanghai
