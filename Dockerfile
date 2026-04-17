@@ -13,4 +13,7 @@ COPY templates /app/templates
 
 EXPOSE 2617
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD python -c "import requests; requests.get('http://localhost:2617/health').raise_for_status()" || exit 1
+
 CMD ["python", "main.py"]
