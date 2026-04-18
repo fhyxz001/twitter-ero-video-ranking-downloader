@@ -1,4 +1,6 @@
 import json
+import os
+import sys
 import threading
 import time
 from datetime import datetime
@@ -15,9 +17,26 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 
-APP_DIR = Path(__file__).resolve().parent
-CONFIG_PATH = APP_DIR / "config.json"
-TEMPLATES_PATH = APP_DIR / "templates"
+def get_base_path():
+    """获取程序运行时的基础路径（处理打包后的路径）"""
+    if getattr(sys, "frozen", False):
+        # 如果是打包后的 exe
+        return Path(sys._MEIPASS)
+    return Path(__file__).resolve().parent
+
+
+def get_executable_path():
+    """获取可执行文件所在的路径（用于存放配置文件和下载内容）"""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent
+
+
+BASE_DIR = get_base_path()
+EXE_DIR = get_executable_path()
+
+CONFIG_PATH = EXE_DIR / "config.json"
+TEMPLATES_PATH = BASE_DIR / "templates"
 API_URL = (
     "https://twitter-ero-video-ranking.com/api/media"
     "?range&page=1&per_page=30&category&ids&isAnimeOnly=0&sort=favorite"
@@ -25,7 +44,7 @@ API_URL = (
 REQUEST_TIMEOUT = 30
 
 DEFAULT_CONFIG: Dict[str, object] = {
-    "download_root": "/data/downloads",
+    "download_root": str(EXE_DIR / "downloads"),
     "proxy": "",
     "schedule_time": "03:00",
     "max_daily_downloads": 20,
@@ -374,4 +393,4 @@ def health():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("main:app", host="0.0.0.0", port=2617, reload=False)
+    uvicorn.run(app, host="0.0.0.0", port=2617)
