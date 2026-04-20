@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>海报墙</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 20px;
+      flex-wrap: wrap;
+    }
+    .topbar a {
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .topbar a:hover { color: #e2e8f0; }
+    .topbar .title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #f1f5f9;
+    }
+    .topbar .spacer { flex: 1; }
+    .sort-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #94a3b8;
+    }
+    select {
+      background: #334155;
+      color: #e2e8f0;
+      border: 1px solid #475569;
+      border-radius: 5px;
+      padding: 4px 8px;
+      font-size: 13px;
+    }
+    .btn {
+      border: none;
+      border-radius: 6px;
+      padding: 6px 14px;
+      font-size: 13px;
+      cursor: pointer;
+      color: #fff;
+    }
+    .btn-primary   { background: #2563eb; }
+    .btn-danger    { background: #dc2626; }
+    .btn-secondary { background: #475569; }
+    .btn:hover { opacity: .88; }
+    .btn:disabled { opacity: .4; cursor: default; }
+
+    .content { padding: 20px; }
+
+    #statusBar {
+      font-size: 13px;
+      color: #94a3b8;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      background: #1e293b;
+      border: 2px solid transparent;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color .15s;
+      position: relative;
+    }
+    .card.selected { border-color: #2563eb; }
+    .card .thumb-wrap {
+      width: 100%;
+      aspect-ratio: 16/9;
+      background: #0f172a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .card .thumb-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .card .thumb-wrap .no-thumb {
+      font-size: 36px;
+      opacity: .3;
+    }
+    .card .info {
+      padding: 7px 8px 6px;
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    .card .info .size { font-weight: 600; color: #cbd5e1; }
+
+    .card .actions {
+      display: none;
+      position: absolute;
+      bottom: 36px;
+      left: 0; right: 0;
+      padding: 4px 6px;
+      gap: 5px;
+      justify-content: center;
+      background: rgba(15,23,42,.8);
+    }
+    .card:hover .actions { display: flex; }
+    .card .cb {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      width: 18px;
+      height: 18px;
+      accent-color: #2563eb;
+      cursor: pointer;
+    }
+
+    /* Replace cover modal */
+    #replaceModal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.6);
+      z-index: 999;
+      align-items: center;
+      justify-content: center;
+    }
+    #replaceModal.open { display: flex; }
+    .modal-box {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 24px;
+      width: 340px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .modal-box h3 { margin: 0; font-size: 16px; }
+    .modal-box label { font-size: 13px; color: #94a3b8; }
+    .modal-box input[type=file] {
+      background: #0f172a;
+      border: 1px solid #475569;
+      border-radius: 6px;
+      padding: 6px 8px;
+      color: #e2e8f0;
+      font-size: 13px;
+      width: 100%;
+    }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+    #emptyMsg {
+      text-align: center;
+      padding: 80px 0;
+      color: #475569;
+      font-size: 15px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="/">&larr; 返回</a>
+  <span class="title" id="pageTitle">海报墙</span>
+  <div class="spacer"></div>
+  <div class="sort-group">
+    排序：
+    <select id="sortSelect" onchange="applySort()">
+      <option value="time_desc">时间 ↓</option>
+      <option value="time_asc">时间 ↑</option>
+      <option value="size_desc">大小 ↓</option>
+      <option value="size_asc">大小 ↑</option>
+    </select>
+  </div>
+  <button class="btn btn-secondary" onclick="toggleSelectAll()" id="btnSelectAll">全选</button>
+  <button class="btn btn-danger" id="btnBatchDelete" onclick="batchDelete()" disabled>批量删除</button>
+</div>
+
+<div class="content">
+  <div id="statusBar"></div>
+  <div id="grid" class="grid"></div>
+  <div id="emptyMsg" style="display:none;">该日期下暂无视频</div>
+</div>
+
+<!-- Replace cover modal -->
+<div id="replaceModal">
+  <div class="modal-box">
+    <h3>替换封面</h3>
+    <label>选择新封面图片（jpg / png / webp）</label>
+    <input type="file" id="replaceFileInput" accept="image/*" />
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeReplaceModal()">取消</button>
+      <button class="btn btn-primary" onclick="doReplaceCover()">确认替换</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const params = new URLSearchParams(location.search);
+  const DATE = params.get('date') || '';
+  let allItems = [];
+  let sortedItems = [];
+  let selectedStems = new Set();
+  let replaceTargetStem = null;
+
+  document.getElementById('pageTitle').textContent = DATE
+    ? `海报墙 · ${DATE.slice(0,4)}-${DATE.slice(4,6)}-${DATE.slice(6,8)}`
+    : '海报墙';
+
+  async function loadItems() {
+    if (!DATE) { showEmpty(); return; }
+    try {
+      const resp = await fetch(`/api/poster/${DATE}`);
+      const data = await resp.json();
+      if (!data.ok) { showEmpty(); return; }
+      allItems = data.items || [];
+      applySort();
+    } catch(e) {
+      showEmpty();
+    }
+  }
+
+  function applySort() {
+    const v = document.getElementById('sortSelect').value;
+    sortedItems = [...allItems];
+    if (v === 'time_asc')  sortedItems.sort((a,b) => a.stem.localeCompare(b.stem));
+    if (v === 'time_desc') sortedItems.sort((a,b) => b.stem.localeCompare(a.stem));
+    if (v === 'size_asc')  sortedItems.sort((a,b) => a.size - b.size);
+    if (v === 'size_desc') sortedItems.sort((a,b) => b.size - a.size);
+    renderGrid();
+  }
+
+  function fmtSize(bytes) {
+    if (bytes >= 1073741824) return (bytes/1073741824).toFixed(2) + ' GB';
+    if (bytes >= 1048576)    return (bytes/1048576).toFixed(1) + ' MB';
+    if (bytes >= 1024)       return (bytes/1024).toFixed(0) + ' KB';
+    return bytes + ' B';
+  }
+
+  function renderGrid() {
+    const grid = document.getElementById('grid');
+    const empty = document.getElementById('emptyMsg');
+    const bar = document.getElementById('statusBar');
+
+    if (sortedItems.length === 0) {
+      grid.innerHTML = '';
+      empty.style.display = 'block';
+      bar.textContent = '';
+      return;
+    }
+    empty.style.display = 'none';
+    bar.innerHTML = `共 <strong>${sortedItems.length}</strong> 个视频 &nbsp;|&nbsp; 已选 <strong id="selCount">${selectedStems.size}</strong> 个`;
+
+    grid.innerHTML = sortedItems.map(item => {
+      const sel = selectedStems.has(item.stem);
+      const thumbUrl = item.thumb ? `/api/poster/${DATE}/thumb/${encodeURIComponent(item.thumb)}` : '';
+      return `
+        <div class="card${sel ? ' selected' : ''}" data-stem="${item.stem}" onclick="toggleCard(event, '${item.stem}')">
+          <input class="cb" type="checkbox" ${sel ? 'checked' : ''} onclick="toggleCard(event, '${item.stem}')" />
+          <div class="thumb-wrap">
+            ${thumbUrl
+              ? `<img src="${thumbUrl}" alt="" loading="lazy" />`
+              : `<span class="no-thumb">🎬</span>`}
+          </div>
+          <div class="actions">
+            <button class="btn btn-secondary" style="font-size:11px;padding:4px 8px;" onclick="openReplaceModal(event,'${item.stem}')">替换封面</button>
+            <button class="btn btn-danger" style="font-size:11px;padding:4px 8px;" onclick="deleteItem(event,'${item.stem}')">删除</button>
+          </div>
+          <div class="info">
+            <div class="size">${fmtSize(item.size)}</div>
+            <div style="margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${item.video}">${item.video}</div>
+          </div>
+        </div>`;
+    }).join('');
+
+    document.getElementById('btnBatchDelete').disabled = selectedStems.size === 0;
+  }
+
+  function toggleCard(e, stem) {
+    if (e.target.tagName === 'BUTTON') return;
+    if (selectedStems.has(stem)) selectedStems.delete(stem);
+    else selectedStems.add(stem);
+    renderGrid();
+  }
+
+  function toggleSelectAll() {
+    if (selectedStems.size === sortedItems.length) {
+      selectedStems.clear();
+    } else {
+      sortedItems.forEach(i => selectedStems.add(i.stem));
+    }
+    renderGrid();
+  }
+
+  async function deleteItem(e, stem) {
+    e.stopPropagation();
+    if (!confirm('确认删除该视频及其封面？')) return;
+    const resp = await fetch(`/api/poster/${DATE}/${stem}`, { method: 'DELETE' });
+    const data = await resp.json();
+    if (data.ok) {
+      allItems = allItems.filter(i => i.stem !== stem);
+      selectedStems.delete(stem);
+      applySort();
+    }
+  }
+
+  async function batchDelete() {
+    if (selectedStems.size === 0) return;
+    if (!confirm(`确认删除选中的 ${selectedStems.size} 个视频？`)) return;
+    const resp = await fetch(`/api/poster/${DATE}/batch-delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stems: [...selectedStems] }),
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      allItems = allItems.filter(i => !selectedStems.has(i.stem));
+      selectedStems.clear();
+      applySort();
+    }
+  }
+
+  function openReplaceModal(e, stem) {
+    e.stopPropagation();
+    replaceTargetStem = stem;
+    document.getElementById('replaceFileInput').value = '';
+    document.getElementById('replaceModal').classList.add('open');
+  }
+
+  function closeReplaceModal() {
+    document.getElementById('replaceModal').classList.remove('open');
+    replaceTargetStem = null;
+  }
+
+  async function doReplaceCover() {
+    const input = document.getElementById('replaceFileInput');
+    if (!input.files || !input.files[0]) { alert('请选择图片文件'); return; }
+    const fd = new FormData();
+    fd.append('file', input.files[0]);
+    const resp = await fetch(`/api/poster/${DATE}/${replaceTargetStem}/replace-cover`, {
+      method: 'POST', body: fd,
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      const item = allItems.find(i => i.stem === replaceTargetStem);
+      if (item) item.thumb = data.thumb;
+      closeReplaceModal();
+      applySort();
+    } else {
+      alert(data.error || '替换失败');
+    }
+  }
+
+  function showEmpty() {
+    document.getElementById('emptyMsg').style.display = 'block';
+    document.getElementById('grid').innerHTML = '';
+  }
+
+  loadItems();
+</script>
+</body>
+</html>

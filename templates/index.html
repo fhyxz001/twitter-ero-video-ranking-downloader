@@ -134,8 +134,22 @@
         <button type="submit">保存配置</button>
         <button type="button" class="secondary" onclick="runNow()">立即执行任务</button>
         <button type="button" class="secondary" onclick="refreshStatus()">刷新状态</button>
+        <button type="button" class="secondary" onclick="openPosterPicker()">查看海报墙</button>
       </div>
     </form>
+
+    <!-- Date picker modal -->
+    <div id="posterModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;align-items:center;justify-content:center;">
+      <div style="background:#fff;border-radius:10px;padding:24px;width:320px;max-height:80vh;display:flex;flex-direction:column;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <strong style="font-size:16px;">选择日期</strong>
+          <span onclick="closePosterPicker()" style="cursor:pointer;font-size:20px;color:#6b7280;">&times;</span>
+        </div>
+        <div id="posterDayList" style="overflow-y:auto;display:flex;flex-direction:column;gap:8px;">
+          <div style="color:#6b7280;font-size:13px;">加载中…</div>
+        </div>
+      </div>
+    </div>
 
     <div class="status">
       <div>运行中：<span id="is_running">{{ "是" if state.is_running else "否" }}</span></div>
@@ -171,6 +185,36 @@
     }
 
     setInterval(refreshStatus, 5000);
+
+    async function openPosterPicker() {
+      const modal = document.getElementById('posterModal');
+      modal.style.display = 'flex';
+      const list = document.getElementById('posterDayList');
+      list.innerHTML = '<div style="color:#6b7280;font-size:13px;">加载中…</div>';
+      try {
+        const resp = await fetch('/api/poster-days');
+        const data = await resp.json();
+        if (!data.days || data.days.length === 0) {
+          list.innerHTML = '<div style="color:#6b7280;font-size:13px;">暂无下载记录</div>';
+          return;
+        }
+        list.innerHTML = data.days.map(d => `
+          <button onclick="goToPoster('${d.date}')" style="background:#f1f5f9;color:#1f2937;border:1px solid #e2e8f0;border-radius:6px;padding:10px 14px;text-align:left;cursor:pointer;font-size:14px;">
+            <strong>${d.date.slice(0,4)}-${d.date.slice(4,6)}-${d.date.slice(6,8)}</strong>
+            <span style="float:right;color:#6b7280;">${d.count} 个视频</span>
+          </button>`).join('');
+      } catch(e) {
+        list.innerHTML = '<div style="color:#ef4444;font-size:13px;">加载失败</div>';
+      }
+    }
+
+    function closePosterPicker() {
+      document.getElementById('posterModal').style.display = 'none';
+    }
+
+    function goToPoster(date) {
+      window.location.href = '/poster?date=' + date;
+    }
   </script>
 </body>
 </html>

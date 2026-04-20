@@ -1,4 +1,6 @@
 import json
+import os
+import shutil
 import threading
 import time
 from datetime import datetime
@@ -10,8 +12,8 @@ from urllib.parse import urlparse
 import requests
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
-from fastapi import FastAPI, Form, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 
@@ -369,6 +371,136 @@ def status():
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+VIDEO_EXTS = {".mp4", ".mkv", ".avi", ".mov", ".flv", ".wmv"}
+IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+
+
+def _day_dirs(download_root: Path) -> List[Path]:
+    if not download_root.exists():
+        return []
+    dirs = sorted(
+        (d for d in download_root.iterdir() if d.is_dir() and d.name.isdigit() and len(d.name) == 8),
+        reverse=True,
+    )
+    return dirs
+
+
+def _list_day_items(day_dir: Path) -> List[dict]:
+    items = []
+    if not day_dir.exists():
+        return items
+    videos = {p.stem: p for p in day_dir.iterdir() if p.is_file() and p.suffix.lower() in VIDEO_EXTS}
+    thumbs = {p.stem: p for p in day_dir.iterdir() if p.is_file() and p.suffix.lower() in IMAGE_EXTS}
+    for stem, vp in videos.items():
+        tp = thumbs.get(stem)
+        items.append({
+            "stem": stem,
+            "video": vp.name,
+            "thumb": tp.name if tp else None,
+            "size": vp.stat().st_size,
+        })
+    items.sort(key=lambda x: x["stem"])
+    return items
+
+
+@app.get("/api/poster-days")
+def api_poster_days():
+    cfg = get_current_config()
+    root = Path(str(cfg["download_root"])).expanduser().resolve()
+    days = []
+    for d in _day_dirs(root):
+        count = sum(1 for p in d.iterdir() if p.is_file() and p.suffix.lower() in VIDEO_EXTS)
+        if count > 0:
+            days.append({"date": d.name, "count": count})
+    return JSONResponse({"days": days})
+
+
+@app.get("/api/poster/{date}")
+def api_poster_date(date: str):
+    if not date.isdigit() or len(date) != 8:
+        return JSONResponse({"ok": False, "error": "无效日期"}, status_code=400)
+    cfg = get_current_config()
+    root = Path(str(cfg["download_root"])).expanduser().resolve()
+    day_dir = root / date
+    items = _list_day_items(day_dir)
+    return JSONResponse({"ok": True, "date": date, "items": items})
+
+
+@app.get("/api/poster/{date}/thumb/{filename}")
+def api_thumb(date: str, filename: str):
+    if not date.isdigit() or len(date) != 8:
+        return JSONResponse({"error": "无效日期"}, status_code=400)
+    cfg = get_current_config()
+    root = Path(str(cfg["download_root"])).expanduser().resolve()
+    path = root / date / filename
+    if not path.exists() or not path.is_file():
+        return JSONResponse({"error": "文件不存在"}, status_code=404)
+    resolved = path.resolve()
+    if not str(resolved).startswith(str(root.resolve())):
+        return JSONResponse({"error": "禁止访问"}, status_code=403)
+    return FileResponse(str(resolved))
+
+
+@app.delete("/api/poster/{date}/{stem}")
+def api_delete_item(date: str, stem: str):
+    if not date.isdigit() or len(date) != 8:
+        return JSONResponse({"ok": False, "error": "无效日期"}, status_code=400)
+    cfg = get_current_config()
+    root = Path(str(cfg["download_root"])).expanduser().resolve()
+    day_dir = root / date
+    deleted = []
+    for p in list(day_dir.glob(f"{stem}.*")):
+        if p.suffix.lower() in VIDEO_EXTS | IMAGE_EXTS:
+            p.unlink(missing_ok=True)
+            deleted.append(p.name)
+    return JSONResponse({"ok": True, "deleted": deleted})
+
+
+@app.post("/api/poster/{date}/batch-delete")
+async def api_batch_delete(date: str, request: Request):
+    if not date.isdigit() or len(date) != 8:
+        return JSONResponse({"ok": False, "error": "无效日期"}, status_code=400)
+    body = await request.json()
+    stems: List[str] = body.get("stems", [])
+    cfg = get_current_config()
+    root = Path(str(cfg["download_root"])).expanduser().resolve()
+    day_dir = root / date
+    deleted = []
+    for stem in stems:
+        for p in list(day_dir.glob(f"{stem}.*")):
+            if p.suffix.lower() in VIDEO_EXTS | IMAGE_EXTS:
+                p.unlink(missing_ok=True)
+                deleted.append(p.name)
+    return JSONResponse({"ok": True, "deleted": deleted})
+
+
+@app.post("/api/poster/{date}/{stem}/replace-cover")
+async def api_replace_cover(date: str, stem: str, file: UploadFile = File(...)):
+    if not date.isdigit() or len(date) != 8:
+        return JSONResponse({"ok": False, "error": "无效日期"}, status_code=400)
+    cfg = get_current_config()
+    root = Path(str(cfg["download_root"])).expanduser().resolve()
+    day_dir = root / date
+    if not day_dir.exists():
+        return JSONResponse({"ok": False, "error": "日期目录不存在"}, status_code=404)
+    suffix = Path(file.filename or "cover.jpg").suffix.lower() or ".jpg"
+    if suffix not in IMAGE_EXTS:
+        return JSONResponse({"ok": False, "error": "不支持的图片格式"}, status_code=400)
+    # Remove old thumb files for this stem
+    for p in list(day_dir.glob(f"{stem}.*")):
+        if p.suffix.lower() in IMAGE_EXTS:
+            p.unlink(missing_ok=True)
+    new_path = day_dir / f"{stem}{suffix}"
+    content = await file.read()
+    new_path.write_bytes(content)
+    return JSONResponse({"ok": True, "thumb": new_path.name})
+
+
+@app.get("/poster")
+def poster_page(request: Request, date: str = ""):
+    return templates.TemplateResponse("poster.html", {"request": request, "date": date})
 
 
 if __name__ == "__main__":
