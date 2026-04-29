@@ -41,9 +41,10 @@ APP_DIR = get_exe_dir()
 CONFIG_PATH = APP_DIR / "config.json"
 TEMPLATES_PATH = get_resource_path("templates")
 MEDIA_API_URL = "https://twitter-ero-video-ranking.com/api/media"
+TAGS_API_URL = "https://twitter-ero-video-ranking.com/api/tags"
 REQUEST_TIMEOUT = 30
 TIME_FILTER_MIN = 0
-TIME_FILTER_MAX = 1800
+TIME_FILTER_MAX = 10800
 ALLOWED_SORTS = {"time", "favorite", "pv"}
 ALLOWED_RANGES = {"daily", "weekly", "monthly", "all"}
 
@@ -56,6 +57,7 @@ DEFAULT_CONFIG: Dict[str, object] = {
     "range": "daily",
     "min_time": TIME_FILTER_MIN,
     "max_time": TIME_FILTER_MAX,
+    "tag_code": "",
 }
 
 app = FastAPI(title="twitter-ero-video-ranking-downloader")
@@ -131,6 +133,9 @@ def validate_config(raw: Dict[str, object]) -> Dict[str, object]:
         raise ValueError("最小时长不能大于最大时长")
     cfg["min_time"] = min_time
     cfg["max_time"] = max_time
+
+    tag_code = str(cfg.get("tag_code", "")).strip()
+    cfg["tag_code"] = tag_code
     return cfg
 
 
@@ -190,17 +195,60 @@ def build_media_request_params(cfg: Dict[str, object]) -> Dict[str, object]:
     params: Dict[str, object] = {
         "page": 1,
         "per_page": 30,
-        "category": "",
         "ids": "",
         "isAnimeOnly": 0,
         "sort": str(cfg["sort"]),
         "min_time": int(cfg["min_time"]),
         "max_time": int(cfg["max_time"]),
     }
+    tag_code = str(cfg.get("tag_code", "")).strip()
+    if tag_code:
+        params["category"] = tag_code
     range_value = str(cfg["range"])
     if range_value != "daily":
         params["range"] = range_value
     return params
+
+
+def _normalize_tag_item(item: object) -> Optional[Dict[str, object]]:
+    if not isinstance(item, dict):
+        return None
+
+    code = str(item.get("code", "")).strip()
+    if not code:
+        return None
+
+    display_name = str(item.get("name_zh_cn", "")).strip() or str(item.get("name", "")).strip() or code
+    return {
+        "id": item.get("id"),
+        "code": code,
+        "name": display_name,
+        "name_raw": str(item.get("name", "")).strip() or display_name,
+        "is_language": bool(item.get("is_language", False)),
+    }
+
+
+def fetch_remote_tags(proxies: Optional[Dict[str, str]]) -> List[Dict[str, object]]:
+    resp = requests.get(TAGS_API_URL, timeout=REQUEST_TIMEOUT, proxies=proxies)
+    resp.raise_for_status()
+    payload = resp.json()
+
+    if isinstance(payload, list):
+        raw_items = payload
+    elif isinstance(payload, dict):
+        raw_items = payload.get("items") or payload.get("data") or []
+    else:
+        raise ValueError("tags API 返回格式不支持")
+
+    if not isinstance(raw_items, list):
+        raise ValueError("tags API 返回的 tags 不是数组")
+
+    tags: List[Dict[str, object]] = []
+    for item in raw_items:
+        normalized = _normalize_tag_item(item)
+        if normalized:
+            tags.append(normalized)
+    return tags
 
 
 def already_downloaded(day_dir: Path) -> int:
@@ -286,7 +334,8 @@ def run_download_job() -> None:
 
         append_log(
             f"当前筛选：range={cfg['range']} sort={cfg['sort']} "
-            f"time={cfg['min_time']}s-{cfg['max_time']}s"
+            f"time={cfg['min_time']}s-{cfg['max_time']}s "
+            f"tag={cfg.get('tag_code') or 'default'}"
         )
         resp = session.get(
             MEDIA_API_URL,
@@ -418,6 +467,7 @@ def save(
     range: str = Form(...),
     min_time: int = Form(...),
     max_time: int = Form(...),
+    tag_code: str = Form(""),
 ):
     try:
         cfg = {
@@ -429,6 +479,7 @@ def save(
             "range": range,
             "min_time": min_time,
             "max_time": max_time,
+            "tag_code": tag_code,
         }
         save_config(cfg)
         update_schedule(get_current_config())
@@ -457,6 +508,37 @@ def status():
             "state": runtime_state,
             "logs": get_logs(),
             "config": get_current_config(),
+        }
+    )
+
+
+@app.get("/api/tags")
+def api_tags(page: int = 1, per_page: int = 12):
+    safe_per_page = max(1, min(per_page, 30))
+    cfg = get_current_config()
+    proxies = build_proxies(str(cfg.get("proxy", "")).strip())
+
+    try:
+        tags = fetch_remote_tags(proxies)
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": f"获取标签失败：{exc}"}, status_code=502)
+
+    total = len(tags)
+    total_pages = max(1, (total + safe_per_page - 1) // safe_per_page)
+    safe_page = min(max(page, 1), total_pages)
+    start = (safe_page - 1) * safe_per_page
+    end = start + safe_per_page
+
+    return JSONResponse(
+        {
+            "ok": True,
+            "items": tags[start:end],
+            "pagination": {
+                "page": safe_page,
+                "per_page": safe_per_page,
+                "total": total,
+                "total_pages": total_pages,
+            },
         }
     )
 

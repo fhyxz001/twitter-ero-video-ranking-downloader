@@ -58,6 +58,92 @@
       background: #f9fafb;
       padding: 14px;
     }
+    .tag-picker {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #f9fafb;
+      padding: 14px;
+    }
+    .tag-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .tag-selection-text {
+      font-size: 14px;
+      color: #111827;
+      font-weight: 600;
+    }
+    .tag-clear-btn {
+      border: 1px solid #d1d5db;
+      background: #fff;
+      color: #374151;
+      border-radius: 6px;
+      padding: 0 12px;
+      height: 34px;
+      cursor: pointer;
+    }
+    .tag-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+    }
+    .tag-item {
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      background: #fff;
+      color: #1f2937;
+      min-height: 58px;
+      padding: 10px 12px;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 4px;
+    }
+    .tag-item.active {
+      border-color: #2563eb;
+      background: #eff6ff;
+      color: #1d4ed8;
+    }
+    .tag-item:disabled,
+    .tag-clear-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.65;
+    }
+    .tag-name {
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+    .tag-code {
+      font-size: 12px;
+      color: #6b7280;
+      word-break: break-all;
+    }
+    .tag-item.active .tag-code {
+      color: #1d4ed8;
+    }
+    .tag-pager {
+      margin-top: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .tag-page-info {
+      font-size: 13px;
+      color: #4b5563;
+    }
+    .tag-error {
+      margin-top: 8px;
+      color: #dc2626;
+      font-size: 12px;
+    }
     .duration-summary {
       display: flex;
       justify-content: space-between;
@@ -244,6 +330,26 @@
         </div>
 
         <div class="field full">
+          <label for="tag_code">标签筛选（单选，可空）</label>
+          <div class="tag-picker">
+            <input id="tag_code" name="tag_code" type="hidden" value="{{ config.tag_code or '' }}" />
+            <div class="tag-toolbar">
+              <div id="tag_selection_text" class="tag-selection-text">当前：{{ config.tag_code or "不筛选" }}</div>
+              <button id="tag_clear_btn" type="button" class="tag-clear-btn" onclick="clearSelectedTag()">清空标签</button>
+            </div>
+            <div id="tag_list" class="tag-list">
+              <div class="note">正在加载标签...</div>
+            </div>
+            <div class="tag-pager">
+              <button id="tag_prev_btn" type="button" class="secondary" onclick="loadTags(tagState.page - 1)">上一页</button>
+              <span id="tag_page_info" class="tag-page-info">加载中...</span>
+              <button id="tag_next_btn" type="button" class="secondary" onclick="loadTags(tagState.page + 1)">下一页</button>
+            </div>
+            <div id="tag_error" class="tag-error"></div>
+          </div>
+        </div>
+
+        <div class="field full">
           <label for="min_time_slider">视频时长筛选（秒）</label>
           <div class="duration-filter">
             <div class="duration-summary">
@@ -277,7 +383,6 @@
               <span>{{ time_filter_max // 60 }} 分钟</span>
             </div>
 
-            <div class="note">拖动两端滑块设置接口传参的 `min_time` 与 `max_time`，右侧会同步换算成分钟方便预览。</div>
             <input id="min_time" name="min_time" type="hidden" value="{{ config.min_time }}" />
             <input id="max_time" name="max_time" type="hidden" value="{{ config.max_time }}" />
           </div>
@@ -310,6 +415,23 @@
     const rangeFill = document.getElementById('range_fill');
     const durationSeconds = document.getElementById('duration_seconds');
     const durationMinutes = document.getElementById('duration_minutes');
+    const tagInput = document.getElementById('tag_code');
+    const tagList = document.getElementById('tag_list');
+    const tagSelectionText = document.getElementById('tag_selection_text');
+    const tagPageInfo = document.getElementById('tag_page_info');
+    const tagPrevBtn = document.getElementById('tag_prev_btn');
+    const tagNextBtn = document.getElementById('tag_next_btn');
+    const tagError = document.getElementById('tag_error');
+    const tagClearBtn = document.getElementById('tag_clear_btn');
+    const tagState = {
+      page: 1,
+      perPage: 12,
+      total: 0,
+      totalPages: 1,
+      items: [],
+      loading: false,
+    };
+    let selectedTagMeta = null;
 
     function formatMinuteText(seconds) {
       const minutes = seconds / 60;
@@ -351,6 +473,109 @@
     minSlider.addEventListener('input', () => syncDurationRange(minSlider));
     maxSlider.addEventListener('input', () => syncDurationRange(maxSlider));
     syncDurationRange();
+
+    function updateTagSelectionText() {
+      if (selectedTagMeta && selectedTagMeta.code === tagInput.value) {
+        tagSelectionText.textContent = `当前：${selectedTagMeta.name} (${selectedTagMeta.code})`;
+      } else if (tagInput.value) {
+        tagSelectionText.textContent = `当前：${tagInput.value}`;
+      } else {
+        tagSelectionText.textContent = '当前：不筛选';
+      }
+      tagClearBtn.disabled = tagState.loading || !tagInput.value;
+    }
+
+    function renderTagPagination() {
+      tagPageInfo.textContent = `第 ${tagState.page} / ${tagState.totalPages} 页，共 ${tagState.total} 个标签`;
+      tagPrevBtn.disabled = tagState.loading || tagState.page <= 1;
+      tagNextBtn.disabled = tagState.loading || tagState.page >= tagState.totalPages;
+    }
+
+    function renderTags() {
+      tagList.innerHTML = '';
+
+      if (!tagState.items.length) {
+        const empty = document.createElement('div');
+        empty.className = 'note';
+        empty.textContent = tagState.loading ? '正在加载标签...' : '暂无可用标签';
+        tagList.appendChild(empty);
+        renderTagPagination();
+        updateTagSelectionText();
+        return;
+      }
+
+      tagState.items.forEach((tag) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `tag-item${tagInput.value === tag.code ? ' active' : ''}`;
+        button.disabled = tagState.loading;
+        button.addEventListener('click', () => {
+          tagInput.value = tag.code;
+          selectedTagMeta = tag;
+          renderTags();
+          updateTagSelectionText();
+        });
+
+        const name = document.createElement('div');
+        name.className = 'tag-name';
+        name.textContent = tag.name || tag.code;
+
+        const code = document.createElement('div');
+        code.className = 'tag-code';
+        code.textContent = tag.code;
+
+        button.appendChild(name);
+        button.appendChild(code);
+        tagList.appendChild(button);
+      });
+
+      renderTagPagination();
+      updateTagSelectionText();
+    }
+
+    async function loadTags(page = 1) {
+      const targetPage = Math.max(1, page);
+      tagState.loading = true;
+      tagError.textContent = '';
+      renderTags();
+
+      try {
+        const resp = await fetch(`/api/tags?page=${targetPage}&per_page=${tagState.perPage}`);
+        const data = await resp.json();
+        if (!data.ok) {
+          throw new Error(data.error || '标签加载失败');
+        }
+
+        tagState.page = data.pagination?.page || 1;
+        tagState.total = data.pagination?.total || 0;
+        tagState.totalPages = data.pagination?.total_pages || 1;
+        tagState.items = Array.isArray(data.items) ? data.items : [];
+
+        const selected = tagState.items.find((tag) => tag.code === tagInput.value);
+        if (selected) {
+          selectedTagMeta = selected;
+        }
+      } catch (error) {
+        tagState.items = [];
+        tagState.total = 0;
+        tagState.totalPages = 1;
+        tagState.page = 1;
+        tagError.textContent = error.message || '标签加载失败';
+      } finally {
+        tagState.loading = false;
+        renderTags();
+      }
+    }
+
+    function clearSelectedTag() {
+      tagInput.value = '';
+      selectedTagMeta = null;
+      renderTags();
+      updateTagSelectionText();
+    }
+
+    updateTagSelectionText();
+    loadTags();
 
     async function runNow() {
       const resp = await fetch('/run-now', { method: 'POST' });

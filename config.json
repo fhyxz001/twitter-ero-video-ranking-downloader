@@ -2,5 +2,10 @@
   "download_root": "D:\\work\\twitter-ero-video-ranking-downloader",
   "proxy": "",
   "schedule_time": "03:00",
-  "max_daily_downloads": 1
+  "max_daily_downloads": 1,
+  "sort": "favorite",
+  "range": "all",
+  "min_time": 0,
+  "max_time": 10800,
+  "tag_code": "anime"
 }
