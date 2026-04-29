@@ -40,17 +40,22 @@ def get_exe_dir() -> Path:
 APP_DIR = get_exe_dir()
 CONFIG_PATH = APP_DIR / "config.json"
 TEMPLATES_PATH = get_resource_path("templates")
-API_URL = (
-    "https://twitter-ero-video-ranking.com/api/media"
-    "?range&page=1&per_page=30&category&ids&isAnimeOnly=0&sort=favorite"
-)
+MEDIA_API_URL = "https://twitter-ero-video-ranking.com/api/media"
 REQUEST_TIMEOUT = 30
+TIME_FILTER_MIN = 0
+TIME_FILTER_MAX = 1800
+ALLOWED_SORTS = {"time", "favorite", "pv"}
+ALLOWED_RANGES = {"daily", "weekly", "monthly", "all"}
 
 DEFAULT_CONFIG: Dict[str, object] = {
     "download_root": "/data/downloads" if os.name != "nt" else str(APP_DIR / "downloads"),
     "proxy": "",
     "schedule_time": "03:00",
     "max_daily_downloads": 20,
+    "sort": "favorite",
+    "range": "daily",
+    "min_time": TIME_FILTER_MIN,
+    "max_time": TIME_FILTER_MAX,
 }
 
 app = FastAPI(title="twitter-ero-video-ranking-downloader")
@@ -94,6 +99,16 @@ def validate_config(raw: Dict[str, object]) -> Dict[str, object]:
     proxy = str(cfg.get("proxy", "")).strip()
     cfg["proxy"] = proxy
 
+    sort = str(cfg.get("sort", "favorite")).strip()
+    if sort not in ALLOWED_SORTS:
+        raise ValueError("排序方式必须是 time、favorite 或 pv")
+    cfg["sort"] = sort
+
+    range_value = str(cfg.get("range", "daily")).strip()
+    if range_value not in ALLOWED_RANGES:
+        raise ValueError("时间范围必须是 daily、weekly、monthly 或 all")
+    cfg["range"] = range_value
+
     schedule_time = str(cfg.get("schedule_time", "")).strip()
     try:
         time.strptime(schedule_time, "%H:%M")
@@ -105,6 +120,17 @@ def validate_config(raw: Dict[str, object]) -> Dict[str, object]:
     if max_daily <= 0:
         raise ValueError("每日最大下载数量必须大于0")
     cfg["max_daily_downloads"] = max_daily
+
+    min_time = int(cfg.get("min_time", TIME_FILTER_MIN))
+    max_time = int(cfg.get("max_time", TIME_FILTER_MAX))
+    if min_time < TIME_FILTER_MIN or min_time > TIME_FILTER_MAX:
+        raise ValueError(f"最小时长必须在 {TIME_FILTER_MIN} 到 {TIME_FILTER_MAX} 秒之间")
+    if max_time < TIME_FILTER_MIN or max_time > TIME_FILTER_MAX:
+        raise ValueError(f"最大时长必须在 {TIME_FILTER_MIN} 到 {TIME_FILTER_MAX} 秒之间")
+    if min_time > max_time:
+        raise ValueError("最小时长不能大于最大时长")
+    cfg["min_time"] = min_time
+    cfg["max_time"] = max_time
     return cfg
 
 
@@ -158,6 +184,23 @@ def build_proxies(proxy: str) -> Optional[Dict[str, str]]:
     if not proxy:
         return None
     return {"http": proxy, "https": proxy}
+
+
+def build_media_request_params(cfg: Dict[str, object]) -> Dict[str, object]:
+    params: Dict[str, object] = {
+        "page": 1,
+        "per_page": 30,
+        "category": "",
+        "ids": "",
+        "isAnimeOnly": 0,
+        "sort": str(cfg["sort"]),
+        "min_time": int(cfg["min_time"]),
+        "max_time": int(cfg["max_time"]),
+    }
+    range_value = str(cfg["range"])
+    if range_value != "daily":
+        params["range"] = range_value
+    return params
 
 
 def already_downloaded(day_dir: Path) -> int:
@@ -241,7 +284,16 @@ def run_download_job() -> None:
         proxies = build_proxies(proxy)
         session = requests.Session()
 
-        resp = session.get(API_URL, timeout=REQUEST_TIMEOUT, proxies=proxies)
+        append_log(
+            f"当前筛选：range={cfg['range']} sort={cfg['sort']} "
+            f"time={cfg['min_time']}s-{cfg['max_time']}s"
+        )
+        resp = session.get(
+            MEDIA_API_URL,
+            params=build_media_request_params(cfg),
+            timeout=REQUEST_TIMEOUT,
+            proxies=proxies,
+        )
         resp.raise_for_status()
         payload = resp.json()
         items = payload.get("items", [])
@@ -339,6 +391,19 @@ def index(request: Request):
             "config": cfg,
             "state": state,
             "logs": "\n".join(get_logs()),
+            "time_filter_min": TIME_FILTER_MIN,
+            "time_filter_max": TIME_FILTER_MAX,
+            "sort_options": [
+                {"value": "time", "label": "按时长"},
+                {"value": "favorite", "label": "按点赞"},
+                {"value": "pv", "label": "按观看数"},
+            ],
+            "range_options": [
+                {"value": "daily", "label": "每日"},
+                {"value": "weekly", "label": "每周"},
+                {"value": "monthly", "label": "每月"},
+                {"value": "all", "label": "全部"},
+            ],
         },
     )
 
@@ -349,6 +414,10 @@ def save(
     proxy: str = Form(""),
     schedule_time: str = Form(...),
     max_daily_downloads: int = Form(...),
+    sort: str = Form(...),
+    range: str = Form(...),
+    min_time: int = Form(...),
+    max_time: int = Form(...),
 ):
     try:
         cfg = {
@@ -356,6 +425,10 @@ def save(
             "proxy": proxy,
             "schedule_time": schedule_time,
             "max_daily_downloads": max_daily_downloads,
+            "sort": sort,
+            "range": range,
+            "min_time": min_time,
+            "max_time": max_time,
         }
         save_config(cfg)
         update_schedule(get_current_config())

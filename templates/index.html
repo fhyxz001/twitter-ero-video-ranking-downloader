@@ -41,12 +41,108 @@
       margin-bottom: 6px;
       color: #374151;
     }
-    input {
+    input[type="text"],
+    input[type="time"],
+    input[type="number"],
+    select {
       height: 36px;
       border: 1px solid #d1d5db;
       border-radius: 6px;
       padding: 0 10px;
       font-size: 14px;
+      background: #fff;
+    }
+    .duration-filter {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #f9fafb;
+      padding: 14px;
+    }
+    .duration-summary {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .duration-seconds {
+      font-size: 15px;
+      font-weight: 700;
+      color: #111827;
+    }
+    .duration-minutes {
+      font-size: 13px;
+      color: #4b5563;
+    }
+    .range-slider {
+      position: relative;
+      height: 42px;
+      margin-top: 12px;
+    }
+    .range-track,
+    .range-fill {
+      position: absolute;
+      top: 18px;
+      height: 6px;
+      border-radius: 999px;
+    }
+    .range-track {
+      left: 0;
+      right: 0;
+      background: #d1d5db;
+    }
+    .range-fill {
+      background: #2563eb;
+    }
+    .range-slider input[type="range"] {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 42px;
+      margin: 0;
+      pointer-events: none;
+      -webkit-appearance: none;
+      appearance: none;
+      background: none;
+    }
+    .range-slider input[type="range"]::-webkit-slider-runnable-track {
+      height: 6px;
+      background: transparent;
+    }
+    .range-slider input[type="range"]::-moz-range-track {
+      height: 6px;
+      background: transparent;
+    }
+    .range-slider input[type="range"]::-webkit-slider-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid #2563eb;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+      pointer-events: auto;
+      cursor: pointer;
+      -webkit-appearance: none;
+      appearance: none;
+      margin-top: -6px;
+    }
+    .range-slider input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid #2563eb;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+      pointer-events: auto;
+      cursor: pointer;
+    }
+    .range-scale {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 4px;
+      color: #6b7280;
+      font-size: 12px;
     }
     .actions {
       margin-top: 16px;
@@ -128,6 +224,64 @@
           <label for="max_daily_downloads">每日最大下载数量</label>
           <input id="max_daily_downloads" name="max_daily_downloads" type="number" min="1" required value="{{ config.max_daily_downloads }}" />
         </div>
+
+        <div class="field">
+          <label for="sort">排序方式</label>
+          <select id="sort" name="sort" required>
+            {% for option in sort_options %}
+            <option value="{{ option.value }}" {% if config.sort == option.value %}selected{% endif %}>{{ option.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="range">时间范围</label>
+          <select id="range" name="range" required>
+            {% for option in range_options %}
+            <option value="{{ option.value }}" {% if config.range == option.value %}selected{% endif %}>{{ option.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="field full">
+          <label for="min_time_slider">视频时长筛选（秒）</label>
+          <div class="duration-filter">
+            <div class="duration-summary">
+              <div id="duration_seconds" class="duration-seconds"></div>
+              <div id="duration_minutes" class="duration-minutes"></div>
+            </div>
+
+            <div class="range-slider">
+              <div class="range-track"></div>
+              <div id="range_fill" class="range-fill"></div>
+              <input
+                id="min_time_slider"
+                type="range"
+                min="{{ time_filter_min }}"
+                max="{{ time_filter_max }}"
+                step="1"
+                value="{{ config.min_time }}"
+              />
+              <input
+                id="max_time_slider"
+                type="range"
+                min="{{ time_filter_min }}"
+                max="{{ time_filter_max }}"
+                step="1"
+                value="{{ config.max_time }}"
+              />
+            </div>
+
+            <div class="range-scale">
+              <span>{{ time_filter_min // 60 }} 分钟</span>
+              <span>{{ time_filter_max // 60 }} 分钟</span>
+            </div>
+
+            <div class="note">拖动两端滑块设置接口传参的 `min_time` 与 `max_time`，右侧会同步换算成分钟方便预览。</div>
+            <input id="min_time" name="min_time" type="hidden" value="{{ config.min_time }}" />
+            <input id="max_time" name="max_time" type="hidden" value="{{ config.max_time }}" />
+          </div>
+        </div>
       </div>
 
       <div class="actions">
@@ -149,6 +303,55 @@
   </div>
 
   <script>
+    const minSlider = document.getElementById('min_time_slider');
+    const maxSlider = document.getElementById('max_time_slider');
+    const minTimeInput = document.getElementById('min_time');
+    const maxTimeInput = document.getElementById('max_time');
+    const rangeFill = document.getElementById('range_fill');
+    const durationSeconds = document.getElementById('duration_seconds');
+    const durationMinutes = document.getElementById('duration_minutes');
+
+    function formatMinuteText(seconds) {
+      const minutes = seconds / 60;
+      if (Number.isInteger(minutes)) {
+        return `${minutes} 分钟`;
+      }
+      return `${minutes.toFixed(1)} 分钟`;
+    }
+
+    function syncDurationRange(changedSlider) {
+      let minValue = Number(minSlider.value);
+      let maxValue = Number(maxSlider.value);
+
+      if (minValue > maxValue) {
+        if (changedSlider === minSlider) {
+          maxValue = minValue;
+          maxSlider.value = String(maxValue);
+        } else {
+          minValue = maxValue;
+          minSlider.value = String(minValue);
+        }
+      }
+
+      minTimeInput.value = String(minValue);
+      maxTimeInput.value = String(maxValue);
+
+      const sliderMin = Number(minSlider.min);
+      const sliderMax = Number(minSlider.max);
+      const total = sliderMax - sliderMin || 1;
+      const left = ((minValue - sliderMin) / total) * 100;
+      const right = ((maxValue - sliderMin) / total) * 100;
+
+      rangeFill.style.left = `${left}%`;
+      rangeFill.style.width = `${right - left}%`;
+      durationSeconds.textContent = `${minValue} 秒 - ${maxValue} 秒`;
+      durationMinutes.textContent = `约 ${formatMinuteText(minValue)} - ${formatMinuteText(maxValue)}`;
+    }
+
+    minSlider.addEventListener('input', () => syncDurationRange(minSlider));
+    maxSlider.addEventListener('input', () => syncDurationRange(maxSlider));
+    syncDurationRange();
+
     async function runNow() {
       const resp = await fetch('/run-now', { method: 'POST' });
       const data = await resp.json();
