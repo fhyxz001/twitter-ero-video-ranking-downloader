@@ -1,6 +1,6 @@
 {
-  "download_root": "/data/downloads",
+  "download_root": "D:\\work\\twitter-ero-video-ranking-downloader",
   "proxy": "",
   "schedule_time": "03:00",
-  "max_daily_downloads": 20
+  "max_daily_downloads": 1
 }

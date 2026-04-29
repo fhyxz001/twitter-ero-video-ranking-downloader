@@ -3,386 +3,966 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>海报墙</title>
+  <title>视频海报墙</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
+    :root {
+      color-scheme: dark;
+      --bg: #07111f;
+      --bg-soft: rgba(15, 23, 42, 0.78);
+      --panel: rgba(15, 23, 42, 0.92);
+      --panel-border: rgba(148, 163, 184, 0.18);
+      --card: rgba(15, 23, 42, 0.88);
+      --text: #e5eefc;
+      --muted: #8fa4c5;
+      --accent: #60a5fa;
+      --accent-strong: #2563eb;
+      --danger: #ef4444;
+      --shadow: 0 20px 50px rgba(2, 8, 23, 0.42);
+    }
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
-      background: #0f172a;
-      color: #e2e8f0;
       min-height: 100vh;
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, 0.22), transparent 30%),
+        radial-gradient(circle at top right, rgba(14, 165, 233, 0.18), transparent 28%),
+        linear-gradient(180deg, #08111e 0%, #0b1323 48%, #070c16 100%);
     }
-    .topbar {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: #1e293b;
-      border-bottom: 1px solid #334155;
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .shell {
+      max-width: 1560px;
+      margin: 0 auto;
+      padding: 28px 24px 40px;
+    }
+    .hero {
       display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 20px;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 24px 28px;
+      border: 1px solid var(--panel-border);
+      border-radius: 24px;
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.72));
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+      margin-bottom: 18px;
       flex-wrap: wrap;
     }
-    .topbar a {
-      color: #94a3b8;
-      text-decoration: none;
+    .hero-top {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: rgba(96, 165, 250, 0.12);
+      color: #bfdbfe;
+      font-size: 13px;
+    }
+    .hero h1 {
+      margin: 14px 0 10px;
+      font-size: 34px;
+      line-height: 1.15;
+    }
+    .hero p {
+      margin: 0;
+      max-width: 680px;
+      color: var(--muted);
+      line-height: 1.65;
       font-size: 14px;
     }
-    .topbar a:hover { color: #e2e8f0; }
-    .topbar .title {
-      font-size: 16px;
-      font-weight: 600;
-      color: #f1f5f9;
-    }
-    .topbar .spacer { flex: 1; }
-    .sort-group {
+    .hero-stats {
       display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 13px;
-      color: #94a3b8;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: flex-start;
     }
-    select {
-      background: #334155;
-      color: #e2e8f0;
-      border: 1px solid #475569;
-      border-radius: 5px;
-      padding: 4px 8px;
-      font-size: 13px;
+    .stat-card {
+      min-width: 140px;
+      padding: 16px 18px;
+      border-radius: 18px;
+      background: rgba(15, 23, 42, 0.72);
+      border: 1px solid rgba(148, 163, 184, 0.14);
     }
-    .btn {
-      border: none;
-      border-radius: 6px;
-      padding: 6px 14px;
-      font-size: 13px;
-      cursor: pointer;
-      color: #fff;
+    .stat-card .label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 6px;
     }
-    .btn-primary   { background: #2563eb; }
-    .btn-danger    { background: #dc2626; }
-    .btn-secondary { background: #475569; }
-    .btn:hover { opacity: .88; }
-    .btn:disabled { opacity: .4; cursor: default; }
-
-    .content { padding: 20px; }
-
-    #statusBar {
-      font-size: 13px;
-      color: #94a3b8;
-      margin-bottom: 14px;
+    .stat-card .value {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+    .toolbar {
+      position: sticky;
+      top: 14px;
+      z-index: 50;
       display: flex;
       align-items: center;
       gap: 12px;
       flex-wrap: wrap;
+      padding: 16px 18px;
+      border-radius: 20px;
+      background: var(--bg-soft);
+      border: 1px solid var(--panel-border);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 16px 40px rgba(2, 8, 23, 0.26);
+      margin-bottom: 18px;
     }
-
+    .toolbar .spacer {
+      flex: 1;
+    }
+    .control {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 170px;
+    }
+    .control label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    select {
+      width: 100%;
+      height: 42px;
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      background: rgba(15, 23, 42, 0.84);
+      color: var(--text);
+      padding: 0 12px;
+      font-size: 14px;
+      outline: none;
+    }
+    .btn {
+      height: 42px;
+      padding: 0 16px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform .18s ease, opacity .18s ease, border-color .18s ease;
+    }
+    .btn:hover {
+      transform: translateY(-1px);
+      opacity: .96;
+    }
+    .btn:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      box-shadow: 0 10px 24px rgba(37, 99, 235, 0.35);
+    }
+    .btn-secondary {
+      background: rgba(30, 41, 59, 0.9);
+      border-color: rgba(148, 163, 184, 0.18);
+      color: var(--text);
+    }
+    .btn-danger {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      box-shadow: 0 10px 24px rgba(220, 38, 38, 0.22);
+    }
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      color: var(--muted);
+      margin: 8px 0 16px;
+      flex-wrap: wrap;
+      font-size: 14px;
+    }
+    .status-row strong {
+      color: var(--text);
+    }
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-      gap: 14px;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 18px;
     }
-
     .card {
-      background: #1e293b;
-      border: 2px solid transparent;
-      border-radius: 8px;
-      overflow: hidden;
-      cursor: pointer;
-      transition: border-color .15s;
       position: relative;
+      overflow: hidden;
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.78));
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      box-shadow: 0 16px 40px rgba(2, 8, 23, 0.28);
+      transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
     }
-    .card.selected { border-color: #2563eb; }
-    .card .thumb-wrap {
-      width: 100%;
-      aspect-ratio: 16/9;
-      background: #0f172a;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(96, 165, 250, 0.4);
+      box-shadow: 0 24px 48px rgba(2, 8, 23, 0.36);
+    }
+    .card.selected {
+      border-color: rgba(96, 165, 250, 0.85);
+      box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.5), 0 24px 48px rgba(2, 8, 23, 0.38);
+    }
+    .cover {
+      position: relative;
+      aspect-ratio: 16 / 9;
+      cursor: pointer;
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.75));
       overflow: hidden;
     }
-    .card .thumb-wrap img {
+    .cover img,
+    .cover .fallback {
       width: 100%;
       height: 100%;
       object-fit: cover;
       display: block;
     }
-    .card .thumb-wrap .no-thumb {
-      font-size: 36px;
-      opacity: .3;
-    }
-    .card .info {
-      padding: 7px 8px 6px;
-      font-size: 11px;
-      color: #94a3b8;
-    }
-    .card .info .size { font-weight: 600; color: #cbd5e1; }
-
-    .card .actions {
-      display: none;
-      position: absolute;
-      bottom: 36px;
-      left: 0; right: 0;
-      padding: 4px 6px;
-      gap: 5px;
-      justify-content: center;
-      background: rgba(15,23,42,.8);
-    }
-    .card:hover .actions { display: flex; }
-    .card .cb {
-      position: absolute;
-      top: 6px;
-      left: 6px;
-      width: 18px;
-      height: 18px;
-      accent-color: #2563eb;
-      cursor: pointer;
-    }
-
-    /* Replace cover modal */
-    #replaceModal {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,.6);
-      z-index: 999;
+    .cover .fallback {
+      display: flex;
       align-items: center;
       justify-content: center;
+      color: rgba(226, 232, 240, 0.32);
+      font-size: 52px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
     }
-    #replaceModal.open { display: flex; }
-    .modal-box {
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 10px;
-      padding: 24px;
-      width: 340px;
+    .cover::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(2, 6, 23, 0.06), rgba(2, 6, 23, 0.55));
+    }
+    .play-badge,
+    .date-badge,
+    .duration-badge {
+      position: absolute;
+      z-index: 1;
+      border-radius: 999px;
+      backdrop-filter: blur(12px);
+    }
+    .play-badge {
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 58px;
+      height: 58px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: rgba(15, 23, 42, 0.56);
       display: flex;
-      flex-direction: column;
-      gap: 14px;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      color: #fff;
+      box-shadow: 0 8px 24px rgba(2, 8, 23, 0.3);
     }
-    .modal-box h3 { margin: 0; font-size: 16px; }
-    .modal-box label { font-size: 13px; color: #94a3b8; }
-    .modal-box input[type=file] {
-      background: #0f172a;
-      border: 1px solid #475569;
-      border-radius: 6px;
-      padding: 6px 8px;
+    .date-badge {
+      top: 12px;
+      left: 12px;
+      padding: 6px 10px;
+      background: rgba(15, 23, 42, 0.58);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      font-size: 12px;
       color: #e2e8f0;
-      font-size: 13px;
-      width: 100%;
     }
-    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
-
-    #emptyMsg {
+    .duration-badge {
+      right: 12px;
+      bottom: 12px;
+      padding: 6px 10px;
+      background: rgba(2, 6, 23, 0.74);
+      color: #f8fafc;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .selector {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 2;
+      width: 22px;
+      height: 22px;
+      margin: 0;
+      accent-color: var(--accent-strong);
+      cursor: pointer;
+    }
+    .card-body {
+      padding: 16px;
+    }
+    .file-name {
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1.45;
+      word-break: break-word;
+      margin-bottom: 10px;
+    }
+    .meta-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .meta-chip {
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.12);
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .card-actions {
+      display: flex;
+      gap: 10px;
+    }
+    .card-actions .btn {
+      flex: 1;
+      height: 38px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .empty {
+      display: none;
+      margin-top: 28px;
+      padding: 72px 20px;
       text-align: center;
-      padding: 80px 0;
-      color: #475569;
-      font-size: 15px;
+      color: var(--muted);
+      background: rgba(15, 23, 42, 0.56);
+      border: 1px dashed rgba(148, 163, 184, 0.18);
+      border-radius: 24px;
+    }
+    .modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(2, 6, 23, 0.78);
+      backdrop-filter: blur(10px);
+      z-index: 200;
+    }
+    .modal.open {
+      display: flex;
+    }
+    .modal-card {
+      width: min(980px, 100%);
+      max-height: calc(100vh - 48px);
+      overflow: auto;
+      border-radius: 24px;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.88));
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      box-shadow: var(--shadow);
+    }
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 18px 22px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+    }
+    .modal-head h3 {
+      margin: 0 0 6px;
+      font-size: 18px;
+    }
+    .modal-head p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .close-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      background: rgba(30, 41, 59, 0.88);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 20px;
+    }
+    .preview-wrap {
+      padding: 18px 22px 22px;
+    }
+    .preview-wrap video {
+      width: 100%;
+      max-height: 72vh;
+      border-radius: 18px;
+      background: #000;
+      outline: none;
+    }
+    .replace-box {
+      width: min(420px, 100%);
+      padding: 24px;
+    }
+    .replace-box h3 {
+      margin: 0 0 8px;
+      font-size: 20px;
+    }
+    .replace-box p {
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .replace-box input[type="file"] {
+      width: 100%;
+      margin-bottom: 18px;
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      background: rgba(15, 23, 42, 0.72);
+      color: var(--text);
+    }
+    .replace-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+    @media (max-width: 980px) {
+      .hero h1 {
+        font-size: 28px;
+      }
+      .toolbar {
+        top: 8px;
+      }
+    }
+    @media (max-width: 720px) {
+      .shell {
+        padding: 18px 14px 28px;
+      }
+      .hero,
+      .toolbar {
+        padding: 16px;
+        border-radius: 18px;
+      }
+      .grid {
+        grid-template-columns: 1fr;
+      }
+      .control {
+        width: 100%;
+      }
+      .toolbar .spacer {
+        display: none;
+      }
+      .toolbar .btn {
+        width: calc(50% - 6px);
+      }
+      .card-actions {
+        flex-direction: column;
+      }
+      .replace-actions {
+        flex-direction: column-reverse;
+      }
     }
   </style>
 </head>
 <body>
+  <div class="shell">
+    <section class="hero">
+      <div>
+        <div class="hero-top">
+          <a href="/">&larr; 返回首页</a>
+        </div>
+        <h1 id="pageTitle">全部视频海报墙</h1>
+        <p>点击海报即可直接预览视频；顶部筛选栏可按日期快速过滤内容，卡片同时展示时长、大小和所属日期。</p>
+      </div>
+      <div class="hero-stats">
+        <div class="stat-card">
+          <div class="label">当前显示</div>
+          <div class="value" id="statVisible">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">全部视频</div>
+          <div class="value" id="statTotal">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">可筛选日期</div>
+          <div class="value" id="statDays">0</div>
+        </div>
+      </div>
+    </section>
 
-<div class="topbar">
-  <a href="/">&larr; 返回</a>
-  <span class="title" id="pageTitle">海报墙</span>
-  <div class="spacer"></div>
-  <div class="sort-group">
-    排序：
-    <select id="sortSelect" onchange="applySort()">
-      <option value="time_desc">时间 ↓</option>
-      <option value="time_asc">时间 ↑</option>
-      <option value="size_desc">大小 ↓</option>
-      <option value="size_asc">大小 ↑</option>
-    </select>
+    <section class="toolbar">
+      <div class="control">
+        <label for="dateFilter">日期筛选</label>
+        <select id="dateFilter" onchange="applyFilters()">
+          <option value="">全部日期</option>
+        </select>
+      </div>
+      <div class="control">
+        <label for="sortSelect">排序方式</label>
+        <select id="sortSelect" onchange="applyFilters(false)">
+          <option value="time_desc">时间从新到旧</option>
+          <option value="time_asc">时间从旧到新</option>
+          <option value="size_desc">文件大小从大到小</option>
+          <option value="size_asc">文件大小从小到大</option>
+          <option value="duration_desc">时长从长到短</option>
+          <option value="duration_asc">时长从短到长</option>
+        </select>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn btn-secondary" type="button" onclick="reloadData()">刷新数据</button>
+      <button class="btn btn-secondary" type="button" onclick="toggleSelectAll()" id="btnSelectAll">全选当前筛选</button>
+      <button class="btn btn-danger" type="button" id="btnBatchDelete" onclick="batchDelete()" disabled>批量删除</button>
+    </section>
+
+    <div class="status-row">
+      <div id="statusText">正在加载海报墙数据...</div>
+      <div>已选 <strong id="selectedCount">0</strong> 个</div>
+    </div>
+
+    <div id="grid" class="grid"></div>
+    <div id="emptyMsg" class="empty">当前筛选条件下暂无视频。</div>
   </div>
-  <button class="btn btn-secondary" onclick="toggleSelectAll()" id="btnSelectAll">全选</button>
-  <button class="btn btn-danger" id="btnBatchDelete" onclick="batchDelete()" disabled>批量删除</button>
-</div>
 
-<div class="content">
-  <div id="statusBar"></div>
-  <div id="grid" class="grid"></div>
-  <div id="emptyMsg" style="display:none;">该日期下暂无视频</div>
-</div>
-
-<!-- Replace cover modal -->
-<div id="replaceModal">
-  <div class="modal-box">
-    <h3>替换封面</h3>
-    <label>选择新封面图片（jpg / png / webp）</label>
-    <input type="file" id="replaceFileInput" accept="image/*" />
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeReplaceModal()">取消</button>
-      <button class="btn btn-primary" onclick="doReplaceCover()">确认替换</button>
+  <div id="previewModal" class="modal" onclick="closePreviewOnMask(event)">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <h3 id="previewTitle">视频预览</h3>
+          <p id="previewMeta">--</p>
+        </div>
+        <button class="close-btn" type="button" onclick="closePreview()">&times;</button>
+      </div>
+      <div class="preview-wrap">
+        <video id="previewVideo" controls playsinline preload="metadata"></video>
+      </div>
     </div>
   </div>
-</div>
 
-<script>
-  const params = new URLSearchParams(location.search);
-  const DATE = params.get('date') || '';
-  let allItems = [];
-  let sortedItems = [];
-  let selectedStems = new Set();
-  let replaceTargetStem = null;
+  <div id="replaceModal" class="modal" onclick="closeReplaceOnMask(event)">
+    <div class="modal-card replace-box">
+      <h3>替换封面</h3>
+      <p id="replaceMeta">请选择新的图片文件，支持 jpg、png、webp 等常见格式。</p>
+      <input type="file" id="replaceFileInput" accept="image/*" />
+      <div class="replace-actions">
+        <button class="btn btn-secondary" type="button" onclick="closeReplaceModal()">取消</button>
+        <button class="btn btn-primary" type="button" onclick="doReplaceCover()">确认替换</button>
+      </div>
+    </div>
+  </div>
 
-  document.getElementById('pageTitle').textContent = DATE
-    ? `海报墙 · ${DATE.slice(0,4)}-${DATE.slice(4,6)}-${DATE.slice(6,8)}`
-    : '海报墙';
+  <script>
+    const params = new URLSearchParams(location.search);
+    const INITIAL_DATE = params.get('date') || '';
 
-  async function loadItems() {
-    if (!DATE) { showEmpty(); return; }
-    try {
-      const resp = await fetch(`/api/poster/${DATE}`);
+    let allItems = [];
+    let visibleItems = [];
+    let selectedKeys = new Set();
+    let durationCache = new Map();
+    let durationProbeQueue = [];
+    let durationProbeRunning = 0;
+    let replaceTarget = null;
+
+    function formatDateLabel(date) {
+      if (!date || date.length !== 8) return date || '未知日期';
+      return `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}`;
+    }
+
+    function itemKey(item) {
+      return `${item.date}::${item.stem}`;
+    }
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    function fmtSize(bytes) {
+      if (bytes >= 1073741824) return `${(bytes / 1073741824).toFixed(2)} GB`;
+      if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(1)} MB`;
+      if (bytes >= 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+      return `${bytes} B`;
+    }
+
+    function durationLabel(item) {
+      return item.duration || durationCache.get(itemKey(item)) || '--:--';
+    }
+
+    function durationSeconds(item) {
+      const raw = item.duration || durationCache.get(itemKey(item)) || '';
+      const parts = raw.split(':').map(Number);
+      if (!parts.length || parts.some(Number.isNaN)) return -1;
+      if (parts.length === 2) return parts[0] * 60 + parts[1];
+      if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+      return -1;
+    }
+
+    function buildSortValue(item) {
+      return Number(`${item.date}${item.stem}`) || 0;
+    }
+
+    async function loadItems() {
+      const query = new URLSearchParams();
+      const dateValue = document.getElementById('dateFilter').value;
+      if (dateValue) query.set('date', dateValue);
+
+      const url = query.toString() ? `/api/poster?${query.toString()}` : '/api/poster';
+      const resp = await fetch(url);
       const data = await resp.json();
-      if (!data.ok) { showEmpty(); return; }
+      if (!data.ok) {
+        throw new Error(data.error || '加载失败');
+      }
       allItems = data.items || [];
-      applySort();
-    } catch(e) {
-      showEmpty();
+      (data.items || []).forEach(item => {
+        if (item.duration) {
+          durationCache.set(itemKey(item), item.duration);
+        }
+      });
+      renderDateOptions(data.days || []);
+      updateStats(data.days || []);
+      applyFilters(false);
     }
-  }
 
-  function applySort() {
-    const v = document.getElementById('sortSelect').value;
-    sortedItems = [...allItems];
-    if (v === 'time_asc')  sortedItems.sort((a,b) => a.stem.localeCompare(b.stem));
-    if (v === 'time_desc') sortedItems.sort((a,b) => b.stem.localeCompare(a.stem));
-    if (v === 'size_asc')  sortedItems.sort((a,b) => a.size - b.size);
-    if (v === 'size_desc') sortedItems.sort((a,b) => b.size - a.size);
-    renderGrid();
-  }
-
-  function fmtSize(bytes) {
-    if (bytes >= 1073741824) return (bytes/1073741824).toFixed(2) + ' GB';
-    if (bytes >= 1048576)    return (bytes/1048576).toFixed(1) + ' MB';
-    if (bytes >= 1024)       return (bytes/1024).toFixed(0) + ' KB';
-    return bytes + ' B';
-  }
-
-  function renderGrid() {
-    const grid = document.getElementById('grid');
-    const empty = document.getElementById('emptyMsg');
-    const bar = document.getElementById('statusBar');
-
-    if (sortedItems.length === 0) {
-      grid.innerHTML = '';
-      empty.style.display = 'block';
-      bar.textContent = '';
-      return;
+    function renderDateOptions(days) {
+      const select = document.getElementById('dateFilter');
+      const currentValue = select.value || INITIAL_DATE;
+      const options = ['<option value="">全部日期</option>'];
+      days.forEach(day => {
+        options.push(`<option value="${day.date}">${formatDateLabel(day.date)} (${day.count})</option>`);
+      });
+      select.innerHTML = options.join('');
+      if (currentValue && days.some(day => day.date === currentValue)) {
+        select.value = currentValue;
+      } else {
+        select.value = '';
+      }
+      syncPageTitle();
     }
-    empty.style.display = 'none';
-    bar.innerHTML = `共 <strong>${sortedItems.length}</strong> 个视频 &nbsp;|&nbsp; 已选 <strong id="selCount">${selectedStems.size}</strong> 个`;
 
-    grid.innerHTML = sortedItems.map(item => {
-      const sel = selectedStems.has(item.stem);
-      const thumbUrl = item.thumb ? `/api/poster/${DATE}/thumb/${encodeURIComponent(item.thumb)}` : '';
-      return `
-        <div class="card${sel ? ' selected' : ''}" data-stem="${item.stem}" onclick="toggleCard(event, '${item.stem}')">
-          <input class="cb" type="checkbox" ${sel ? 'checked' : ''} onclick="toggleCard(event, '${item.stem}')" />
-          <div class="thumb-wrap">
-            ${thumbUrl
-              ? `<img src="${thumbUrl}" alt="" loading="lazy" />`
-              : `<span class="no-thumb">🎬</span>`}
-          </div>
-          <div class="actions">
-            <button class="btn btn-secondary" style="font-size:11px;padding:4px 8px;" onclick="openReplaceModal(event,'${item.stem}')">替换封面</button>
-            <button class="btn btn-danger" style="font-size:11px;padding:4px 8px;" onclick="deleteItem(event,'${item.stem}')">删除</button>
-          </div>
-          <div class="info">
-            <div class="size">${fmtSize(item.size)}</div>
-            <div style="margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${item.video}">${item.video}</div>
-          </div>
-        </div>`;
-    }).join('');
-
-    document.getElementById('btnBatchDelete').disabled = selectedStems.size === 0;
-  }
-
-  function toggleCard(e, stem) {
-    if (e.target.tagName === 'BUTTON') return;
-    if (selectedStems.has(stem)) selectedStems.delete(stem);
-    else selectedStems.add(stem);
-    renderGrid();
-  }
-
-  function toggleSelectAll() {
-    if (selectedStems.size === sortedItems.length) {
-      selectedStems.clear();
-    } else {
-      sortedItems.forEach(i => selectedStems.add(i.stem));
+    function updateStats(days) {
+      document.getElementById('statTotal').textContent = String(allItems.length);
+      document.getElementById('statDays').textContent = String(days.length);
     }
-    renderGrid();
-  }
 
-  async function deleteItem(e, stem) {
-    e.stopPropagation();
-    if (!confirm('确认删除该视频及其封面？')) return;
-    const resp = await fetch(`/api/poster/${DATE}/${stem}`, { method: 'DELETE' });
-    const data = await resp.json();
-    if (data.ok) {
-      allItems = allItems.filter(i => i.stem !== stem);
-      selectedStems.delete(stem);
-      applySort();
+    function syncPageTitle() {
+      const dateValue = document.getElementById('dateFilter').value;
+      document.getElementById('pageTitle').textContent = dateValue
+        ? `${formatDateLabel(dateValue)} 的视频海报墙`
+        : '全部视频海报墙';
+
+      const nextUrl = dateValue ? `/poster?date=${encodeURIComponent(dateValue)}` : '/poster';
+      history.replaceState(null, '', nextUrl);
     }
-  }
 
-  async function batchDelete() {
-    if (selectedStems.size === 0) return;
-    if (!confirm(`确认删除选中的 ${selectedStems.size} 个视频？`)) return;
-    const resp = await fetch(`/api/poster/${DATE}/batch-delete`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ stems: [...selectedStems] }),
-    });
-    const data = await resp.json();
-    if (data.ok) {
-      allItems = allItems.filter(i => !selectedStems.has(i.stem));
-      selectedStems.clear();
-      applySort();
+    function applyFilters(needReload = true) {
+      if (needReload) {
+        reloadData();
+        return;
+      }
+
+      const dateValue = document.getElementById('dateFilter').value;
+      const sortValue = document.getElementById('sortSelect').value;
+
+      visibleItems = allItems.filter(item => !dateValue || item.date === dateValue);
+
+      visibleItems.sort((a, b) => {
+        if (sortValue === 'time_asc') return buildSortValue(a) - buildSortValue(b);
+        if (sortValue === 'time_desc') return buildSortValue(b) - buildSortValue(a);
+        if (sortValue === 'size_asc') return a.size - b.size;
+        if (sortValue === 'size_desc') return b.size - a.size;
+        if (sortValue === 'duration_asc') return durationSeconds(a) - durationSeconds(b);
+        if (sortValue === 'duration_desc') return durationSeconds(b) - durationSeconds(a);
+        return 0;
+      });
+
+      selectedKeys = new Set(
+        [...selectedKeys].filter(key => visibleItems.some(item => itemKey(item) === key))
+      );
+
+      syncPageTitle();
+      renderGrid();
+      scheduleDurationProbe();
     }
-  }
 
-  function openReplaceModal(e, stem) {
-    e.stopPropagation();
-    replaceTargetStem = stem;
-    document.getElementById('replaceFileInput').value = '';
-    document.getElementById('replaceModal').classList.add('open');
-  }
+    function updateStatusText() {
+      const dateValue = document.getElementById('dateFilter').value;
+      const prefix = dateValue ? `${formatDateLabel(dateValue)} · ` : '全部日期 · ';
+      document.getElementById('statusText').innerHTML = `${prefix}共 <strong>${visibleItems.length}</strong> 个视频`;
+      document.getElementById('selectedCount').textContent = String(selectedKeys.size);
+      document.getElementById('statVisible').textContent = String(visibleItems.length);
+      document.getElementById('btnBatchDelete').disabled = selectedKeys.size === 0;
+      document.getElementById('btnSelectAll').textContent =
+        visibleItems.length > 0 && visibleItems.every(item => selectedKeys.has(itemKey(item)))
+          ? '取消全选'
+          : '全选当前筛选';
+    }
 
-  function closeReplaceModal() {
-    document.getElementById('replaceModal').classList.remove('open');
-    replaceTargetStem = null;
-  }
+    function renderGrid() {
+      const grid = document.getElementById('grid');
+      const empty = document.getElementById('emptyMsg');
 
-  async function doReplaceCover() {
-    const input = document.getElementById('replaceFileInput');
-    if (!input.files || !input.files[0]) { alert('请选择图片文件'); return; }
-    const fd = new FormData();
-    fd.append('file', input.files[0]);
-    const resp = await fetch(`/api/poster/${DATE}/${replaceTargetStem}/replace-cover`, {
-      method: 'POST', body: fd,
-    });
-    const data = await resp.json();
-    if (data.ok) {
-      const item = allItems.find(i => i.stem === replaceTargetStem);
-      if (item) item.thumb = data.thumb;
+      updateStatusText();
+      if (visibleItems.length === 0) {
+        grid.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+      }
+
+      empty.style.display = 'none';
+      grid.innerHTML = visibleItems.map(item => {
+        const key = itemKey(item);
+        const selected = selectedKeys.has(key);
+        const thumbHtml = item.thumbnail_url
+          ? `<img src="${item.thumbnail_url}" alt="${escapeHtml(item.video)}" loading="lazy" />`
+          : `<div class="fallback">MV</div>`;
+        return `
+          <article class="card${selected ? ' selected' : ''}">
+            <input
+              class="selector"
+              type="checkbox"
+              ${selected ? 'checked' : ''}
+              onchange="toggleSelect('${key}')"
+              onclick="event.stopPropagation()"
+              aria-label="选择视频"
+            />
+            <div class="cover" onclick="openPreview('${key}')">
+              ${thumbHtml}
+              <div class="date-badge">${formatDateLabel(item.date)}</div>
+              <div class="play-badge">▶</div>
+              <div class="duration-badge" data-duration-key="${key}">${durationLabel(item)}</div>
+            </div>
+            <div class="card-body">
+              <div class="file-name" title="${escapeHtml(item.video)}">${escapeHtml(item.video)}</div>
+              <div class="meta-row">
+                <span class="meta-chip">${fmtSize(item.size)}</span>
+                <span class="meta-chip">${formatDateLabel(item.date)}</span>
+                <span class="meta-chip">时长 <span data-duration-key="${key}">${durationLabel(item)}</span></span>
+              </div>
+              <div class="card-actions">
+                <button class="btn btn-secondary" type="button" onclick="openReplaceModal('${key}')">替换封面</button>
+                <button class="btn btn-danger" type="button" onclick="deleteItem('${key}')">删除</button>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    function findItemByKey(key) {
+      return allItems.find(item => itemKey(item) === key) || null;
+    }
+
+    function toggleSelect(key) {
+      if (selectedKeys.has(key)) {
+        selectedKeys.delete(key);
+      } else {
+        selectedKeys.add(key);
+      }
+      renderGrid();
+    }
+
+    function toggleSelectAll() {
+      if (visibleItems.length === 0) return;
+      const allSelected = visibleItems.every(item => selectedKeys.has(itemKey(item)));
+      if (allSelected) {
+        visibleItems.forEach(item => selectedKeys.delete(itemKey(item)));
+      } else {
+        visibleItems.forEach(item => selectedKeys.add(itemKey(item)));
+      }
+      renderGrid();
+    }
+
+    function openPreview(key) {
+      const item = findItemByKey(key);
+      if (!item) return;
+      const modal = document.getElementById('previewModal');
+      const video = document.getElementById('previewVideo');
+      document.getElementById('previewTitle').textContent = item.video;
+      document.getElementById('previewMeta').textContent =
+        `${formatDateLabel(item.date)} · ${fmtSize(item.size)} · 时长 ${durationLabel(item)}`;
+      video.src = item.video_url;
+      modal.classList.add('open');
+      video.play().catch(() => {});
+    }
+
+    function closePreview() {
+      const modal = document.getElementById('previewModal');
+      const video = document.getElementById('previewVideo');
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+      modal.classList.remove('open');
+    }
+
+    function closePreviewOnMask(event) {
+      if (event.target.id === 'previewModal') {
+        closePreview();
+      }
+    }
+
+    function openReplaceModal(key) {
+      const item = findItemByKey(key);
+      if (!item) return;
+      replaceTarget = item;
+      document.getElementById('replaceMeta').textContent = `${formatDateLabel(item.date)} · ${item.video}`;
+      document.getElementById('replaceFileInput').value = '';
+      document.getElementById('replaceModal').classList.add('open');
+    }
+
+    function closeReplaceModal() {
+      replaceTarget = null;
+      document.getElementById('replaceModal').classList.remove('open');
+    }
+
+    function closeReplaceOnMask(event) {
+      if (event.target.id === 'replaceModal') {
+        closeReplaceModal();
+      }
+    }
+
+    async function doReplaceCover() {
+      const input = document.getElementById('replaceFileInput');
+      if (!replaceTarget) return;
+      if (!input.files || !input.files[0]) {
+        alert('请选择图片文件');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', input.files[0]);
+
+      const resp = await fetch(`/api/poster/${replaceTarget.date}/${replaceTarget.stem}/replace-cover`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await resp.json();
+      if (!data.ok) {
+        alert(data.error || '替换失败');
+        return;
+      }
+
+      replaceTarget.thumb = data.thumb;
+      replaceTarget.thumbnail_url = `/api/poster/${replaceTarget.date}/thumb/${encodeURIComponent(data.thumb)}?t=${Date.now()}`;
       closeReplaceModal();
-      applySort();
-    } else {
-      alert(data.error || '替换失败');
+      renderGrid();
     }
-  }
 
-  function showEmpty() {
-    document.getElementById('emptyMsg').style.display = 'block';
-    document.getElementById('grid').innerHTML = '';
-  }
+    async function deleteItem(key) {
+      const item = findItemByKey(key);
+      if (!item) return;
+      if (!confirm(`确认删除 ${item.video} 及其封面吗？`)) return;
 
-  loadItems();
-</script>
+      const resp = await fetch(`/api/poster/${item.date}/${item.stem}`, { method: 'DELETE' });
+      const data = await resp.json();
+      if (!data.ok) {
+        alert(data.error || '删除失败');
+        return;
+      }
+
+      allItems = allItems.filter(current => itemKey(current) !== key);
+      selectedKeys.delete(key);
+      applyFilters(false);
+    }
+
+    async function batchDelete() {
+      if (selectedKeys.size === 0) return;
+      if (!confirm(`确认删除选中的 ${selectedKeys.size} 个视频吗？`)) return;
+
+      const groups = new Map();
+      visibleItems
+        .filter(item => selectedKeys.has(itemKey(item)))
+        .forEach(item => {
+          if (!groups.has(item.date)) {
+            groups.set(item.date, []);
+          }
+          groups.get(item.date).push(item.stem);
+        });
+
+      for (const [date, stems] of groups.entries()) {
+        const resp = await fetch(`/api/poster/${date}/batch-delete`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ stems }),
+        });
+        const data = await resp.json();
+        if (!data.ok) {
+          alert(data.error || `${formatDateLabel(date)} 删除失败`);
+          return;
+        }
+      }
+
+      allItems = allItems.filter(item => !selectedKeys.has(itemKey(item)));
+      selectedKeys.clear();
+      applyFilters(false);
+    }
+
+    function updateDurationView(key, label) {
+      document.querySelectorAll(`[data-duration-key="${CSS.escape(key)}"]`).forEach(node => {
+        node.textContent = label;
+      });
+    }
+
+    function scheduleDurationProbe() {
+      const missing = visibleItems.filter(item => !durationCache.get(itemKey(item)) && !item.duration);
+      durationProbeQueue = missing.map(item => itemKey(item));
+      if (durationProbeQueue.length === 0) return;
+      runDurationProbe();
+      runDurationProbe();
+    }
+
+    function runDurationProbe() {
+      if (durationProbeRunning >= 2) return;
+      const nextKey = durationProbeQueue.shift();
+      if (!nextKey) return;
+      const item = findItemByKey(nextKey);
+      if (!item) {
+        runDurationProbe();
+        return;
+      }
+
+      durationProbeRunning += 1;
+      const probe = document.createElement('video');
+      probe.preload = 'metadata';
+      probe.src = item.video_url;
+      probe.onloadedmetadata = () => {
+        const total = Math.max(0, Math.round(probe.duration || 0));
+        const hours = Math.floor(total / 3600);
+        const minutes = Math.floor((total % 3600) / 60);
+        const seconds = total % 60;
+        const label = hours > 0
+          ? `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+          : `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        durationCache.set(nextKey, label);
+        updateDurationView(nextKey, label);
+        cleanup();
+      };
+      probe.onerror = cleanup;
+      probe.load();
+
+      function cleanup() {
+        probe.src = '';
+        durationProbeRunning -= 1;
+        runDurationProbe();
+      }
+    }
+
+    async function reloadData() {
+      document.getElementById('statusText').textContent = '正在刷新数据...';
+      try {
+        await loadItems();
+      } catch (error) {
+        document.getElementById('grid').innerHTML = '';
+        document.getElementById('emptyMsg').style.display = 'block';
+        document.getElementById('statusText').textContent = error.message || '加载失败';
+      }
+    }
+
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') {
+        closePreview();
+        closeReplaceModal();
+      }
+    });
+
+    document.getElementById('dateFilter').value = INITIAL_DATE;
+    reloadData();
+  </script>
 </body>
 </html>

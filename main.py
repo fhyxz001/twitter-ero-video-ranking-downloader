@@ -1,13 +1,14 @@
 import json
 import os
-import shutil
+import subprocess
+import sys
 import threading
 import time
 from datetime import datetime
 from hashlib import sha256
 from pathlib import Path
 from typing import Dict, List, Optional
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 import requests
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -17,9 +18,28 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 
-APP_DIR = Path(__file__).resolve().parent
+# 适配 PyInstaller 路径处理
+def get_resource_path(relative_path: str) -> Path:
+    """获取资源文件的绝对路径，适配开发环境和 PyInstaller 编译环境"""
+    if getattr(sys, "frozen", False):
+        # PyInstaller 运行时路径
+        base_path = Path(sys._MEIPASS)
+    else:
+        # 开发环境路径
+        base_path = Path(__file__).resolve().parent
+    return base_path / relative_path
+
+
+def get_exe_dir() -> Path:
+    """获取程序执行文件所在的目录，用于存放配置文件和下载内容"""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).parent
+    return Path(__file__).resolve().parent
+
+
+APP_DIR = get_exe_dir()
 CONFIG_PATH = APP_DIR / "config.json"
-TEMPLATES_PATH = APP_DIR / "templates"
+TEMPLATES_PATH = get_resource_path("templates")
 API_URL = (
     "https://twitter-ero-video-ranking.com/api/media"
     "?range&page=1&per_page=30&category&ids&isAnimeOnly=0&sort=favorite"
@@ -27,7 +47,7 @@ API_URL = (
 REQUEST_TIMEOUT = 30
 
 DEFAULT_CONFIG: Dict[str, object] = {
-    "download_root": "/data/downloads",
+    "download_root": "/data/downloads" if os.name != "nt" else str(APP_DIR / "downloads"),
     "proxy": "",
     "schedule_time": "03:00",
     "max_daily_downloads": 20,
@@ -405,16 +425,104 @@ def _list_day_items(day_dir: Path) -> List[dict]:
     return items
 
 
+def _format_duration(seconds: float) -> str:
+    total_seconds = max(0, int(round(seconds)))
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, secs = divmod(remainder, 60)
+    if hours > 0:
+        return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+    return f"{minutes:02d}:{secs:02d}"
+
+
+def _probe_video_duration(video_path: Path) -> Optional[str]:
+    ffprobe_cmd = [
+        "ffprobe",
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+        str(video_path),
+    ]
+    try:
+        result = subprocess.run(
+            ffprobe_cmd,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return None
+
+    if result.returncode != 0:
+        return None
+
+    output = result.stdout.strip()
+    if not output:
+        return None
+
+    try:
+        return _format_duration(float(output))
+    except ValueError:
+        return None
+
+
+def _build_poster_item(date: str, item: dict) -> dict:
+    thumb_name = item.get("thumb")
+    video_name = item.get("video")
+    return {
+        **item,
+        "date": date,
+        "thumbnail_url": (
+            f"/api/poster/{date}/thumb/{quote(thumb_name)}"
+            if thumb_name
+            else None
+        ),
+        "video_url": f"/api/poster/{date}/video/{quote(video_name)}",
+        "duration": None,
+    }
+
+
+def _collect_poster_items(download_root: Path, date: str = "") -> List[dict]:
+    dates = [date] if date else [d.name for d in _day_dirs(download_root)]
+    items: List[dict] = []
+    for current_date in dates:
+        day_dir = download_root / current_date
+        for item in _list_day_items(day_dir):
+            built = _build_poster_item(current_date, item)
+            built["duration"] = _probe_video_duration(day_dir / item["video"])
+            items.append(built)
+
+    items.sort(key=lambda x: (x["date"], x["stem"]), reverse=True)
+    return items
+
+
+def _list_poster_days(download_root: Path) -> List[dict]:
+    days = []
+    for day_dir in _day_dirs(download_root):
+        count = sum(1 for p in day_dir.iterdir() if p.is_file() and p.suffix.lower() in VIDEO_EXTS)
+        if count > 0:
+            days.append({"date": day_dir.name, "count": count})
+    return days
+
+
 @app.get("/api/poster-days")
 def api_poster_days():
     cfg = get_current_config()
     root = Path(str(cfg["download_root"])).expanduser().resolve()
-    days = []
-    for d in _day_dirs(root):
-        count = sum(1 for p in d.iterdir() if p.is_file() and p.suffix.lower() in VIDEO_EXTS)
-        if count > 0:
-            days.append({"date": d.name, "count": count})
-    return JSONResponse({"days": days})
+    return JSONResponse({"days": _list_poster_days(root)})
+
+
+@app.get("/api/poster")
+def api_poster_all(date: str = ""):
+    if date and (not date.isdigit() or len(date) != 8):
+        return JSONResponse({"ok": False, "error": "无效日期"}, status_code=400)
+    cfg = get_current_config()
+    root = Path(str(cfg["download_root"])).expanduser().resolve()
+    items = _collect_poster_items(root, date=date)
+    return JSONResponse({"ok": True, "date": date or None, "days": _list_poster_days(root), "items": items})
 
 
 @app.get("/api/poster/{date}")
@@ -423,8 +531,7 @@ def api_poster_date(date: str):
         return JSONResponse({"ok": False, "error": "无效日期"}, status_code=400)
     cfg = get_current_config()
     root = Path(str(cfg["download_root"])).expanduser().resolve()
-    day_dir = root / date
-    items = _list_day_items(day_dir)
+    items = _collect_poster_items(root, date=date)
     return JSONResponse({"ok": True, "date": date, "items": items})
 
 
@@ -437,6 +544,23 @@ def api_thumb(date: str, filename: str):
     path = root / date / filename
     if not path.exists() or not path.is_file():
         return JSONResponse({"error": "文件不存在"}, status_code=404)
+    resolved = path.resolve()
+    if not str(resolved).startswith(str(root.resolve())):
+        return JSONResponse({"error": "禁止访问"}, status_code=403)
+    return FileResponse(str(resolved))
+
+
+@app.get("/api/poster/{date}/video/{filename}")
+def api_video(date: str, filename: str):
+    if not date.isdigit() or len(date) != 8:
+        return JSONResponse({"error": "无效日期"}, status_code=400)
+    cfg = get_current_config()
+    root = Path(str(cfg["download_root"])).expanduser().resolve()
+    path = root / date / filename
+    if not path.exists() or not path.is_file():
+        return JSONResponse({"error": "文件不存在"}, status_code=404)
+    if path.suffix.lower() not in VIDEO_EXTS:
+        return JSONResponse({"error": "不是视频文件"}, status_code=400)
     resolved = path.resolve()
     if not str(resolved).startswith(str(root.resolve())):
         return JSONResponse({"error": "禁止访问"}, status_code=403)
@@ -506,4 +630,4 @@ def poster_page(request: Request, date: str = ""):
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("main:app", host="0.0.0.0", port=2617, reload=False)
+    uvicorn.run(app, host="0.0.0.0", port=2617)
