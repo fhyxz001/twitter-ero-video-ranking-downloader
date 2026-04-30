@@ -41,7 +41,6 @@ APP_DIR = get_exe_dir()
 CONFIG_PATH = APP_DIR / "config.json"
 TEMPLATES_PATH = get_resource_path("templates")
 MEDIA_API_URL = "https://twitter-ero-video-ranking.com/api/media"
-TAGS_API_URL = "https://twitter-ero-video-ranking.com/api/tags"
 REQUEST_TIMEOUT = 30
 TIME_FILTER_MIN = 0
 TIME_FILTER_MAX = 10800
@@ -210,44 +209,26 @@ def build_media_request_params(cfg: Dict[str, object]) -> Dict[str, object]:
     return params
 
 
-def _normalize_tag_item(item: object) -> Optional[Dict[str, object]]:
-    if not isinstance(item, dict):
-        return None
+TAGS_JSON_PATH = get_resource_path("templates/code.json")
 
-    code = str(item.get("code", "")).strip()
-    if not code:
-        return None
-
-    display_name = str(item.get("name_zh_cn", "")).strip() or str(item.get("name", "")).strip() or code
-    return {
-        "id": item.get("id"),
-        "code": code,
-        "name": display_name,
-        "name_raw": str(item.get("name", "")).strip() or display_name,
-        "is_language": bool(item.get("is_language", False)),
-    }
+_tags_cache: Optional[List[Dict[str, object]]] = None
 
 
-def fetch_remote_tags(proxies: Optional[Dict[str, str]]) -> List[Dict[str, object]]:
-    resp = requests.get(TAGS_API_URL, timeout=REQUEST_TIMEOUT, proxies=proxies)
-    resp.raise_for_status()
-    payload = resp.json()
+def _load_tags_static() -> List[Dict[str, object]]:
+    global _tags_cache
+    if _tags_cache is not None:
+        return _tags_cache
 
-    if isinstance(payload, list):
-        raw_items = payload
-    elif isinstance(payload, dict):
-        raw_items = payload.get("items") or payload.get("data") or []
-    else:
-        raise ValueError("tags API 返回格式不支持")
-
-    if not isinstance(raw_items, list):
-        raise ValueError("tags API 返回的 tags 不是数组")
-
+    with TAGS_JSON_PATH.open("r", encoding="utf-8") as f:
+        raw = json.load(f)
     tags: List[Dict[str, object]] = []
-    for item in raw_items:
-        normalized = _normalize_tag_item(item)
-        if normalized:
-            tags.append(normalized)
+    for item in raw:
+        code = str(item.get("code", "")).strip()
+        if not code:
+            continue
+        name = str(item.get("name_zh_cn", "")).strip() or code
+        tags.append({"code": code, "name": name})
+    _tags_cache = tags
     return tags
 
 
@@ -515,13 +496,7 @@ def status():
 @app.get("/api/tags")
 def api_tags(page: int = 1, per_page: int = 12):
     safe_per_page = max(1, min(per_page, 30))
-    cfg = get_current_config()
-    proxies = build_proxies(str(cfg.get("proxy", "")).strip())
-
-    try:
-        tags = fetch_remote_tags(proxies)
-    except Exception as exc:
-        return JSONResponse({"ok": False, "error": f"获取标签失败：{exc}"}, status_code=502)
+    tags = _load_tags_static()
 
     total = len(tags)
     total_pages = max(1, (total + safe_per_page - 1) // safe_per_page)
