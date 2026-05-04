@@ -332,6 +332,33 @@
       border: 1px dashed rgba(148, 163, 184, 0.18);
       border-radius: 24px;
     }
+    .pagination {
+      display: none;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-top: 18px;
+      padding: 16px 18px;
+      border-radius: 18px;
+      background: rgba(15, 23, 42, 0.72);
+      border: 1px solid rgba(148, 163, 184, 0.14);
+    }
+    .pagination-info {
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .pagination-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .pagination-actions .btn {
+      min-width: 88px;
+      height: 38px;
+      padding: 0 14px;
+      font-size: 13px;
+    }
     .modal {
       position: fixed;
       inset: 0;
@@ -455,6 +482,13 @@
       .replace-actions {
         flex-direction: column-reverse;
       }
+      .pagination {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .pagination-actions .btn {
+        width: calc(50% - 5px);
+      }
     }
   </style>
 </head>
@@ -470,7 +504,7 @@
       </div>
       <div class="hero-stats">
         <div class="stat-card">
-          <div class="label">当前显示</div>
+          <div class="label">筛选结果</div>
           <div class="value" id="statVisible">0</div>
         </div>
         <div class="stat-card">
@@ -502,6 +536,15 @@
           <option value="duration_asc">时长从短到长</option>
         </select>
       </div>
+      <div class="control">
+        <label for="pageSizeSelect">每页数量</label>
+        <select id="pageSizeSelect" onchange="changePageSize()">
+          <option value="12">12</option>
+          <option value="24" selected>24</option>
+          <option value="48">48</option>
+          <option value="96">96</option>
+        </select>
+      </div>
       <div class="spacer"></div>
       <button class="btn btn-secondary" type="button" onclick="reloadData()">刷新数据</button>
       <button class="btn btn-secondary" type="button" onclick="toggleSelectAll()" id="btnSelectAll">全选当前筛选</button>
@@ -515,6 +558,15 @@
 
     <div id="grid" class="grid"></div>
     <div id="emptyMsg" class="empty">当前筛选条件下暂无视频。</div>
+    <div id="pagination" class="pagination">
+      <div id="paginationInfo" class="pagination-info">第 1 / 1 页</div>
+      <div class="pagination-actions">
+        <button class="btn btn-secondary" type="button" id="btnFirstPage" onclick="setPage(1)">首页</button>
+        <button class="btn btn-secondary" type="button" id="btnPrevPage" onclick="changePage(-1)">上一页</button>
+        <button class="btn btn-secondary" type="button" id="btnNextPage" onclick="changePage(1)">下一页</button>
+        <button class="btn btn-secondary" type="button" id="btnLastPage" onclick="setPage(getTotalPages())">末页</button>
+      </div>
+    </div>
   </div>
 
   <div id="previewModal" class="modal" onclick="closePreviewOnMask(event)">
@@ -555,6 +607,7 @@
     let durationProbeQueue = [];
     let durationProbeRunning = 0;
     let replaceTarget = null;
+    let currentPage = 1;
 
     function formatDateLabel(date) {
       if (!date || date.length !== 8) return date || '未知日期';
@@ -596,6 +649,24 @@
 
     function buildSortValue(item) {
       return Number(`${item.date}${item.stem}`) || 0;
+    }
+
+    function getPageSize() {
+      return Number(document.getElementById('pageSizeSelect').value) || 24;
+    }
+
+    function getTotalPages() {
+      return Math.max(1, Math.ceil(visibleItems.length / getPageSize()));
+    }
+
+    function clampCurrentPage() {
+      currentPage = Math.min(Math.max(currentPage, 1), getTotalPages());
+    }
+
+    function getCurrentPageItems() {
+      const pageSize = getPageSize();
+      const start = (currentPage - 1) * pageSize;
+      return visibleItems.slice(start, start + pageSize);
     }
 
     async function loadItems() {
@@ -676,6 +747,7 @@
         [...selectedKeys].filter(key => visibleItems.some(item => itemKey(item) === key))
       );
 
+      currentPage = 1;
       syncPageTitle();
       renderGrid();
       scheduleDurationProbe();
@@ -684,7 +756,8 @@
     function updateStatusText() {
       const dateValue = document.getElementById('dateFilter').value;
       const prefix = dateValue ? `${formatDateLabel(dateValue)} · ` : '全部日期 · ';
-      document.getElementById('statusText').innerHTML = `${prefix}共 <strong>${visibleItems.length}</strong> 个视频`;
+      document.getElementById('statusText').innerHTML =
+        `${prefix}共 <strong>${visibleItems.length}</strong> 个视频，当前第 <strong>${currentPage}</strong> / <strong>${getTotalPages()}</strong> 页`;
       document.getElementById('selectedCount').textContent = String(selectedKeys.size);
       document.getElementById('statVisible').textContent = String(visibleItems.length);
       document.getElementById('btnBatchDelete').disabled = selectedKeys.size === 0;
@@ -694,19 +767,44 @@
           : '全选当前筛选';
     }
 
+    function renderPagination() {
+      const pagination = document.getElementById('pagination');
+      const totalPages = getTotalPages();
+      const totalItems = visibleItems.length;
+      const pageSize = getPageSize();
+      const start = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+      const end = Math.min(currentPage * pageSize, totalItems);
+
+      if (totalItems === 0) {
+        pagination.style.display = 'none';
+        return;
+      }
+
+      pagination.style.display = 'flex';
+      document.getElementById('paginationInfo').textContent =
+        `第 ${currentPage} / ${totalPages} 页，显示 ${start}-${end} 项，共 ${totalItems} 项`;
+      document.getElementById('btnFirstPage').disabled = currentPage === 1;
+      document.getElementById('btnPrevPage').disabled = currentPage === 1;
+      document.getElementById('btnNextPage').disabled = currentPage === totalPages;
+      document.getElementById('btnLastPage').disabled = currentPage === totalPages;
+    }
+
     function renderGrid() {
       const grid = document.getElementById('grid');
       const empty = document.getElementById('emptyMsg');
 
+      clampCurrentPage();
+      const pageItems = getCurrentPageItems();
       updateStatusText();
       if (visibleItems.length === 0) {
         grid.innerHTML = '';
         empty.style.display = 'block';
+        renderPagination();
         return;
       }
 
       empty.style.display = 'none';
-      grid.innerHTML = visibleItems.map(item => {
+      grid.innerHTML = pageItems.map(item => {
         const key = itemKey(item);
         const selected = selectedKeys.has(key);
         const thumbHtml = item.thumbnail_url
@@ -743,6 +841,26 @@
           </article>
         `;
       }).join('');
+      renderPagination();
+    }
+
+    function setPage(page) {
+      const nextPage = Math.min(Math.max(Number(page) || 1, 1), getTotalPages());
+      if (nextPage === currentPage) return;
+      currentPage = nextPage;
+      renderGrid();
+      scheduleDurationProbe();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function changePage(delta) {
+      setPage(currentPage + delta);
+    }
+
+    function changePageSize() {
+      currentPage = 1;
+      renderGrid();
+      scheduleDurationProbe();
     }
 
     function findItemByKey(key) {
@@ -900,7 +1018,7 @@
     }
 
     function scheduleDurationProbe() {
-      const missing = visibleItems.filter(item => !durationCache.get(itemKey(item)) && !item.duration);
+      const missing = getCurrentPageItems().filter(item => !durationCache.get(itemKey(item)) && !item.duration);
       durationProbeQueue = missing.map(item => itemKey(item));
       if (durationProbeQueue.length === 0) return;
       runDurationProbe();
