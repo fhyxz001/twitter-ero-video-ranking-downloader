@@ -2,7 +2,7 @@
   "source_url": "https://twitter-ero-video-ranking.com/api/media",
   "download_root": "D:\\115",
   "proxy": "",
-  "download_limit": 1,
+  "download_limit": 4,
   "video_format": "original",
   "download_thumbnails": true,
   "sort": "favorite",

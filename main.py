@@ -1,4 +1,5 @@
 ﻿import json
+import math
 import subprocess
 import sys
 import threading
@@ -400,14 +401,54 @@ def _set_progress(current_stage: str, total_items: int, success_count: int, skip
 
 
 
+def format_bytes(num_bytes: int) -> str:
+    if num_bytes < 1024:
+        return f"{num_bytes} B"
+    units = ["KB", "MB", "GB", "TB"]
+    value = float(num_bytes)
+    for unit in units:
+        value /= 1024
+        if value < 1024 or unit == units[-1]:
+            return f"{value:.1f} {unit}"
+    return f"{num_bytes} B"
+
+
+
 def download_binary(session: requests.Session, url: str, target_path: Path, proxies: Optional[Dict[str, str]]) -> bool:
     try:
         with session.get(url, stream=True, timeout=REQUEST_TIMEOUT, proxies=proxies) as resp:
             resp.raise_for_status()
+            total_bytes = 0
+            try:
+                total_bytes = int(resp.headers.get("content-length", "0") or "0")
+            except (TypeError, ValueError):
+                total_bytes = 0
+            downloaded_bytes = 0
+            logged_steps = set()
+            progress_steps = [5, 10, 20, 40, 60, 80, 100]
+
+            append_log(
+                f"开始下载：{target_path.name}"
+                + (f"，大小约 {format_bytes(total_bytes)}" if total_bytes > 0 else "")
+            )
             with target_path.open("wb") as f:
                 for chunk in resp.iter_content(chunk_size=1024 * 256):
                     if chunk:
                         f.write(chunk)
+                        downloaded_bytes += len(chunk)
+                        if total_bytes > 0:
+                            percent = min(100, math.floor(downloaded_bytes * 100 / total_bytes))
+                            for step in progress_steps:
+                                if percent >= step and step not in logged_steps:
+                                    append_log(
+                                        f"下载进度：{target_path.name} {step}% "
+                                        f"({format_bytes(min(downloaded_bytes, total_bytes))}/{format_bytes(total_bytes)})"
+                                    )
+                                    logged_steps.add(step)
+                        elif downloaded_bytes >= 1024 * 1024 and (downloaded_bytes // (1024 * 1024)) not in logged_steps:
+                            mb_mark = downloaded_bytes // (1024 * 1024)
+                            append_log(f"下载进度：{target_path.name} 已下载 {format_bytes(downloaded_bytes)}")
+                            logged_steps.add(mb_mark)
         return True
     except Exception as exc:
         append_log(f"下载失败 {url} -> {target_path.name}，错误：{exc}")

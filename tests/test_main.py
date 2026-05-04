@@ -1,6 +1,9 @@
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
-from main import app, build_media_request_params, validate_config, _new_runtime_state, get_current_config
+import main
+from main import app, build_media_request_params, download_binary, validate_config, _new_runtime_state, get_current_config
 
 client = TestClient(app)
 
@@ -80,3 +83,36 @@ def test_download_status_endpoint():
     assert "state" in data
     assert "logs" in data
     assert data["state"]["is_running"] is False
+
+
+def test_download_binary_logs_progress(tmp_path, monkeypatch):
+    logs = []
+
+    class FakeResponse:
+        headers = {"content-length": str(1024 * 1024)}
+
+        def raise_for_status(self):
+            return None
+
+        def iter_content(self, chunk_size=0):
+            for _ in range(4):
+                yield b"x" * (256 * 1024)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    class FakeSession:
+        def get(self, url, stream=True, timeout=None, proxies=None):
+            return FakeResponse()
+
+    monkeypatch.setattr(main, "append_log", logs.append)
+
+    ok = download_binary(FakeSession(), "https://example.com/video.mp4", Path(tmp_path / "video.mp4"), None)
+
+    assert ok is True
+    assert any("开始下载" in message for message in logs)
+    assert any("下载进度" in message and "20%" in message for message in logs)
+    assert any("下载进度" in message and "100%" in message for message in logs)
