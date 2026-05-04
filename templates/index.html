@@ -70,13 +70,18 @@
       align-items: center;
       gap: 12px;
       flex-wrap: wrap;
-      margin-bottom: 12px;
     }
     .tag-selection-text {
       font-size: 14px;
       color: #111827;
       font-weight: 600;
     }
+    .tag-toolbar-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .tag-open-btn,
     .tag-clear-btn {
       border: 1px solid #d1d5db;
       background: #fff;
@@ -85,6 +90,68 @@
       padding: 0 12px;
       height: 34px;
       cursor: pointer;
+    }
+    .tag-summary {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #6b7280;
+    }
+    .tag-modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(15, 23, 42, 0.46);
+      z-index: 1000;
+    }
+    .tag-modal.show {
+      display: flex;
+    }
+    .tag-modal-dialog {
+      width: min(760px, 100%);
+      max-height: min(80vh, 720px);
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 18px 48px rgba(15, 23, 42, 0.22);
+      overflow: hidden;
+    }
+    .tag-modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .tag-modal-title {
+      margin: 0;
+      font-size: 18px;
+      color: #111827;
+    }
+    .tag-modal-subtitle {
+      margin-top: 4px;
+      font-size: 12px;
+      color: #6b7280;
+      line-height: 1.5;
+    }
+    .tag-close-btn {
+      border: 1px solid #d1d5db;
+      background: #fff;
+      color: #374151;
+      border-radius: 6px;
+      width: 36px;
+      min-width: 36px;
+      padding: 0;
+      font-size: 18px;
+      line-height: 1;
+    }
+    .tag-modal-body {
+      padding: 16px 20px 20px;
+      overflow: auto;
     }
     .tag-list {
       display: grid;
@@ -143,6 +210,9 @@
       margin-top: 8px;
       color: #dc2626;
       font-size: 12px;
+    }
+    body.modal-open {
+      overflow: hidden;
     }
     .duration-summary {
       display: flex;
@@ -335,17 +405,12 @@
             <input id="tag_code" name="tag_code" type="hidden" value="{{ config.tag_code or '' }}" />
             <div class="tag-toolbar">
               <div id="tag_selection_text" class="tag-selection-text">当前：{{ config.tag_code or "不筛选" }}</div>
-              <button id="tag_clear_btn" type="button" class="tag-clear-btn" onclick="clearSelectedTag()">清空标签</button>
+              <div class="tag-toolbar-actions">
+                <button id="tag_open_btn" type="button" class="tag-open-btn" onclick="openTagModal()">选择标签</button>
+                <button id="tag_clear_btn" type="button" class="tag-clear-btn" onclick="clearSelectedTag()">清空标签</button>
+              </div>
             </div>
-            <div id="tag_list" class="tag-list">
-              <div class="note">正在加载标签...</div>
-            </div>
-            <div class="tag-pager">
-              <button id="tag_prev_btn" type="button" class="secondary" onclick="loadTags(tagState.page - 1)">上一页</button>
-              <span id="tag_page_info" class="tag-page-info">加载中...</span>
-              <button id="tag_next_btn" type="button" class="secondary" onclick="loadTags(tagState.page + 1)">下一页</button>
-            </div>
-            <div id="tag_error" class="tag-error"></div>
+            <div class="tag-summary">点击“选择标签”后会弹出标签列表，在弹窗中单选。</div>
           </div>
         </div>
 
@@ -407,6 +472,29 @@
     <div id="logs" class="logs">{{ logs }}</div>
   </div>
 
+  <div id="tag_modal" class="tag-modal" aria-hidden="true" onclick="handleTagModalBackdrop(event)">
+    <div class="tag-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="tag_modal_title">
+      <div class="tag-modal-header">
+        <div>
+          <h2 id="tag_modal_title" class="tag-modal-title">选择标签</h2>
+          <div class="tag-modal-subtitle">支持分页浏览，点击任意标签即可完成单选并关闭弹窗。</div>
+        </div>
+        <button type="button" class="tag-close-btn" aria-label="关闭标签弹窗" onclick="closeTagModal()">&times;</button>
+      </div>
+      <div class="tag-modal-body">
+        <div id="tag_list" class="tag-list">
+          <div class="note">正在加载标签...</div>
+        </div>
+        <div class="tag-pager">
+          <button id="tag_prev_btn" type="button" class="secondary" onclick="loadTags(tagState.page - 1)">上一页</button>
+          <span id="tag_page_info" class="tag-page-info">加载中...</span>
+          <button id="tag_next_btn" type="button" class="secondary" onclick="loadTags(tagState.page + 1)">下一页</button>
+        </div>
+        <div id="tag_error" class="tag-error"></div>
+      </div>
+    </div>
+  </div>
+
   <script>
     const minSlider = document.getElementById('min_time_slider');
     const maxSlider = document.getElementById('max_time_slider');
@@ -416,6 +504,7 @@
     const durationSeconds = document.getElementById('duration_seconds');
     const durationMinutes = document.getElementById('duration_minutes');
     const tagInput = document.getElementById('tag_code');
+    const tagModal = document.getElementById('tag_modal');
     const tagList = document.getElementById('tag_list');
     const tagSelectionText = document.getElementById('tag_selection_text');
     const tagPageInfo = document.getElementById('tag_page_info');
@@ -485,6 +574,27 @@
       tagClearBtn.disabled = tagState.loading || !tagInput.value;
     }
 
+    function openTagModal() {
+      tagModal.classList.add('show');
+      tagModal.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('modal-open');
+      if (!tagState.items.length && !tagState.loading) {
+        loadTags(tagState.page);
+      }
+    }
+
+    function closeTagModal() {
+      tagModal.classList.remove('show');
+      tagModal.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('modal-open');
+    }
+
+    function handleTagModalBackdrop(event) {
+      if (event.target === tagModal) {
+        closeTagModal();
+      }
+    }
+
     function renderTagPagination() {
       tagPageInfo.textContent = `第 ${tagState.page} / ${tagState.totalPages} 页，共 ${tagState.total} 个标签`;
       tagPrevBtn.disabled = tagState.loading || tagState.page <= 1;
@@ -514,6 +624,7 @@
           selectedTagMeta = tag;
           renderTags();
           updateTagSelectionText();
+          closeTagModal();
         });
 
         const name = document.createElement('div');
@@ -573,6 +684,12 @@
       renderTags();
       updateTagSelectionText();
     }
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && tagModal.classList.contains('show')) {
+        closeTagModal();
+      }
+    });
 
     updateTagSelectionText();
     loadTags();
