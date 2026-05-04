@@ -10,35 +10,70 @@
       margin: 0;
       padding: 0;
     }
+    html, body {
+      min-height: 100%;
+    }
     body {
-      background: #f1f5f9;
+      background: linear-gradient(180deg, #eef4ff 0%, #f8fafc 100%);
       color: #0f172a;
       font-family: system-ui, -apple-system, sans-serif;
-      padding: 20px;
+    }
+    .page-shell {
+      width: 100%;
+      min-height: 100dvh;
+      padding: 16px;
+      display: flex;
     }
     .container {
-      max-width: 1000px;
-      margin: 0 auto;
+      flex: 1;
+      width: 100%;
+      min-height: 0;
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
+      grid-template-columns: minmax(420px, 1.1fr) minmax(520px, 1.4fr);
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: 16px;
+      align-items: stretch;
     }
     @media (max-width: 768px) {
       .container {
         grid-template-columns: 1fr;
+        grid-template-rows: auto;
+        min-height: 0;
       }
     }
     h1 {
       grid-column: 1 / -1;
       font-size: 24px;
-      margin-bottom: 20px;
+      margin-bottom: 0;
       color: #1e293b;
+    }
+    .page-header {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 20px 24px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.88);
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+      backdrop-filter: blur(10px);
+    }
+    .page-subtitle {
+      font-size: 14px;
+      color: #64748b;
+      margin-top: 6px;
+      line-height: 1.6;
     }
     .card {
       background: #ffffff;
       border-radius: 12px;
       padding: 24px;
       box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
     }
     .card-title {
       font-size: 18px;
@@ -115,13 +150,30 @@
     }
     .actions {
       display: flex;
+      flex-wrap: wrap;
       gap: 12px;
-      margin-top: 24px;
+      margin-top: auto;
+      padding-top: 24px;
+    }
+    #configForm {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
     }
     
     /* 进度区域 */
+    .status-card {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
     .status-panel {
       margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
     }
     .status-header {
       display: flex;
@@ -170,7 +222,8 @@
       color: #e2e8f0;
       padding: 12px;
       border-radius: 8px;
-      height: 300px;
+      flex: 1;
+      min-height: 320px;
       overflow-y: auto;
       font-family: monospace;
       font-size: 12px;
@@ -243,15 +296,48 @@
       padding-top: 16px;
       border-top: 1px solid #e2e8f0;
     }
+    @media (max-width: 1024px) {
+      .container {
+        grid-template-columns: minmax(320px, 1fr);
+      }
+      .page-shell {
+        min-height: auto;
+      }
+      .status-card {
+        min-height: auto;
+      }
+      .log-container {
+        min-height: 280px;
+      }
+    }
+    @media (max-width: 768px) {
+      .page-shell {
+        padding: 12px;
+      }
+      .page-header,
+      .card {
+        padding: 18px;
+      }
+      .form-row {
+        flex-direction: column;
+        gap: 0;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Twitter 视频下载器</h1>
+  <div class="page-shell">
+    <div class="container">
+      <div class="page-header">
+        <div>
+          <h1>Twitter 视频下载器</h1>
+          <div class="page-subtitle">下载配置与运行状态同屏展示，大屏下自动拉伸铺满视口。</div>
+        </div>
+      </div>
     
-    <div class="card">
-      <div class="card-title">下载配置</div>
-      <form id="configForm">
+      <div class="card">
+        <div class="card-title">下载配置</div>
+        <form id="configForm">
         <div class="form-group">
           <label>保存路径 (绝对路径或相对路径)</label>
           <input type="text" name="download_root" class="form-control" value="{{ config.download_root }}" required>
@@ -287,8 +373,10 @@
           </div>
         </div>
 
-        {% set duration_range_value = '' %}
-        {% if config.min_time == 0 and config.max_time == 300 %}
+        {% set duration_range_value = 'all' %}
+        {% if config.min_time == time_filter_min and config.max_time == time_filter_max %}
+          {% set duration_range_value = 'all' %}
+        {% elif config.min_time == 0 and config.max_time == 300 %}
           {% set duration_range_value = '0-300' %}
         {% elif config.min_time == 300 and config.max_time == 900 %}
           {% set duration_range_value = '300-900' %}
@@ -302,6 +390,7 @@
         <div class="form-group">
           <label>视频时长</label>
           <select name="duration_range" class="form-control">
+            <option value="all" {% if duration_range_value == 'all' %}selected{% endif %}>全部</option>
             <option value="0-300" {% if duration_range_value == '0-300' %}selected{% endif %}>0-5 分钟</option>
             <option value="300-900" {% if duration_range_value == '300-900' %}selected{% endif %}>5-15 分钟</option>
             <option value="900-1800" {% if duration_range_value == '900-1800' %}selected{% endif %}>15-30 分钟</option>
@@ -334,12 +423,12 @@
           <button type="button" class="btn btn-secondary" onclick="saveConfig()">保存配置</button>
           <a href="/poster" class="btn btn-secondary" style="text-decoration: none;">查看海报墙</a>
         </div>
-      </form>
-    </div>
+        </form>
+      </div>
 
-    <div class="card">
-      <div class="card-title">运行状态</div>
-      <div class="status-panel">
+      <div class="card status-card">
+        <div class="card-title">运行状态</div>
+        <div class="status-panel">
         <div class="status-header">
           <span id="currentStage">等待开始</span>
           <span id="progressText">0%</span>
@@ -370,6 +459,7 @@
         <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;" id="currentItem"></div>
         
         <div class="log-container" id="logContainer"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -403,11 +493,16 @@
       data.video_format = 'original';
       data.download_limit = parseInt(data.download_limit, 10);
       const durationRangeRaw = String(data.duration_range || '').trim();
-      const parts = durationRangeRaw.split('-');
-      const minSec = parts.length >= 1 ? parseInt(parts[0], 10) : 0;
-      const maxSec = parts.length >= 2 ? parseInt(parts[1], 10) : {{ time_filter_max }};
-      data.min_time = Number.isFinite(minSec) ? minSec : 0;
-      data.max_time = Number.isFinite(maxSec) ? maxSec : {{ time_filter_max }};
+      if (durationRangeRaw && durationRangeRaw !== 'all') {
+        const parts = durationRangeRaw.split('-');
+        const minSec = parts.length >= 1 ? parseInt(parts[0], 10) : 0;
+        const maxSec = parts.length >= 2 ? parseInt(parts[1], 10) : {{ time_filter_max }};
+        data.min_time = Number.isFinite(minSec) ? minSec : 0;
+        data.max_time = Number.isFinite(maxSec) ? maxSec : {{ time_filter_max }};
+      } else {
+        delete data.min_time;
+        delete data.max_time;
+      }
       delete data.duration_range;
       data.download_thumbnails = formData.has('download_thumbnails');
       return data;

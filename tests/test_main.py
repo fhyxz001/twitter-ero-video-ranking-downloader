@@ -65,6 +65,18 @@ def test_build_media_request_params_include_time_filters():
     assert "minTime" not in params
     assert "maxTime" not in params
 
+def test_build_media_request_params_skip_time_filters_for_all_duration():
+    params = build_media_request_params(
+        validate_config(
+            {
+                "download_root": "dl",
+                "download_limit": 5,
+            }
+        )
+    )
+    assert "min_time" not in params
+    assert "max_time" not in params
+
 def test_save_config():
     payload = {
         "download_root": "./test_save",

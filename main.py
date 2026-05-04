@@ -331,9 +331,11 @@ def build_media_request_params(cfg: Dict[str, object]) -> Dict[str, object]:
         "ids": "",
         "isAnimeOnly": 0,
         "sort": str(cfg["sort"]),
-        "min_time": min_time,
-        "max_time": max_time,
     }
+    # When user selects "all durations", do not send time limit fields.
+    if not (min_time == TIME_FILTER_MIN and max_time == TIME_FILTER_MAX):
+        params["min_time"] = min_time
+        params["max_time"] = max_time
     tag_code = str(cfg.get("tag_code", "")).strip()
     if tag_code:
         params["category"] = tag_code
