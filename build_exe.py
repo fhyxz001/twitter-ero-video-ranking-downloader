@@ -1,6 +1,27 @@
-import PyInstaller.__main__
 import os
-import shutil
+import sys
+import subprocess
+import importlib.util
+
+
+def ensure_pyinstaller():
+    """Ensure PyInstaller is available in the current Python environment."""
+    if importlib.util.find_spec("PyInstaller") is not None:
+        return
+
+    print("未发现 PyInstaller，正在尝试安装到当前 Python 环境中...")
+    # Use the current interpreter to avoid installing into the wrong Python.
+    try:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "pyinstaller"])
+    except Exception as e:
+        print("自动安装 PyInstaller 失败：", e)
+        print("")
+        print("建议使用虚拟环境安装依赖后再打包（Windows PowerShell）：")
+        print(r"  py -m venv .venv")
+        print(r"  .\.venv\Scripts\python -m pip install -U pip")
+        print(r"  .\.venv\Scripts\python -m pip install -r requirements.txt pyinstaller")
+        print(r"  .\.venv\Scripts\python build_exe.py")
+        raise
 
 def build():
     # 确保在当前目录下运行
@@ -23,14 +44,10 @@ def build():
     ]
 
     print(f"正在开始打包 Twitter 下载器...")
+    import PyInstaller.__main__
     PyInstaller.__main__.run(params)
     print(f"打包完成！可执行文件位于 dist 目录中。")
 
 if __name__ == "__main__":
-    try:
-        import PyInstaller
-    except ImportError:
-        print("未发现 PyInstaller，正在尝试安装...")
-        os.system("pip install pyinstaller")
-    
+    ensure_pyinstaller()
     build()
