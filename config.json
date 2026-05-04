@@ -1,11 +1,13 @@
 {
-  "download_root": "D:\\videos",
+  "source_url": "https://twitter-ero-video-ranking.com/api/media",
+  "download_root": "D:\\115",
   "proxy": "",
-  "schedule_time": "03:00",
-  "max_daily_downloads": 30,
-  "sort": "pv",
+  "download_limit": 1,
+  "video_format": "original",
+  "download_thumbnails": true,
+  "sort": "favorite",
   "range": "daily",
   "min_time": 0,
-  "max_time": 1858,
+  "max_time": 300,
   "tag_code": ""
 }

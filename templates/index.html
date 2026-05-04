@@ -1,726 +1,563 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>twitter-ero-video-ranking-downloader</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Twitter 视频下载器</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f5f7fb;
+    * {
+      box-sizing: border-box;
       margin: 0;
-      padding: 24px;
-      color: #1f2937;
+      padding: 0;
+    }
+    body {
+      background: #f1f5f9;
+      color: #0f172a;
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 20px;
     }
     .container {
-      max-width: 860px;
+      max-width: 1000px;
       margin: 0 auto;
-      background: #fff;
-      border-radius: 10px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-      padding: 24px;
-    }
-    h1 {
-      margin-top: 0;
-      font-size: 24px;
-    }
-    .grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 14px;
+      gap: 20px;
     }
-    .field {
-      display: flex;
-      flex-direction: column;
-    }
-    .field.full {
-      grid-column: 1 / -1;
-    }
-    label {
-      font-size: 14px;
-      margin-bottom: 6px;
-      color: #374151;
-    }
-    input[type="text"],
-    input[type="time"],
-    input[type="number"],
-    select {
-      height: 36px;
-      border: 1px solid #d1d5db;
-      border-radius: 6px;
-      padding: 0 10px;
-      font-size: 14px;
-      background: #fff;
-    }
-    .duration-filter {
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      background: #f9fafb;
-      padding: 14px;
-    }
-    .tag-picker {
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      background: #f9fafb;
-      padding: 14px;
-    }
-    .tag-toolbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-    .tag-selection-text {
-      font-size: 14px;
-      color: #111827;
-      font-weight: 600;
-    }
-    .tag-toolbar-actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .tag-open-btn,
-    .tag-clear-btn {
-      border: 1px solid #d1d5db;
-      background: #fff;
-      color: #374151;
-      border-radius: 6px;
-      padding: 0 12px;
-      height: 34px;
-      cursor: pointer;
-    }
-    .tag-summary {
-      margin-top: 10px;
-      font-size: 12px;
-      color: #6b7280;
-    }
-    .tag-modal {
-      position: fixed;
-      inset: 0;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      background: rgba(15, 23, 42, 0.46);
-      z-index: 1000;
-    }
-    .tag-modal.show {
-      display: flex;
-    }
-    .tag-modal-dialog {
-      width: min(760px, 100%);
-      max-height: min(80vh, 720px);
-      display: flex;
-      flex-direction: column;
-      background: #fff;
-      border-radius: 14px;
-      box-shadow: 0 18px 48px rgba(15, 23, 42, 0.22);
-      overflow: hidden;
-    }
-    .tag-modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 12px;
-      padding: 18px 20px 14px;
-      border-bottom: 1px solid #e5e7eb;
-    }
-    .tag-modal-title {
-      margin: 0;
-      font-size: 18px;
-      color: #111827;
-    }
-    .tag-modal-subtitle {
-      margin-top: 4px;
-      font-size: 12px;
-      color: #6b7280;
-      line-height: 1.5;
-    }
-    .tag-close-btn {
-      border: 1px solid #d1d5db;
-      background: #fff;
-      color: #374151;
-      border-radius: 6px;
-      width: 36px;
-      min-width: 36px;
-      padding: 0;
-      font-size: 18px;
-      line-height: 1;
-    }
-    .tag-modal-body {
-      padding: 16px 20px 20px;
-      overflow: auto;
-    }
-    .tag-list {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 10px;
-    }
-    .tag-item {
-      border: 1px solid #d1d5db;
-      border-radius: 8px;
-      background: #fff;
-      color: #1f2937;
-      min-height: 58px;
-      padding: 10px 12px;
-      text-align: left;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      gap: 4px;
-    }
-    .tag-item.active {
-      border-color: #2563eb;
-      background: #eff6ff;
-      color: #1d4ed8;
-    }
-    .tag-item:disabled,
-    .tag-clear-btn:disabled {
-      cursor: not-allowed;
-      opacity: 0.65;
-    }
-    .tag-name {
-      font-size: 14px;
-      font-weight: 700;
-      line-height: 1.4;
-    }
-    .tag-code {
-      font-size: 12px;
-      color: #6b7280;
-      word-break: break-all;
-    }
-    .tag-item.active .tag-code {
-      color: #1d4ed8;
-    }
-    .tag-pager {
-      margin-top: 12px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-    .tag-page-info {
-      font-size: 13px;
-      color: #4b5563;
-    }
-    .tag-error {
-      margin-top: 8px;
-      color: #dc2626;
-      font-size: 12px;
-    }
-    body.modal-open {
-      overflow: hidden;
-    }
-    .duration-summary {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-    .duration-seconds {
-      font-size: 15px;
-      font-weight: 700;
-      color: #111827;
-    }
-    .duration-minutes {
-      font-size: 13px;
-      color: #4b5563;
-    }
-    .range-slider {
-      position: relative;
-      height: 42px;
-      margin-top: 12px;
-    }
-    .range-track,
-    .range-fill {
-      position: absolute;
-      top: 18px;
-      height: 6px;
-      border-radius: 999px;
-    }
-    .range-track {
-      left: 0;
-      right: 0;
-      background: #d1d5db;
-    }
-    .range-fill {
-      background: #2563eb;
-    }
-    .range-slider input[type="range"] {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 42px;
-      margin: 0;
-      pointer-events: none;
-      -webkit-appearance: none;
-      appearance: none;
-      background: none;
-    }
-    .range-slider input[type="range"]::-webkit-slider-runnable-track {
-      height: 6px;
-      background: transparent;
-    }
-    .range-slider input[type="range"]::-moz-range-track {
-      height: 6px;
-      background: transparent;
-    }
-    .range-slider input[type="range"]::-webkit-slider-thumb {
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      border: 2px solid #2563eb;
-      background: #fff;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
-      pointer-events: auto;
-      cursor: pointer;
-      -webkit-appearance: none;
-      appearance: none;
-      margin-top: -6px;
-    }
-    .range-slider input[type="range"]::-moz-range-thumb {
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      border: 2px solid #2563eb;
-      background: #fff;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
-      pointer-events: auto;
-      cursor: pointer;
-    }
-    .range-scale {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 4px;
-      color: #6b7280;
-      font-size: 12px;
-    }
-    .actions {
-      margin-top: 16px;
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    button {
-      border: none;
-      background: #2563eb;
-      color: #fff;
-      border-radius: 6px;
-      height: 36px;
-      padding: 0 14px;
-      cursor: pointer;
-    }
-    button.secondary {
-      background: #4b5563;
-    }
-    button:hover {
-      opacity: 0.9;
-    }
-    .status {
-      margin-top: 18px;
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      padding: 12px;
-      font-size: 14px;
-      line-height: 1.7;
-    }
-    .logs {
-      margin-top: 12px;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      background: #0f172a;
-      color: #e2e8f0;
-      font-family: Consolas, monospace;
-      font-size: 12px;
-      height: 280px;
-      overflow: auto;
-      padding: 10px;
-      white-space: pre-wrap;
-    }
-    .note {
-      margin-top: 8px;
-      color: #6b7280;
-      font-size: 12px;
-    }
-    @media (max-width: 720px) {
-      .grid {
+    @media (max-width: 768px) {
+      .container {
         grid-template-columns: 1fr;
       }
+    }
+    h1 {
+      grid-column: 1 / -1;
+      font-size: 24px;
+      margin-bottom: 20px;
+      color: #1e293b;
+    }
+    .card {
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    .card-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #334155;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #475569;
+    }
+    .form-control {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 14px;
+      color: #1e293b;
+      transition: border-color 0.2s;
+    }
+    .form-control:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+    .form-row {
+      display: flex;
+      gap: 16px;
+    }
+    .form-row .form-group {
+      flex: 1;
+    }
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: #3b82f6;
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #2563eb;
+    }
+    .btn-primary:disabled {
+      background: #93c5fd;
+      cursor: not-allowed;
+    }
+    .btn-secondary {
+      background: #e2e8f0;
+      color: #334155;
+    }
+    .btn-secondary:hover {
+      background: #cbd5e1;
+    }
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+    
+    /* 进度区域 */
+    .status-panel {
+      margin-top: 16px;
+    }
+    .status-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: #475569;
+    }
+    .progress-bar {
+      height: 8px;
+      background: #e2e8f0;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .progress-fill {
+      height: 100%;
+      background: #10b981;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .stat-box {
+      background: #f8fafc;
+      padding: 12px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 20px;
+      font-weight: 600;
+      color: #0f172a;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 4px;
+    }
+    .log-container {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 12px;
+      border-radius: 8px;
+      height: 300px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .log-line {
+      margin-bottom: 4px;
+      word-break: break-all;
+    }
+
+    /* 标签弹窗 */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    .modal.show {
+      display: flex;
+    }
+    .modal-content {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 600px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .tag-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 12px;
+      overflow-y: auto;
+      padding: 4px;
+    }
+    .tag-btn {
+      padding: 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: white;
+      cursor: pointer;
+      text-align: center;
+      font-size: 14px;
+    }
+    .tag-btn:hover {
+      border-color: #3b82f6;
+      color: #3b82f6;
+    }
+    .tag-btn.active {
+      background: #3b82f6;
+      color: white;
+      border-color: #3b82f6;
+    }
+    .tag-pagination {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #e2e8f0;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>twitter-ero-video-ranking-downloader</h1>
-
-    <form method="post" action="/save">
-      <div class="grid">
-        <div class="field full">
-          <label for="download_root">视频下载根目录</label>
-          <input id="download_root" name="download_root" type="text" required value="{{ config.download_root }}" />
+    <h1>Twitter 视频下载器</h1>
+    
+    <div class="card">
+      <div class="card-title">下载配置</div>
+      <form id="configForm">
+        <div class="form-group">
+          <label>保存路径 (绝对路径或相对路径)</label>
+          <input type="text" name="download_root" class="form-control" value="{{ config.download_root }}" required>
         </div>
 
-        <div class="field full">
-          <label for="proxy">HTTP/HTTPS 代理（可空）</label>
-          <input id="proxy" name="proxy" type="text" placeholder="例如：http://127.0.0.1:7890" value="{{ config.proxy }}" />
-        </div>
-
-        <div class="field">
-          <label for="schedule_time">每日定时执行时间（HH:MM）</label>
-          <input id="schedule_time" name="schedule_time" type="time" required value="{{ config.schedule_time }}" />
-        </div>
-
-        <div class="field">
-          <label for="max_daily_downloads">每日最大下载数量</label>
-          <input id="max_daily_downloads" name="max_daily_downloads" type="number" min="1" required value="{{ config.max_daily_downloads }}" />
-        </div>
-
-        <div class="field">
-          <label for="sort">排序方式</label>
-          <select id="sort" name="sort" required>
-            {% for option in sort_options %}
-            <option value="{{ option.value }}" {% if config.sort == option.value %}selected{% endif %}>{{ option.label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <div class="field">
-          <label for="range">时间范围</label>
-          <select id="range" name="range" required>
-            {% for option in range_options %}
-            <option value="{{ option.value }}" {% if config.range == option.value %}selected{% endif %}>{{ option.label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <div class="field full">
-          <label for="tag_code">标签筛选（单选，可空）</label>
-          <div class="tag-picker">
-            <input id="tag_code" name="tag_code" type="hidden" value="{{ config.tag_code or '' }}" />
-            <div class="tag-toolbar">
-              <div id="tag_selection_text" class="tag-selection-text">当前：{{ config.tag_code or "不筛选" }}</div>
-              <div class="tag-toolbar-actions">
-                <button id="tag_open_btn" type="button" class="tag-open-btn" onclick="openTagModal()">选择标签</button>
-                <button id="tag_clear_btn" type="button" class="tag-clear-btn" onclick="clearSelectedTag()">清空标签</button>
-              </div>
-            </div>
-            <div class="tag-summary">点击“选择标签”后会弹出标签列表，在弹窗中单选。</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>代理设置 (可选)</label>
+            <input type="text" name="proxy" class="form-control" placeholder="http://127.0.0.1:7890" value="{{ config.proxy }}">
+          </div>
+          <div class="form-group">
+            <label>下载数量</label>
+            <input type="number" name="download_limit" class="form-control" min="1" max="100" value="{{ config.download_limit }}" required>
           </div>
         </div>
 
-        <div class="field full">
-          <label for="min_time_slider">视频时长筛选（秒）</label>
-          <div class="duration-filter">
-            <div class="duration-summary">
-              <div id="duration_seconds" class="duration-seconds"></div>
-              <div id="duration_minutes" class="duration-minutes"></div>
-            </div>
-
-            <div class="range-slider">
-              <div class="range-track"></div>
-              <div id="range_fill" class="range-fill"></div>
-              <input
-                id="min_time_slider"
-                type="range"
-                min="{{ time_filter_min }}"
-                max="{{ time_filter_max }}"
-                step="1"
-                value="{{ config.min_time }}"
-              />
-              <input
-                id="max_time_slider"
-                type="range"
-                min="{{ time_filter_min }}"
-                max="{{ time_filter_max }}"
-                step="1"
-                value="{{ config.max_time }}"
-              />
-            </div>
-
-            <div class="range-scale">
-              <span>{{ time_filter_min // 60 }} 分钟</span>
-              <span>{{ time_filter_max // 60 }} 分钟</span>
-            </div>
-
-            <input id="min_time" name="min_time" type="hidden" value="{{ config.min_time }}" />
-            <input id="max_time" name="max_time" type="hidden" value="{{ config.max_time }}" />
+        <div class="form-row">
+          <div class="form-group">
+            <label>排序方式</label>
+            <select name="sort" class="form-control">
+              {% for opt in sort_options %}
+              <option value="{{ opt.value }}" {% if config.sort == opt.value %}selected{% endif %}>{{ opt.label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>时间范围</label>
+            <select name="range" class="form-control">
+              {% for opt in range_options %}
+              <option value="{{ opt.value }}" {% if config.range == opt.value %}selected{% endif %}>{{ opt.label }}</option>
+              {% endfor %}
+            </select>
           </div>
         </div>
-      </div>
 
-      <div class="actions">
-        <button type="submit">保存配置</button>
-        <button type="button" class="secondary" onclick="runNow()">立即执行任务</button>
-        <button type="button" class="secondary" onclick="refreshStatus()">刷新状态</button>
-        <button type="button" class="secondary" onclick="goToPoster()">查看海报墙</button>
-      </div>
-    </form>
+        {% set duration_range_value = '' %}
+        {% if config.min_time == 0 and config.max_time == 300 %}
+          {% set duration_range_value = '0-300' %}
+        {% elif config.min_time == 300 and config.max_time == 900 %}
+          {% set duration_range_value = '300-900' %}
+        {% elif config.min_time == 900 and config.max_time == 1800 %}
+          {% set duration_range_value = '900-1800' %}
+        {% elif config.min_time == 1800 and config.max_time == 3600 %}
+          {% set duration_range_value = '1800-3600' %}
+        {% elif config.min_time == 3600 and config.max_time == time_filter_max %}
+          {% set duration_range_value = '3600-' ~ time_filter_max %}
+        {% endif %}
+        <div class="form-group">
+          <label>视频时长</label>
+          <select name="duration_range" class="form-control">
+            <option value="0-300" {% if duration_range_value == '0-300' %}selected{% endif %}>0-5 分钟</option>
+            <option value="300-900" {% if duration_range_value == '300-900' %}selected{% endif %}>5-15 分钟</option>
+            <option value="900-1800" {% if duration_range_value == '900-1800' %}selected{% endif %}>15-30 分钟</option>
+            <option value="1800-3600" {% if duration_range_value == '1800-3600' %}selected{% endif %}>30 分钟-1 小时</option>
+            <option value="3600-{{ time_filter_max }}" {% if duration_range_value == ('3600-' ~ time_filter_max) %}selected{% endif %}>1 小时以上</option>
+          </select>
+          <div style="font-size: 12px; color: #64748b; margin-top: 6px;">
+            按选择的区间筛选：提交时会生成类似 <code>&amp;min_time=300&amp;max_time=900</code> 的参数（单位：秒）。
+          </div>
+        </div>
 
-    <div class="status">
-      <div>运行中：<span id="is_running">{{ "是" if state.is_running else "否" }}</span></div>
-      <div>最近执行时间：<span id="last_run_time">{{ state.last_run_time or "暂无" }}</span></div>
-      <div>最近结果：<span id="last_result">{{ state.last_result }}</span></div>
-      <div class="note">日志每 5 秒自动刷新一次。</div>
+        <div class="form-group">
+          <label>标签分类 (可选)</label>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" name="tag_code" id="tag_code" class="form-control" value="{{ config.tag_code }}" readonly placeholder="点击右侧按钮选择">
+            <button type="button" class="btn btn-secondary" onclick="openTagModal()">选择</button>
+            <button type="button" class="btn btn-secondary" onclick="clearTag()">清空</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" name="download_thumbnails" {% if config.download_thumbnails %}checked{% endif %}>
+            同时下载视频封面
+          </label>
+        </div>
+
+        <div class="actions">
+          <button type="button" class="btn btn-primary" id="btnStart" onclick="startDownload()">立即下载</button>
+          <button type="button" class="btn btn-secondary" onclick="saveConfig()">保存配置</button>
+          <a href="/poster" class="btn btn-secondary" style="text-decoration: none;">查看海报墙</a>
+        </div>
+      </form>
     </div>
 
-    <div id="logs" class="logs">{{ logs }}</div>
+    <div class="card">
+      <div class="card-title">运行状态</div>
+      <div class="status-panel">
+        <div class="status-header">
+          <span id="currentStage">等待开始</span>
+          <span id="progressText">0%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-value" id="statTarget">0</div>
+            <div class="stat-label">目标数量</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" id="statSuccess" style="color: #10b981;">0</div>
+            <div class="stat-label">成功</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" id="statSkip" style="color: #f59e0b;">0</div>
+            <div class="stat-label">跳过</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" id="statFail" style="color: #ef4444;">0</div>
+            <div class="stat-label">失败</div>
+          </div>
+        </div>
+
+        <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;" id="currentItem"></div>
+        
+        <div class="log-container" id="logContainer"></div>
+      </div>
+    </div>
   </div>
 
-  <div id="tag_modal" class="tag-modal" aria-hidden="true" onclick="handleTagModalBackdrop(event)">
-    <div class="tag-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="tag_modal_title">
-      <div class="tag-modal-header">
-        <div>
-          <h2 id="tag_modal_title" class="tag-modal-title">选择标签</h2>
-          <div class="tag-modal-subtitle">支持分页浏览，点击任意标签即可完成单选并关闭弹窗。</div>
-        </div>
-        <button type="button" class="tag-close-btn" aria-label="关闭标签弹窗" onclick="closeTagModal()">&times;</button>
+  <!-- 标签弹窗 -->
+  <div id="tagModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>选择标签</h3>
+        <button type="button" class="btn btn-secondary" onclick="closeTagModal()" style="padding: 4px 8px;">✕</button>
       </div>
-      <div class="tag-modal-body">
-        <div id="tag_list" class="tag-list">
-          <div class="note">正在加载标签...</div>
-        </div>
-        <div class="tag-pager">
-          <button id="tag_prev_btn" type="button" class="secondary" onclick="loadTags(tagState.page - 1)">上一页</button>
-          <span id="tag_page_info" class="tag-page-info">加载中...</span>
-          <button id="tag_next_btn" type="button" class="secondary" onclick="loadTags(tagState.page + 1)">下一页</button>
-        </div>
-        <div id="tag_error" class="tag-error"></div>
+      <div class="tag-grid" id="tagGrid"></div>
+      <div class="tag-pagination">
+        <button type="button" class="btn btn-secondary" onclick="loadTags(-1)" id="tagPrevBtn">上一页</button>
+        <span id="tagPageInfo" style="font-size: 14px;">1 / 1</span>
+        <button type="button" class="btn btn-secondary" onclick="loadTags(1)" id="tagNextBtn">下一页</button>
       </div>
     </div>
   </div>
 
   <script>
-    const minSlider = document.getElementById('min_time_slider');
-    const maxSlider = document.getElementById('max_time_slider');
-    const minTimeInput = document.getElementById('min_time');
-    const maxTimeInput = document.getElementById('max_time');
-    const rangeFill = document.getElementById('range_fill');
-    const durationSeconds = document.getElementById('duration_seconds');
-    const durationMinutes = document.getElementById('duration_minutes');
-    const tagInput = document.getElementById('tag_code');
-    const tagModal = document.getElementById('tag_modal');
-    const tagList = document.getElementById('tag_list');
-    const tagSelectionText = document.getElementById('tag_selection_text');
-    const tagPageInfo = document.getElementById('tag_page_info');
-    const tagPrevBtn = document.getElementById('tag_prev_btn');
-    const tagNextBtn = document.getElementById('tag_next_btn');
-    const tagError = document.getElementById('tag_error');
-    const tagClearBtn = document.getElementById('tag_clear_btn');
-    const tagState = {
-      page: 1,
-      perPage: 10,
-      total: 0,
-      totalPages: 1,
-      items: [],
-      loading: false,
-    };
-    let selectedTagMeta = null;
+    let pollInterval = null;
+    let currentTagPage = 1;
+    let tagPerPage = 15;
 
-    function formatMinuteText(seconds) {
-      const minutes = seconds / 60;
-      if (Number.isInteger(minutes)) {
-        return `${minutes} 分钟`;
-      }
-      return `${minutes.toFixed(1)} 分钟`;
+    function getFormData() {
+      const form = document.getElementById('configForm');
+      const formData = new FormData(form);
+      const data = Object.fromEntries(formData.entries());
+      data.source_url = 'https://twitter-ero-video-ranking.com/api/media';
+      data.video_format = 'original';
+      data.download_limit = parseInt(data.download_limit, 10);
+      const durationRangeRaw = String(data.duration_range || '').trim();
+      const parts = durationRangeRaw.split('-');
+      const minSec = parts.length >= 1 ? parseInt(parts[0], 10) : 0;
+      const maxSec = parts.length >= 2 ? parseInt(parts[1], 10) : {{ time_filter_max }};
+      data.min_time = Number.isFinite(minSec) ? minSec : 0;
+      data.max_time = Number.isFinite(maxSec) ? maxSec : {{ time_filter_max }};
+      delete data.duration_range;
+      data.download_thumbnails = formData.has('download_thumbnails');
+      return data;
     }
 
-    function syncDurationRange(changedSlider) {
-      let minValue = Number(minSlider.value);
-      let maxValue = Number(maxSlider.value);
+    async function saveConfig() {
+      try {
+        const res = await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(getFormData())
+        });
+        const data = await res.json();
+        if (data.ok) alert('配置保存成功');
+        else alert('保存失败: ' + data.error);
+      } catch (e) {
+        alert('保存失败: ' + e.message);
+      }
+    }
 
-      if (minValue > maxValue) {
-        if (changedSlider === minSlider) {
-          maxValue = minValue;
-          maxSlider.value = String(maxValue);
-        } else {
-          minValue = maxValue;
-          minSlider.value = String(minValue);
+    async function startDownload() {
+      const btn = document.getElementById('btnStart');
+      btn.disabled = true;
+      btn.textContent = '启动中...';
+      
+      try {
+        const res = await fetch('/api/download/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            config: getFormData(),
+            persist: true
+          })
+        });
+        const data = await res.json();
+        if (!data.ok) {
+          alert('启动失败: ' + data.error);
+          btn.disabled = false;
+          btn.textContent = '立即下载';
+          return;
         }
+        startPolling();
+      } catch (e) {
+        alert('启动失败: ' + e.message);
+        btn.disabled = false;
+        btn.textContent = '立即下载';
       }
-
-      minTimeInput.value = String(minValue);
-      maxTimeInput.value = String(maxValue);
-
-      const sliderMin = Number(minSlider.min);
-      const sliderMax = Number(minSlider.max);
-      const total = sliderMax - sliderMin || 1;
-      const left = ((minValue - sliderMin) / total) * 100;
-      const right = ((maxValue - sliderMin) / total) * 100;
-
-      rangeFill.style.left = `${left}%`;
-      rangeFill.style.width = `${right - left}%`;
-      durationSeconds.textContent = `${minValue} 秒 - ${maxValue} 秒`;
-      durationMinutes.textContent = `约 ${formatMinuteText(minValue)} - ${formatMinuteText(maxValue)}`;
     }
 
-    minSlider.addEventListener('input', () => syncDurationRange(minSlider));
-    maxSlider.addEventListener('input', () => syncDurationRange(maxSlider));
-    syncDurationRange();
+    async function pollStatus() {
+      try {
+        const res = await fetch('/api/download/status');
+        const data = await res.json();
+        if (data.ok) {
+          updateUI(data.state, data.logs);
+          if (!data.state.is_running) {
+            stopPolling();
+          }
+        }
+      } catch (e) {
+        console.error('Polling failed:', e);
+      }
+    }
 
-    function updateTagSelectionText() {
-      if (selectedTagMeta && selectedTagMeta.code === tagInput.value) {
-        tagSelectionText.textContent = `当前：${selectedTagMeta.name} (${selectedTagMeta.code})`;
-      } else if (tagInput.value) {
-        tagSelectionText.textContent = `当前：${tagInput.value}`;
+    function updateUI(state, logs) {
+      document.getElementById('currentStage').textContent = state.current_stage || '等待开始';
+      document.getElementById('progressText').textContent = `${state.progress_percent}%`;
+      document.getElementById('progressFill').style.width = `${state.progress_percent}%`;
+      
+      document.getElementById('statTarget').textContent = state.target_count || 0;
+      document.getElementById('statSuccess').textContent = state.completed_count || 0;
+      document.getElementById('statSkip').textContent = state.skip_count || 0;
+      document.getElementById('statFail').textContent = state.fail_count || 0;
+      
+      document.getElementById('currentItem').textContent = state.current_item || '';
+
+      const btn = document.getElementById('btnStart');
+      if (state.is_running) {
+        btn.disabled = true;
+        btn.textContent = '下载中...';
       } else {
-        tagSelectionText.textContent = '当前：不筛选';
+        btn.disabled = false;
+        btn.textContent = '立即下载';
       }
-      tagClearBtn.disabled = tagState.loading || !tagInput.value;
+
+      const logContainer = document.getElementById('logContainer');
+      logContainer.innerHTML = logs.map(line => `<div class="log-line">${line}</div>`).join('');
+      logContainer.scrollTop = logContainer.scrollHeight;
     }
 
-    function openTagModal() {
-      tagModal.classList.add('show');
-      tagModal.setAttribute('aria-hidden', 'false');
-      document.body.classList.add('modal-open');
-      if (!tagState.items.length && !tagState.loading) {
-        loadTags(tagState.page);
+    function startPolling() {
+      if (pollInterval) clearInterval(pollInterval);
+      pollInterval = setInterval(pollStatus, 1000);
+      pollStatus(); // 立即执行一次
+    }
+
+    function stopPolling() {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
       }
+    }
+
+    // 标签功能
+    function openTagModal() {
+      document.getElementById('tagModal').classList.add('show');
+      loadTags(0);
     }
 
     function closeTagModal() {
-      tagModal.classList.remove('show');
-      tagModal.setAttribute('aria-hidden', 'true');
-      document.body.classList.remove('modal-open');
+      document.getElementById('tagModal').classList.remove('show');
     }
 
-    function handleTagModalBackdrop(event) {
-      if (event.target === tagModal) {
-        closeTagModal();
-      }
+    function clearTag() {
+      document.getElementById('tag_code').value = '';
     }
 
-    function renderTagPagination() {
-      tagPageInfo.textContent = `第 ${tagState.page} / ${tagState.totalPages} 页，共 ${tagState.total} 个标签`;
-      tagPrevBtn.disabled = tagState.loading || tagState.page <= 1;
-      tagNextBtn.disabled = tagState.loading || tagState.page >= tagState.totalPages;
-    }
-
-    function renderTags() {
-      tagList.innerHTML = '';
-
-      if (!tagState.items.length) {
-        const empty = document.createElement('div');
-        empty.className = 'note';
-        empty.textContent = tagState.loading ? '正在加载标签...' : '暂无可用标签';
-        tagList.appendChild(empty);
-        renderTagPagination();
-        updateTagSelectionText();
-        return;
-      }
-
-      tagState.items.forEach((tag) => {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = `tag-item${tagInput.value === tag.code ? ' active' : ''}`;
-        button.disabled = tagState.loading;
-        button.addEventListener('click', () => {
-          tagInput.value = tag.code;
-          selectedTagMeta = tag;
-          renderTags();
-          updateTagSelectionText();
-          closeTagModal();
-        });
-
-        const name = document.createElement('div');
-        name.className = 'tag-name';
-        name.textContent = tag.name || tag.code;
-
-        const code = document.createElement('div');
-        code.className = 'tag-code';
-        code.textContent = tag.code;
-
-        button.appendChild(name);
-        button.appendChild(code);
-        tagList.appendChild(button);
-      });
-
-      renderTagPagination();
-      updateTagSelectionText();
-    }
-
-    async function loadTags(page = 1) {
-      const targetPage = Math.max(1, page);
-      tagState.loading = true;
-      tagError.textContent = '';
-      renderTags();
-
+    async function loadTags(pageDelta) {
+      currentTagPage += pageDelta;
+      if (currentTagPage < 1) currentTagPage = 1;
+      
       try {
-        const resp = await fetch(`/api/tags?page=${targetPage}&per_page=${tagState.perPage}`);
-        const data = await resp.json();
-        if (!data.ok) {
-          throw new Error(data.error || '标签加载失败');
+        const res = await fetch(`/api/tags?page=${currentTagPage}&per_page=${tagPerPage}`);
+        const data = await res.json();
+        if (data.ok) {
+          currentTagPage = data.pagination.page;
+          document.getElementById('tagPageInfo').textContent = `${currentTagPage} / ${data.pagination.total_pages}`;
+          document.getElementById('tagPrevBtn').disabled = currentTagPage <= 1;
+          document.getElementById('tagNextBtn').disabled = currentTagPage >= data.pagination.total_pages;
+          
+          const grid = document.getElementById('tagGrid');
+          grid.innerHTML = data.items.map(tag => `
+            <div class="tag-btn" onclick="selectTag('${tag.code}')">
+              <div>${tag.name}</div>
+              <div style="font-size: 12px; color: #64748b;">${tag.code}</div>
+            </div>
+          `).join('');
         }
-
-        tagState.page = data.pagination?.page || 1;
-        tagState.total = data.pagination?.total || 0;
-        tagState.totalPages = data.pagination?.total_pages || 1;
-        tagState.items = Array.isArray(data.items) ? data.items : [];
-
-        const selected = tagState.items.find((tag) => tag.code === tagInput.value);
-        if (selected) {
-          selectedTagMeta = selected;
-        }
-      } catch (error) {
-        tagState.items = [];
-        tagState.total = 0;
-        tagState.totalPages = 1;
-        tagState.page = 1;
-        tagError.textContent = error.message || '标签加载失败';
-      } finally {
-        tagState.loading = false;
-        renderTags();
+      } catch (e) {
+        console.error('Failed to load tags:', e);
       }
     }
 
-    function clearSelectedTag() {
-      tagInput.value = '';
-      selectedTagMeta = null;
-      renderTags();
-      updateTagSelectionText();
+    function selectTag(code) {
+      document.getElementById('tag_code').value = code;
+      closeTagModal();
     }
 
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && tagModal.classList.contains('show')) {
-        closeTagModal();
-      }
-    });
-
-    updateTagSelectionText();
-    loadTags();
-
-    async function runNow() {
-      const resp = await fetch('/run-now', { method: 'POST' });
-      const data = await resp.json();
-      if (!data.ok) {
-        alert(data.message || '启动失败');
-      }
-      refreshStatus();
-    }
-
-    async function refreshStatus() {
-      const resp = await fetch('/status');
-      const data = await resp.json();
-      if (!data.ok) {
-        return;
-      }
-
-      document.getElementById('is_running').innerText = data.state.is_running ? '是' : '否';
-      document.getElementById('last_run_time').innerText = data.state.last_run_time || '暂无';
-      document.getElementById('last_result').innerText = data.state.last_result || '';
-      document.getElementById('logs').innerText = (data.logs || []).join('\n');
-    }
-
-    setInterval(refreshStatus, 5000);
-
-    function goToPoster() {
-      window.location.href = '/poster';
-    }
+    // 初始化
+    pollStatus();
   </script>
 </body>
 </html>

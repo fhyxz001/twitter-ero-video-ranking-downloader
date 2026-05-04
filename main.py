@@ -1,9 +1,9 @@
-import json
-import os
+﻿import json
 import subprocess
 import sys
 import threading
 import time
+from copy import deepcopy
 from datetime import datetime
 from hashlib import sha256
 from pathlib import Path
@@ -11,10 +11,8 @@ from typing import Dict, List, Optional
 from urllib.parse import quote, urlparse
 
 import requests
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.cron import CronTrigger
-from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi import FastAPI, File, Request, UploadFile
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 
@@ -22,12 +20,11 @@ from fastapi.templating import Jinja2Templates
 def get_resource_path(relative_path: str) -> Path:
     """获取资源文件的绝对路径，适配开发环境和 PyInstaller 编译环境"""
     if getattr(sys, "frozen", False):
-        # PyInstaller 运行时路径
         base_path = Path(sys._MEIPASS)
     else:
-        # 开发环境路径
         base_path = Path(__file__).resolve().parent
     return base_path / relative_path
+
 
 
 def get_exe_dir() -> Path:
@@ -44,14 +41,19 @@ MEDIA_API_URL = "https://twitter-ero-video-ranking.com/api/media"
 REQUEST_TIMEOUT = 30
 TIME_FILTER_MIN = 0
 TIME_FILTER_MAX = 10800
+TIME_FILTER_MAX_MINUTES = TIME_FILTER_MAX // 60
 ALLOWED_SORTS = {"time", "favorite", "pv"}
 ALLOWED_RANGES = {"daily", "weekly", "monthly", "all"}
+VIDEO_EXTS = {".mp4", ".mkv", ".avi", ".mov", ".flv", ".wmv"}
+IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 
 DEFAULT_CONFIG: Dict[str, object] = {
-    "download_root": "/data/downloads",
+    "source_url": MEDIA_API_URL,
+    "download_root": "downloads",
     "proxy": "",
-    "schedule_time": "03:00",
-    "max_daily_downloads": 30,
+    "download_limit": 10,
+    "video_format": "original",
+    "download_thumbnails": True,
     "sort": "pv",
     "range": "daily",
     "min_time": TIME_FILTER_MIN,
@@ -61,20 +63,41 @@ DEFAULT_CONFIG: Dict[str, object] = {
 
 app = FastAPI(title="twitter-ero-video-ranking-downloader")
 templates = Jinja2Templates(directory=str(TEMPLATES_PATH))
-scheduler = BackgroundScheduler(timezone="Asia/Shanghai")
 
 config_lock = threading.Lock()
 log_lock = threading.Lock()
 runtime_lock = threading.Lock()
 
-runtime_state = {
-    "is_running": False,
-    "last_run_time": None,
-    "last_result": "尚未执行",
-}
+
+TAGS_JSON_PATH = get_resource_path("templates/code.json")
+_tags_cache: Optional[List[Dict[str, object]]] = None
+
+
+def _new_runtime_state() -> Dict[str, object]:
+    return {
+        "is_running": False,
+        "status": "idle",
+        "last_run_time": None,
+        "finished_at": None,
+        "last_result": "尚未执行",
+        "current_stage": "等待开始",
+        "current_item": "",
+        "progress_percent": 0,
+        "target_count": 0,
+        "fetched_count": 0,
+        "processed_count": 0,
+        "completed_count": 0,
+        "skip_count": 0,
+        "fail_count": 0,
+        "active_config": None,
+    }
+
+
+runtime_state = _new_runtime_state()
 log_lines: List[str] = []
 
 
+# 统一记录日志，供页面和接口轮询展示。
 def append_log(message: str) -> None:
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with log_lock:
@@ -83,22 +106,50 @@ def append_log(message: str) -> None:
             del log_lines[:-300]
 
 
+
 def get_logs() -> List[str]:
     with log_lock:
         return list(log_lines)
+
+
+
+def parse_bool(value: object, field_name: str) -> bool:
+    if isinstance(value, bool):
+        return value
+    text = str(value).strip().lower()
+    if text in {"1", "true", "yes", "on"}:
+        return True
+    if text in {"0", "false", "no", "off", ""}:
+        return False
+    raise ValueError(f"{field_name}必须是布尔值")
+
 
 
 def validate_config(raw: Dict[str, object]) -> Dict[str, object]:
     cfg = dict(DEFAULT_CONFIG)
     cfg.update(raw or {})
 
+    cfg["source_url"] = MEDIA_API_URL
+
     download_root = str(cfg.get("download_root", "")).strip()
     if not download_root:
-        raise ValueError("下载根目录不能为空")
+        raise ValueError("保存路径不能为空")
     cfg["download_root"] = download_root
 
     proxy = str(cfg.get("proxy", "")).strip()
     cfg["proxy"] = proxy
+
+    try:
+        download_limit = int(cfg.get("download_limit", 0))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("下载数量必须是整数") from exc
+    if download_limit <= 0 or download_limit > 100:
+        raise ValueError("下载数量必须在 1 到 100 之间")
+    cfg["download_limit"] = download_limit
+
+    cfg["video_format"] = "original"
+
+    cfg["download_thumbnails"] = parse_bool(cfg.get("download_thumbnails", True), "封面下载开关")
 
     sort = str(cfg.get("sort", "pv")).strip()
     if sort not in ALLOWED_SORTS:
@@ -110,20 +161,29 @@ def validate_config(raw: Dict[str, object]) -> Dict[str, object]:
         raise ValueError("时间范围必须是 daily、weekly、monthly 或 all")
     cfg["range"] = range_value
 
-    schedule_time = str(cfg.get("schedule_time", "")).strip()
     try:
-        time.strptime(schedule_time, "%H:%M")
-    except ValueError as exc:
-        raise ValueError("定时执行时间格式必须为 HH:MM") from exc
-    cfg["schedule_time"] = schedule_time
+        min_time = int(cfg.get("min_time", TIME_FILTER_MIN))
+        max_time = int(cfg.get("max_time", TIME_FILTER_MAX))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("视频时长筛选必须是整数") from exc
 
-    max_daily = int(cfg.get("max_daily_downloads", 0))
-    if max_daily <= 0:
-        raise ValueError("每日最大下载数量必须大于0")
-    cfg["max_daily_downloads"] = max_daily
+    duration_minutes_raw = cfg.get("duration_minutes", None)
+    if duration_minutes_raw is not None and str(duration_minutes_raw).strip() != "":
+        try:
+            duration_minutes = int(duration_minutes_raw)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("时长分钟数必须是整数") from exc
 
-    min_time = int(cfg.get("min_time", TIME_FILTER_MIN))
-    max_time = int(cfg.get("max_time", TIME_FILTER_MAX))
+        if duration_minutes < 0 or duration_minutes > TIME_FILTER_MAX_MINUTES:
+            raise ValueError(f"时长分钟数必须在 0 到 {TIME_FILTER_MAX_MINUTES} 之间")
+
+        if duration_minutes == 0:
+            min_time = TIME_FILTER_MIN
+            max_time = TIME_FILTER_MAX
+        else:
+            seconds = duration_minutes * 60
+            min_time = seconds
+            max_time = seconds
     if min_time < TIME_FILTER_MIN or min_time > TIME_FILTER_MAX:
         raise ValueError(f"最小时长必须在 {TIME_FILTER_MIN} 到 {TIME_FILTER_MAX} 秒之间")
     if max_time < TIME_FILTER_MIN or max_time > TIME_FILTER_MAX:
@@ -133,9 +193,12 @@ def validate_config(raw: Dict[str, object]) -> Dict[str, object]:
     cfg["min_time"] = min_time
     cfg["max_time"] = max_time
 
+    cfg.pop("duration_minutes", None)
+
     tag_code = str(cfg.get("tag_code", "")).strip()
     cfg["tag_code"] = tag_code
     return cfg
+
 
 
 def resolve_download_root(download_root: object) -> Path:
@@ -143,6 +206,7 @@ def resolve_download_root(download_root: object) -> Path:
     if not root.is_absolute():
         root = APP_DIR / root
     return root.resolve()
+
 
 
 def load_config() -> Dict[str, object]:
@@ -159,11 +223,14 @@ def load_config() -> Dict[str, object]:
         return dict(DEFAULT_CONFIG)
 
 
-def save_config(cfg: Dict[str, object]) -> None:
+
+def save_config(cfg: Dict[str, object]) -> Dict[str, object]:
     validated = validate_config(cfg)
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     with CONFIG_PATH.open("w", encoding="utf-8") as f:
         json.dump(validated, f, ensure_ascii=False, indent=2)
+    return validated
+
 
 
 def get_current_config() -> Dict[str, object]:
@@ -171,16 +238,63 @@ def get_current_config() -> Dict[str, object]:
         return load_config()
 
 
-def update_schedule(cfg: Dict[str, object]) -> None:
-    hour, minute = cfg["schedule_time"].split(":")
-    scheduler.remove_all_jobs()
-    scheduler.add_job(
-        run_download_job,
-        trigger=CronTrigger(hour=int(hour), minute=int(minute)),
-        id="daily_download_job",
-        replace_existing=True,
-    )
-    append_log(f"定时任务已更新：每天 {cfg['schedule_time']} 执行")
+
+def summarize_config(cfg: Dict[str, object]) -> Dict[str, object]:
+    return {
+        "download_root": str(resolve_download_root(cfg["download_root"])),
+        "download_limit": int(cfg["download_limit"]),
+        "download_thumbnails": bool(cfg["download_thumbnails"]),
+        "sort": cfg["sort"],
+        "range": cfg["range"],
+        "min_time": int(cfg["min_time"]),
+        "max_time": int(cfg["max_time"]),
+        "tag_code": cfg.get("tag_code") or "",
+        "proxy_enabled": bool(str(cfg.get("proxy", "")).strip()),
+    }
+
+
+
+def snapshot_runtime_state() -> Dict[str, object]:
+    with runtime_lock:
+        return deepcopy(runtime_state)
+
+
+
+def _update_runtime_state(**kwargs: object) -> None:
+    with runtime_lock:
+        runtime_state.update(kwargs)
+
+
+
+def _mark_runtime_started(cfg: Dict[str, object]) -> None:
+    started_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with runtime_lock:
+        runtime_state.clear()
+        runtime_state.update(_new_runtime_state())
+        runtime_state.update(
+            {
+                "is_running": True,
+                "status": "running",
+                "last_run_time": started_at,
+                "last_result": "任务启动中",
+                "current_stage": "准备下载配置",
+                "active_config": summarize_config(cfg),
+            }
+        )
+
+
+
+def _mark_runtime_finished(status: str, result: str, **extra: object) -> None:
+    payload = {
+        "is_running": False,
+        "status": status,
+        "finished_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "last_result": result,
+        "progress_percent": 100 if status == "success" else runtime_state.get("progress_percent", 0),
+    }
+    payload.update(extra)
+    _update_runtime_state(**payload)
+
 
 
 def get_file_ext_from_url(url: str, fallback: str) -> str:
@@ -191,21 +305,33 @@ def get_file_ext_from_url(url: str, fallback: str) -> str:
     return fallback
 
 
+
+def resolve_video_ext(url: str, video_format: str) -> str:
+    if video_format == "original":
+        return get_file_ext_from_url(url, ".mp4")
+    return f".{video_format}"
+
+
+
 def build_proxies(proxy: str) -> Optional[Dict[str, str]]:
     if not proxy:
         return None
     return {"http": proxy, "https": proxy}
 
 
+
 def build_media_request_params(cfg: Dict[str, object]) -> Dict[str, object]:
+    download_limit = int(cfg["download_limit"])
+    min_time = int(cfg["min_time"])
+    max_time = int(cfg["max_time"])
     params: Dict[str, object] = {
         "page": 1,
-        "per_page": 30,
+        "per_page": min(max(download_limit * 3, 30), 100),
         "ids": "",
         "isAnimeOnly": 0,
         "sort": str(cfg["sort"]),
-        "min_time": int(cfg["min_time"]),
-        "max_time": int(cfg["max_time"]),
+        "min_time": min_time,
+        "max_time": max_time,
     }
     tag_code = str(cfg.get("tag_code", "")).strip()
     if tag_code:
@@ -215,10 +341,6 @@ def build_media_request_params(cfg: Dict[str, object]) -> Dict[str, object]:
         params["range"] = range_value
     return params
 
-
-TAGS_JSON_PATH = get_resource_path("templates/code.json")
-
-_tags_cache: Optional[List[Dict[str, object]]] = None
 
 
 def _load_tags_static() -> List[Dict[str, object]]:
@@ -239,16 +361,6 @@ def _load_tags_static() -> List[Dict[str, object]]:
     return tags
 
 
-def already_downloaded(day_dir: Path) -> int:
-    if not day_dir.exists():
-        return 0
-    # 只统计视频文件，避免封面数量干扰每日限制判断。
-    count = 0
-    for item in day_dir.iterdir():
-        if item.is_file() and item.suffix.lower() in {".mp4", ".mkv", ".avi", ".mov", ".flv", ".wmv"}:
-            count += 1
-    return count
-
 
 def load_downloaded_url_hashes(day_dir: Path) -> set:
     marker_file = day_dir / ".downloaded_urls.txt"
@@ -261,6 +373,7 @@ def load_downloaded_url_hashes(day_dir: Path) -> set:
         return set()
 
 
+
 def append_downloaded_url_hash(day_dir: Path, url_hash: str) -> None:
     marker_file = day_dir / ".downloaded_urls.txt"
     try:
@@ -268,6 +381,23 @@ def append_downloaded_url_hash(day_dir: Path, url_hash: str) -> None:
             f.write(f"{url_hash}\n")
     except Exception as exc:
         append_log(f"写入去重记录失败：{exc}")
+
+
+
+def _set_progress(current_stage: str, total_items: int, success_count: int, skip_count: int, fail_count: int, current_item: str = "") -> None:
+    processed_count = success_count + skip_count + fail_count
+    denominator = max(total_items, 1)
+    progress_percent = min(99, int(processed_count / denominator * 100)) if total_items else 0
+    _update_runtime_state(
+        current_stage=current_stage,
+        current_item=current_item,
+        processed_count=processed_count,
+        completed_count=success_count,
+        skip_count=skip_count,
+        fail_count=fail_count,
+        progress_percent=progress_percent,
+    )
+
 
 
 def download_binary(session: requests.Session, url: str, target_path: Path, proxies: Optional[Dict[str, str]]) -> bool:
@@ -289,44 +419,34 @@ def download_binary(session: requests.Session, url: str, target_path: Path, prox
         return False
 
 
-def run_download_job() -> None:
-    with runtime_lock:
-        if runtime_state["is_running"]:
-            append_log("任务已在运行中，跳过本次触发")
-            return
-        runtime_state["is_running"] = True
 
-    started = datetime.now()
-    runtime_state["last_run_time"] = started.strftime("%Y-%m-%d %H:%M:%S")
-    append_log("开始执行下载任务")
-
+def run_download_job(cfg: Dict[str, object]) -> None:
     try:
-        cfg = get_current_config()
+        cfg = validate_config(cfg)
+        if not snapshot_runtime_state().get("is_running"):
+            _mark_runtime_started(cfg)
+
         download_root = resolve_download_root(cfg["download_root"])
         download_root.mkdir(parents=True, exist_ok=True)
         day_dir = download_root / datetime.now().strftime("%Y%m%d")
         day_dir.mkdir(parents=True, exist_ok=True)
 
-        max_daily = int(cfg["max_daily_downloads"])
-        already_count = already_downloaded(day_dir)
-        downloaded_hashes = load_downloaded_url_hashes(day_dir)
-        if already_count >= max_daily:
-            msg = f"今日已下载 {already_count} 个视频，达到上限 {max_daily}，任务结束"
-            append_log(msg)
-            runtime_state["last_result"] = msg
-            return
-
         proxy = str(cfg["proxy"]).strip()
         proxies = build_proxies(proxy)
+        downloaded_hashes = load_downloaded_url_hashes(day_dir)
         session = requests.Session()
 
+        append_log("开始执行即时下载任务")
         append_log(
-            f"当前筛选：range={cfg['range']} sort={cfg['sort']} "
-            f"time={cfg['min_time']}s-{cfg['max_time']}s "
+            f"下载参数：limit={cfg['download_limit']} format={cfg['video_format']} "
+            f"range={cfg['range']} sort={cfg['sort']} "
+            f"time={int(cfg['min_time'])}-{int(cfg['max_time'])}s "
             f"tag={cfg.get('tag_code') or 'default'}"
         )
+        _update_runtime_state(current_stage="请求媒体列表", progress_percent=5)
+
         resp = session.get(
-            MEDIA_API_URL,
+            str(cfg["source_url"]),
             params=build_media_request_params(cfg),
             timeout=REQUEST_TIMEOUT,
             proxies=proxies,
@@ -337,46 +457,62 @@ def run_download_job() -> None:
         if not isinstance(items, list):
             raise ValueError("API 返回的 items 不是数组")
 
+        total_items = len(items)
+        target_count = int(cfg["download_limit"])
+        _update_runtime_state(
+            current_stage="媒体列表已获取",
+            fetched_count=total_items,
+            target_count=target_count,
+            progress_percent=10,
+        )
+        if not items:
+            result = "任务完成：未获取到可下载内容"
+            append_log(result)
+            _mark_runtime_finished("success", result, current_stage="无可下载数据", progress_percent=100)
+            return
+
         success_count = 0
         skip_count = 0
         fail_count = 0
 
-        for item in items:
-            if success_count + already_count >= max_daily:
-                append_log("已达到当日最大下载数量，停止继续下载")
+        for index, item in enumerate(items, start=1):
+            if success_count >= target_count:
+                append_log("已达到本次下载数量上限，停止继续下载")
                 break
 
+            current_item = f"第 {index} 项"
             if not isinstance(item, dict):
                 skip_count += 1
+                _set_progress("跳过无效条目", total_items, success_count, skip_count, fail_count, current_item)
                 continue
 
             video_url = str(item.get("url", "")).strip()
             thumbnail_url = str(item.get("thumbnail", "")).strip()
+            current_item = video_url or f"第 {index} 项"
+            _update_runtime_state(current_stage="处理下载项", current_item=current_item)
+
             if not video_url:
                 skip_count += 1
-                append_log("条目缺少 url，已跳过")
+                append_log("条目缺少视频链接，已跳过")
+                _set_progress("跳过缺少视频链接的条目", total_items, success_count, skip_count, fail_count, current_item)
                 continue
+
             video_hash = sha256(video_url.encode("utf-8")).hexdigest()
             if video_hash in downloaded_hashes:
                 skip_count += 1
                 append_log("检测到重复视频 URL，已跳过")
+                _set_progress("跳过重复视频", total_items, success_count, skip_count, fail_count, current_item)
                 continue
 
-            timestamp = str(int(time.time() * 1000))
-            video_ext = get_file_ext_from_url(video_url, ".mp4")
+            timestamp = f"{int(time.time() * 1000)}_{index}"
+            video_ext = resolve_video_ext(video_url, str(cfg["video_format"]))
             thumb_ext = get_file_ext_from_url(thumbnail_url, ".jpg") if thumbnail_url else ".jpg"
             video_path = day_dir / f"{timestamp}{video_ext}"
             thumb_path = day_dir / f"{timestamp}{thumb_ext}"
 
-            # 同名文件存在即认为本条已处理过，避免重复下载。
-            if video_path.exists() or thumb_path.exists():
-                skip_count += 1
-                append_log(f"发现重复文件名 {timestamp}，已跳过")
-                continue
-
             ok_video = download_binary(session, video_url, video_path, proxies)
             ok_thumb = True
-            if thumbnail_url:
+            if ok_video and bool(cfg["download_thumbnails"]) and thumbnail_url:
                 ok_thumb = download_binary(session, thumbnail_url, thumb_path, proxies)
 
             if ok_video and ok_thumb:
@@ -384,43 +520,64 @@ def run_download_job() -> None:
                 downloaded_hashes.add(video_hash)
                 append_downloaded_url_hash(day_dir, video_hash)
                 append_log(f"下载完成：{video_path.name}")
+                _set_progress("下载成功", total_items, success_count, skip_count, fail_count, current_item)
             else:
                 fail_count += 1
+                if ok_video and not ok_thumb and video_path.exists():
+                    append_log(f"封面下载失败，已保留视频文件：{video_path.name}")
+                _set_progress("下载失败", total_items, success_count, skip_count, fail_count, current_item)
 
-            # 防止同毫秒命名冲突
             time.sleep(0.01)
 
         result = f"任务完成：成功 {success_count}，跳过 {skip_count}，失败 {fail_count}"
         append_log(result)
-        runtime_state["last_result"] = result
+        _mark_runtime_finished(
+            "success",
+            result,
+            current_stage="下载完成",
+            current_item="",
+            processed_count=success_count + skip_count + fail_count,
+            completed_count=success_count,
+            skip_count=skip_count,
+            fail_count=fail_count,
+            fetched_count=total_items,
+            target_count=target_count,
+            progress_percent=100,
+        )
     except Exception as exc:
         err_msg = f"任务异常：{exc}"
         append_log(err_msg)
-        runtime_state["last_result"] = err_msg
-    finally:
-        runtime_state["is_running"] = False
+        _mark_runtime_finished("error", err_msg, current_stage="执行失败", current_item="")
+
+
+
+def start_download_task(cfg: Dict[str, object]) -> Dict[str, object]:
+    validated = validate_config(cfg)
+    with runtime_lock:
+        if runtime_state["is_running"]:
+            raise RuntimeError("已有下载任务正在运行")
+    _mark_runtime_started(validated)
+    worker = threading.Thread(target=run_download_job, args=(validated,), daemon=True)
+    worker.start()
+    append_log("已创建即时下载任务")
+    return snapshot_runtime_state()
 
 
 @app.on_event("startup")
 def on_startup() -> None:
-    cfg = get_current_config()
-    if not scheduler.running:
-        scheduler.start()
-    update_schedule(cfg)
-    append_log("服务启动完成")
+    get_current_config()
+    append_log("服务启动完成，当前模式：即时下载")
 
 
 @app.on_event("shutdown")
 def on_shutdown() -> None:
-    if scheduler.running:
-        scheduler.shutdown(wait=False)
     append_log("服务已停止")
 
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 def index(request: Request):
     cfg = get_current_config()
-    state = dict(runtime_state)
+    state = snapshot_runtime_state()
     return templates.TemplateResponse(
         "index.html",
         {
@@ -445,59 +602,55 @@ def index(request: Request):
     )
 
 
-@app.post("/save")
-def save(
-    download_root: str = Form(...),
-    proxy: str = Form(""),
-    schedule_time: str = Form(...),
-    max_daily_downloads: int = Form(...),
-    sort: str = Form(...),
-    range: str = Form(...),
-    min_time: int = Form(...),
-    max_time: int = Form(...),
-    tag_code: str = Form(""),
-):
+@app.get("/api/config")
+def api_get_config():
+    return JSONResponse({"ok": True, "config": get_current_config()})
+
+
+@app.post("/api/config")
+async def api_save_config(request: Request):
     try:
-        cfg = {
-            "download_root": download_root,
-            "proxy": proxy,
-            "schedule_time": schedule_time,
-            "max_daily_downloads": max_daily_downloads,
-            "sort": sort,
-            "range": range,
-            "min_time": min_time,
-            "max_time": max_time,
-            "tag_code": tag_code,
-        }
-        save_config(cfg)
-        update_schedule(get_current_config())
+        payload = await request.json()
+        if not isinstance(payload, dict):
+            raise ValueError("请求体必须是 JSON 对象")
+        cfg = save_config(payload)
         append_log("配置保存成功")
-        return RedirectResponse(url="/", status_code=303)
+        return JSONResponse({"ok": True, "config": cfg})
     except Exception as exc:
         append_log(f"配置保存失败：{exc}")
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
 
 
-@app.post("/run-now")
-def run_now():
-    if runtime_state["is_running"]:
-        return JSONResponse({"ok": False, "message": "任务正在运行中"})
+@app.post("/api/download/start")
+async def api_start_download(request: Request):
+    try:
+        payload = await request.json()
+        if not isinstance(payload, dict):
+            raise ValueError("请求体必须是 JSON 对象")
+        config_payload = payload.get("config", payload)
+        if not isinstance(config_payload, dict):
+            raise ValueError("config 必须是对象")
+        persist = parse_bool(payload.get("persist", True), "配置持久化开关")
+        validated = validate_config(config_payload)
+        if persist:
+            save_config(validated)
+        state = start_download_task(validated)
+        return JSONResponse({"ok": True, "message": "下载任务已启动", "state": state})
+    except RuntimeError as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=409)
+    except Exception as exc:
+        append_log(f"启动下载失败：{exc}")
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
 
-    threading.Thread(target=run_download_job, daemon=True).start()
-    append_log("已触发手动执行任务")
-    return JSONResponse({"ok": True, "message": "任务已启动"})
+
+@app.get("/api/download/status")
+def api_download_status():
+    return JSONResponse({"ok": True, "state": snapshot_runtime_state(), "logs": get_logs(), "config": get_current_config()})
 
 
 @app.get("/status")
 def status():
-    return JSONResponse(
-        {
-            "ok": True,
-            "state": runtime_state,
-            "logs": get_logs(),
-            "config": get_current_config(),
-        }
-    )
+    return api_download_status()
 
 
 @app.get("/api/tags")
@@ -525,14 +678,6 @@ def api_tags(page: int = 1, per_page: int = 10):
     )
 
 
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-
-
-VIDEO_EXTS = {".mp4", ".mkv", ".avi", ".mov", ".flv", ".wmv"}
-IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
-
 
 def _day_dirs(download_root: Path) -> List[Path]:
     if not download_root.exists():
@@ -542,6 +687,7 @@ def _day_dirs(download_root: Path) -> List[Path]:
         reverse=True,
     )
     return dirs
+
 
 
 def _list_day_items(day_dir: Path) -> List[dict]:
@@ -562,6 +708,7 @@ def _list_day_items(day_dir: Path) -> List[dict]:
     return items
 
 
+
 def _format_duration(seconds: float) -> str:
     total_seconds = max(0, int(round(seconds)))
     hours, remainder = divmod(total_seconds, 3600)
@@ -569,6 +716,7 @@ def _format_duration(seconds: float) -> str:
     if hours > 0:
         return f"{hours:02d}:{minutes:02d}:{secs:02d}"
     return f"{minutes:02d}:{secs:02d}"
+
 
 
 def _probe_video_duration(video_path: Path) -> Optional[str]:
@@ -606,6 +754,7 @@ def _probe_video_duration(video_path: Path) -> Optional[str]:
         return None
 
 
+
 def _build_poster_item(date: str, item: dict) -> dict:
     thumb_name = item.get("thumb")
     video_name = item.get("video")
@@ -622,6 +771,7 @@ def _build_poster_item(date: str, item: dict) -> dict:
     }
 
 
+
 def _collect_poster_items(download_root: Path, date: str = "") -> List[dict]:
     dates = [date] if date else [d.name for d in _day_dirs(download_root)]
     items: List[dict] = []
@@ -634,6 +784,7 @@ def _collect_poster_items(download_root: Path, date: str = "") -> List[dict]:
 
     items.sort(key=lambda x: (x["date"], x["stem"]), reverse=True)
     return items
+
 
 
 def _list_poster_days(download_root: Path) -> List[dict]:
@@ -749,7 +900,6 @@ async def api_replace_cover(date: str, stem: str, file: UploadFile = File(...)):
     suffix = Path(file.filename or "cover.jpg").suffix.lower() or ".jpg"
     if suffix not in IMAGE_EXTS:
         return JSONResponse({"ok": False, "error": "不支持的图片格式"}, status_code=400)
-    # Remove old thumb files for this stem
     for p in list(day_dir.glob(f"{stem}.*")):
         if p.suffix.lower() in IMAGE_EXTS:
             p.unlink(missing_ok=True)
