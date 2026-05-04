@@ -48,11 +48,11 @@ ALLOWED_SORTS = {"time", "favorite", "pv"}
 ALLOWED_RANGES = {"daily", "weekly", "monthly", "all"}
 
 DEFAULT_CONFIG: Dict[str, object] = {
-    "download_root": "/data/downloads" if os.name != "nt" else str(APP_DIR / "downloads"),
+    "download_root": "/data/downloads",
     "proxy": "",
     "schedule_time": "03:00",
-    "max_daily_downloads": 20,
-    "sort": "favorite",
+    "max_daily_downloads": 30,
+    "sort": "pv",
     "range": "daily",
     "min_time": TIME_FILTER_MIN,
     "max_time": TIME_FILTER_MAX,
@@ -100,7 +100,7 @@ def validate_config(raw: Dict[str, object]) -> Dict[str, object]:
     proxy = str(cfg.get("proxy", "")).strip()
     cfg["proxy"] = proxy
 
-    sort = str(cfg.get("sort", "favorite")).strip()
+    sort = str(cfg.get("sort", "pv")).strip()
     if sort not in ALLOWED_SORTS:
         raise ValueError("排序方式必须是 time、favorite 或 pv")
     cfg["sort"] = sort
@@ -136,6 +136,13 @@ def validate_config(raw: Dict[str, object]) -> Dict[str, object]:
     tag_code = str(cfg.get("tag_code", "")).strip()
     cfg["tag_code"] = tag_code
     return cfg
+
+
+def resolve_download_root(download_root: object) -> Path:
+    root = Path(str(download_root)).expanduser()
+    if not root.is_absolute():
+        root = APP_DIR / root
+    return root.resolve()
 
 
 def load_config() -> Dict[str, object]:
@@ -295,7 +302,7 @@ def run_download_job() -> None:
 
     try:
         cfg = get_current_config()
-        download_root = Path(str(cfg["download_root"])).expanduser().resolve()
+        download_root = resolve_download_root(cfg["download_root"])
         download_root.mkdir(parents=True, exist_ok=True)
         day_dir = download_root / datetime.now().strftime("%Y%m%d")
         day_dir.mkdir(parents=True, exist_ok=True)
@@ -641,7 +648,7 @@ def _list_poster_days(download_root: Path) -> List[dict]:
 @app.get("/api/poster-days")
 def api_poster_days():
     cfg = get_current_config()
-    root = Path(str(cfg["download_root"])).expanduser().resolve()
+    root = resolve_download_root(cfg["download_root"])
     return JSONResponse({"days": _list_poster_days(root)})
 
 
@@ -650,7 +657,7 @@ def api_poster_all(date: str = ""):
     if date and (not date.isdigit() or len(date) != 8):
         return JSONResponse({"ok": False, "error": "无效日期"}, status_code=400)
     cfg = get_current_config()
-    root = Path(str(cfg["download_root"])).expanduser().resolve()
+    root = resolve_download_root(cfg["download_root"])
     items = _collect_poster_items(root, date=date)
     return JSONResponse({"ok": True, "date": date or None, "days": _list_poster_days(root), "items": items})
 
@@ -660,7 +667,7 @@ def api_poster_date(date: str):
     if not date.isdigit() or len(date) != 8:
         return JSONResponse({"ok": False, "error": "无效日期"}, status_code=400)
     cfg = get_current_config()
-    root = Path(str(cfg["download_root"])).expanduser().resolve()
+    root = resolve_download_root(cfg["download_root"])
     items = _collect_poster_items(root, date=date)
     return JSONResponse({"ok": True, "date": date, "items": items})
 
@@ -670,7 +677,7 @@ def api_thumb(date: str, filename: str):
     if not date.isdigit() or len(date) != 8:
         return JSONResponse({"error": "无效日期"}, status_code=400)
     cfg = get_current_config()
-    root = Path(str(cfg["download_root"])).expanduser().resolve()
+    root = resolve_download_root(cfg["download_root"])
     path = root / date / filename
     if not path.exists() or not path.is_file():
         return JSONResponse({"error": "文件不存在"}, status_code=404)
@@ -685,7 +692,7 @@ def api_video(date: str, filename: str):
     if not date.isdigit() or len(date) != 8:
         return JSONResponse({"error": "无效日期"}, status_code=400)
     cfg = get_current_config()
-    root = Path(str(cfg["download_root"])).expanduser().resolve()
+    root = resolve_download_root(cfg["download_root"])
     path = root / date / filename
     if not path.exists() or not path.is_file():
         return JSONResponse({"error": "文件不存在"}, status_code=404)
@@ -702,7 +709,7 @@ def api_delete_item(date: str, stem: str):
     if not date.isdigit() or len(date) != 8:
         return JSONResponse({"ok": False, "error": "无效日期"}, status_code=400)
     cfg = get_current_config()
-    root = Path(str(cfg["download_root"])).expanduser().resolve()
+    root = resolve_download_root(cfg["download_root"])
     day_dir = root / date
     deleted = []
     for p in list(day_dir.glob(f"{stem}.*")):
@@ -719,7 +726,7 @@ async def api_batch_delete(date: str, request: Request):
     body = await request.json()
     stems: List[str] = body.get("stems", [])
     cfg = get_current_config()
-    root = Path(str(cfg["download_root"])).expanduser().resolve()
+    root = resolve_download_root(cfg["download_root"])
     day_dir = root / date
     deleted = []
     for stem in stems:
@@ -735,7 +742,7 @@ async def api_replace_cover(date: str, stem: str, file: UploadFile = File(...)):
     if not date.isdigit() or len(date) != 8:
         return JSONResponse({"ok": False, "error": "无效日期"}, status_code=400)
     cfg = get_current_config()
-    root = Path(str(cfg["download_root"])).expanduser().resolve()
+    root = resolve_download_root(cfg["download_root"])
     day_dir = root / date
     if not day_dir.exists():
         return JSONResponse({"ok": False, "error": "日期目录不存在"}, status_code=404)
