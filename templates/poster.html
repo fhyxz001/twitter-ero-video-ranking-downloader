@@ -539,10 +539,11 @@
       <div class="control">
         <label for="pageSizeSelect">每页数量</label>
         <select id="pageSizeSelect" onchange="changePageSize()">
-          <option value="12">12</option>
-          <option value="24" selected>24</option>
-          <option value="48">48</option>
-          <option value="96">96</option>
+          <option value="10" selected>10</option>
+          <option value="15">15</option>
+          <option value="20">20</option>
+          <option value="25">25</option>
+          <option value="30">30</option>
         </select>
       </div>
       <div class="spacer"></div>
@@ -652,7 +653,7 @@
     }
 
     function getPageSize() {
-      return Number(document.getElementById('pageSizeSelect').value) || 24;
+      return Number(document.getElementById('pageSizeSelect').value) || 10;
     }
 
     function getTotalPages() {

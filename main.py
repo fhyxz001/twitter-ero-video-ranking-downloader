@@ -501,7 +501,7 @@ def status():
 
 
 @app.get("/api/tags")
-def api_tags(page: int = 1, per_page: int = 12):
+def api_tags(page: int = 1, per_page: int = 10):
     safe_per_page = max(1, min(per_page, 30))
     tags = _load_tags_static()
 
