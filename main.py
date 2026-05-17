@@ -38,7 +38,7 @@ def get_exe_dir() -> Path:
 APP_DIR = get_exe_dir()
 CONFIG_PATH = APP_DIR / "config.json"
 TEMPLATES_PATH = get_resource_path("templates")
-MEDIA_API_URL = "https://twitter-ero-video-ranking.com/api/media"
+MEDIA_API_URL = "https://truvaze.com/api/"
 REQUEST_TIMEOUT = 30
 TIME_FILTER_MIN = 0
 TIME_FILTER_MAX = 10800
