@@ -332,7 +332,14 @@ def run_download_job() -> None:
             proxies=proxies,
         )
         resp.raise_for_status()
-        payload = resp.json()
+        raw_text = resp.text.strip()
+        if not raw_text:
+            raise ValueError(f"API 返回空响应（HTTP {resp.status_code}），请检查接口或代理设置")
+        try:
+            payload = resp.json()
+        except json.JSONDecodeError as exc:
+            preview = raw_text[:200]
+            raise ValueError(f"API 返回非 JSON 内容（{exc}）：{preview}") from exc
         items = payload.get("items", [])
         if not isinstance(items, list):
             raise ValueError("API 返回的 items 不是数组")
