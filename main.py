@@ -14,6 +14,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 
@@ -39,12 +40,14 @@ def get_exe_dir() -> Path:
 APP_DIR = get_exe_dir()
 CONFIG_PATH = APP_DIR / "config.json"
 TEMPLATES_PATH = get_resource_path("templates")
+STATIC_PATH = get_resource_path("static")
 MEDIA_API_URL = "https://truvaze.com/api/media"
 REQUEST_TIMEOUT = 30
 TIME_FILTER_MIN = 0
-TIME_FILTER_MAX = 180  # 180 minutes = 3 hours
-ALLOWED_SORTS = {"time", "favorite", "pv"}
+TIME_FILTER_MAX = 24 * 60 * 60
+ALLOWED_SORTS = {"time", "favorite", "pv", "created"}
 ALLOWED_RANGES = {"daily", "weekly", "monthly", "all"}
+UNTAGGED_FOLDER_NAME = "无标签"
 
 DEFAULT_CONFIG: Dict[str, object] = {
     "download_root": "/vol1/1000/AdultMedia/tw",
@@ -55,10 +58,12 @@ DEFAULT_CONFIG: Dict[str, object] = {
     "range": "daily",
     "min_time": TIME_FILTER_MIN,
     "max_time": TIME_FILTER_MAX,
+    "time_filter_unit": "seconds",
     "tag_codes": [],
 }
 
 app = FastAPI(title="twitter-ero-video-ranking-downloader")
+app.mount("/static", StaticFiles(directory=str(STATIC_PATH)), name="static")
 templates = Jinja2Templates(directory=str(TEMPLATES_PATH))
 scheduler = BackgroundScheduler(timezone="Asia/Shanghai")
 
@@ -101,7 +106,7 @@ def validate_config(raw: Dict[str, object]) -> Dict[str, object]:
 
     sort = str(cfg.get("sort", "pv")).strip()
     if sort not in ALLOWED_SORTS:
-        raise ValueError("排序方式必须是 time、favorite 或 pv")
+        raise ValueError("排序方式必须是 time、favorite、pv 或 created")
     cfg["sort"] = sort
 
     range_value = str(cfg.get("range", "daily")).strip()
@@ -118,19 +123,20 @@ def validate_config(raw: Dict[str, object]) -> Dict[str, object]:
 
     max_daily = int(cfg.get("max_daily_downloads", 0))
     if max_daily <= 0:
-        raise ValueError("每日最大下载数量必须大于0")
+        raise ValueError("每类视频下载数必须大于0")
     cfg["max_daily_downloads"] = max_daily
 
     min_time = int(cfg.get("min_time", TIME_FILTER_MIN))
     max_time = int(cfg.get("max_time", TIME_FILTER_MAX))
     if min_time < TIME_FILTER_MIN or min_time > TIME_FILTER_MAX:
-        raise ValueError(f"最小时长必须在 {TIME_FILTER_MIN} 到 {TIME_FILTER_MAX} 分钟之间")
+        raise ValueError(f"最小时长必须在 {TIME_FILTER_MIN} 到 {TIME_FILTER_MAX} 秒之间")
     if max_time < TIME_FILTER_MIN or max_time > TIME_FILTER_MAX:
-        raise ValueError(f"最大时长必须在 {TIME_FILTER_MIN} 到 {TIME_FILTER_MAX} 分钟之间")
+        raise ValueError(f"最大时长必须在 {TIME_FILTER_MIN} 到 {TIME_FILTER_MAX} 秒之间")
     if min_time > max_time:
         raise ValueError("最小时长不能大于最大时长")
     cfg["min_time"] = min_time
     cfg["max_time"] = max_time
+    cfg["time_filter_unit"] = "seconds"
 
     tag_codes = cfg.get("tag_codes", [])
     if isinstance(tag_codes, str):
@@ -166,11 +172,12 @@ def load_config() -> Dict[str, object]:
     try:
         with CONFIG_PATH.open("r", encoding="utf-8") as f:
             raw = json.load(f)
-        # backward compatibility: convert old seconds-based duration to minutes
-        if "min_time" in raw and int(raw["min_time"]) > TIME_FILTER_MAX:
-            raw["min_time"] = int(raw["min_time"]) // 60
-        if "max_time" in raw and int(raw["max_time"]) > TIME_FILTER_MAX:
-            raw["max_time"] = int(raw["max_time"]) // 60
+        # backward compatibility: old configs stored duration in minutes.
+        if raw.get("time_filter_unit") != "seconds" and 0 < int(raw.get("min_time", 0)) <= 180:
+            raw["min_time"] = int(raw["min_time"]) * 60
+        if raw.get("time_filter_unit") != "seconds" and 0 < int(raw.get("max_time", 0)) <= 180:
+            raw["max_time"] = int(raw["max_time"]) * 60
+        raw["time_filter_unit"] = "seconds"
         # backward compatibility: convert old tag_code string to tag_codes list
         if "tag_code" in raw and "tag_codes" not in raw:
             old_tag = str(raw["tag_code"]).strip()
@@ -228,9 +235,13 @@ def build_media_request_params(cfg: Dict[str, object], tag_code: str = "") -> Di
         "ids": "",
         "isAnimeOnly": 0,
         "sort": str(cfg["sort"]),
-        "min_time": int(cfg["min_time"]) * 60,
-        "max_time": int(cfg["max_time"]) * 60,
     }
+    min_time = int(cfg["min_time"])
+    max_time = int(cfg["max_time"])
+    if min_time > TIME_FILTER_MIN:
+        params["min_time"] = min_time
+    if max_time < TIME_FILTER_MAX:
+        params["max_time"] = max_time
     tc = str(tag_code).strip()
     if tc:
         params["category"] = tc
@@ -287,14 +298,25 @@ def get_tag_name(tag_code: str) -> str:
 
 
 def resolve_target_dir(cfg: Dict[str, object], download_root: Path, tag_code: str = "") -> Path:
-    """根据是否选中标签，决定视频落地的目标文件夹（根目录或标签子文件夹）。"""
+    """根据分类决定视频落地的目标文件夹（无标签或标签子文件夹）。"""
     tc = str(tag_code).strip()
     if not tc:
-        return download_root
+        return download_root / UNTAGGED_FOLDER_NAME
     folder = sanitize_folder_name(get_tag_name(tc)) or sanitize_folder_name(tc)
     if not folder:
         return download_root
     return download_root / folder
+
+
+def build_download_categories(cfg: Dict[str, object]) -> List[Dict[str, str]]:
+    """构建本次任务要下载的分类。无标签分类固定排在第一位。"""
+    categories = [{"tag_code": "", "name": UNTAGGED_FOLDER_NAME}]
+    for tag_code in cfg.get("tag_codes", []):
+        code = str(tag_code).strip()
+        if not code:
+            continue
+        categories.append({"tag_code": code, "name": get_tag_name(code) or code})
+    return categories
 
 
 def download_binary(session: requests.Session, url: str, target_path: Path, proxies: Optional[Dict[str, str]]) -> bool:
@@ -384,7 +406,7 @@ def _download_items(session: requests.Session, items: list, target_dir: Path, ma
 
         if ok_video and ok_thumb:
             success_count += 1
-            append_log(f"下载完成：{video_path.name}")
+            append_log(f"下载完成：{target_dir.name}/{video_path.name}")
         else:
             fail_count += 1
 
@@ -407,9 +429,7 @@ def run_download_job() -> None:
         download_root = resolve_download_root(cfg["download_root"])
         download_root.mkdir(parents=True, exist_ok=True)
 
-        max_per_run = int(cfg["max_daily_downloads"])
-        tag_codes = list(cfg.get("tag_codes", []))
-
+        max_per_category = int(cfg["max_daily_downloads"])
         proxy = str(cfg["proxy"]).strip()
         proxies = build_proxies(proxy)
         session = requests.Session()
@@ -418,39 +438,40 @@ def run_download_job() -> None:
         total_skip = 0
         total_fail = 0
 
-        if not tag_codes:
-            # 无标签：下载到根目录
-            target_dir = resolve_target_dir(cfg, download_root)
+        categories = build_download_categories(cfg)
+        expected_total = len(categories) * max_per_category
+        category_names = "、".join(category["name"] for category in categories)
+        append_log(
+            f"本次计划下载 {len(categories)} 个分类：{category_names}；"
+            f"每类 {max_per_category} 个，理论最多 {expected_total} 个"
+        )
+
+        for category in categories:
+            tag_code = category["tag_code"]
+            category_name = category["name"]
+            target_dir = resolve_target_dir(cfg, download_root, tag_code=tag_code)
             target_dir.mkdir(parents=True, exist_ok=True)
+            tag_label = "无标签" if not tag_code else f"{category_name}({tag_code})"
             append_log(
                 f"当前筛选：range={cfg['range']} sort={cfg['sort']} "
-                f"time={cfg['min_time']}min-{cfg['max_time']}min "
-                f"tag=default 目录=(根目录)"
+                f"time={cfg['min_time']}s-{cfg['max_time']}s "
+                f"分类={tag_label} 目录={target_dir.name}"
             )
-            items = _fetch_media_items(session, cfg, "", proxies)
-            s, k, f = _download_items(session, items, target_dir, max_per_run, proxies)
+            try:
+                items = _fetch_media_items(session, cfg, tag_code, proxies)
+                s, k, f = _download_items(session, items, target_dir, max_per_category, proxies)
+            except Exception as exc:
+                s, k, f = 0, 0, 1
+                append_log(f"分类 [{category_name}] 失败：{exc}")
+            append_log(f"分类 [{category_name}] 完成：成功 {s}，跳过 {k}，失败 {f}")
             total_success += s
             total_skip += k
             total_fail += f
-        else:
-            # 多标签：每个标签独立下载 max_per_run 个视频
-            for tag_code in tag_codes:
-                target_dir = resolve_target_dir(cfg, download_root, tag_code=tag_code)
-                target_dir.mkdir(parents=True, exist_ok=True)
-                tag_name = get_tag_name(tag_code) or tag_code
-                append_log(
-                    f"当前筛选：range={cfg['range']} sort={cfg['sort']} "
-                    f"time={cfg['min_time']}min-{cfg['max_time']}min "
-                    f"tag={tag_name}({tag_code}) 目录={target_dir.name}"
-                )
-                items = _fetch_media_items(session, cfg, tag_code, proxies)
-                s, k, f = _download_items(session, items, target_dir, max_per_run, proxies)
-                append_log(f"标签 [{tag_name}] 完成：成功 {s}，跳过 {k}，失败 {f}")
-                total_success += s
-                total_skip += k
-                total_fail += f
 
-        result = f"任务完成：成功 {total_success}，跳过 {total_skip}，失败 {total_fail}"
+        result = (
+            f"任务完成：计划最多 {expected_total}，成功 {total_success}，"
+            f"跳过 {total_skip}，失败 {total_fail}"
+        )
         append_log(result)
         runtime_state["last_result"] = result
     except Exception as exc:
@@ -488,10 +509,17 @@ def index(request: Request):
             "config": cfg,
             "state": state,
             "logs": "\n".join(get_logs()),
-            "time_filter_min": TIME_FILTER_MIN,
-            "time_filter_max": TIME_FILTER_MAX,
+            "time_filter_options": [
+                {"label": "全部", "min": 0, "max": TIME_FILTER_MAX},
+                {"label": "0-5分钟", "min": 0, "max": 5 * 60},
+                {"label": "5-15分钟", "min": 5 * 60, "max": 15 * 60},
+                {"label": "15-30分钟", "min": 15 * 60, "max": 30 * 60},
+                {"label": "30分钟-1小时", "min": 30 * 60, "max": 60 * 60},
+                {"label": "一小时以上", "min": 60 * 60, "max": TIME_FILTER_MAX},
+            ],
             "tag_codes_json": json.dumps(cfg.get("tag_codes", []), ensure_ascii=False),
             "sort_options": [
+                {"value": "created", "label": "最近添加"},
                 {"value": "time", "label": "按时长"},
                 {"value": "favorite", "label": "按点赞"},
                 {"value": "pv", "label": "按观看数"},
@@ -535,12 +563,40 @@ async def save(request: Request):
             "max_time": max_time,
             "tag_codes": tag_codes,
         }
-        save_config(cfg)
-        update_schedule(get_current_config())
-        append_log("配置保存成功")
+        with config_lock:
+            save_config(cfg)
+            updated = load_config()
+        update_schedule(updated)
+        append_log("配置已保存")
         return JSONResponse({"ok": True})
     except Exception as exc:
         append_log(f"配置保存失败：{exc}")
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+
+
+@app.post("/save-quick")
+async def save_quick(request: Request):
+    try:
+        form = await request.form()
+        with config_lock:
+            cfg = load_config()
+
+            if "download_root" in form:
+                cfg["download_root"] = str(form.get("download_root", "")).strip()
+
+            if "tag_codes" in form:
+                tag_codes_raw = str(form.get("tag_codes", "[]")).strip()
+                try:
+                    cfg["tag_codes"] = json.loads(tag_codes_raw)
+                except json.JSONDecodeError:
+                    cfg["tag_codes"] = []
+
+            save_config(cfg)
+            updated = load_config()
+        append_log("下载根目录/标签筛选已自动保存")
+        return JSONResponse({"ok": True, "config": updated})
+    except Exception as exc:
+        append_log(f"自动保存下载根目录/标签筛选失败：{exc}")
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
 
 

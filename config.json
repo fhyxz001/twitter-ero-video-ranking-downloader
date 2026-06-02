@@ -1,11 +1,14 @@
 {
   "download_root": "D:\\videos",
-  "proxy": "",
+  "proxy": "http://127.0.0.1:7897",
   "schedule_time": "03:00",
-  "max_daily_downloads": 30,
+  "max_daily_downloads": 2,
   "sort": "pv",
   "range": "daily",
-  "min_time": 0,
-  "max_time": 1858,
-  "tag_code": ""
+  "min_time": 1,
+  "max_time": 3,
+  "tag_codes": [
+    "anime",
+    "nurse"
+  ]
 }

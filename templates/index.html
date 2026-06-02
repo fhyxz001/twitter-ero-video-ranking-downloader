@@ -46,6 +46,12 @@
     .settings-btn:hover {
       background: #f3f4f6;
     }
+    .settings-btn-icon {
+      width: 22px;
+      height: 22px;
+      display: block;
+      object-fit: contain;
+    }
     .field {
       display: flex;
       flex-direction: column;
@@ -316,6 +322,15 @@
       margin: 0;
       font-size: 18px;
       color: #111827;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .settings-title-icon {
+      width: 20px;
+      height: 20px;
+      display: block;
+      object-fit: contain;
     }
     .settings-close-btn {
       border: 1px solid #d1d5db;
@@ -364,6 +379,20 @@
     }
     .settings-save-btn:hover {
       opacity: 0.9;
+    }
+    .settings-cancel-btn {
+      background: #fff;
+      color: #374151;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      height: 36px;
+      padding: 0 16px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .settings-cancel-btn:hover {
+      background: #f3f4f6;
+      opacity: 1;
     }
     body.modal-open {
       overflow: hidden;
@@ -427,8 +456,10 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1>twitter-ero-video-ranking-downloader</h1>
-      <button class="settings-btn" onclick="openSettingsModal()" title="设置">⚙</button>
+      <h1>视频下载器</h1>
+      <button class="settings-btn" onclick="openSettingsModal()" title="设置">
+        <img class="settings-btn-icon" src="{{ url_for('static', path='set.png') }}" alt="" aria-hidden="true" />
+      </button>
     </div>
 
     <div class="field">
@@ -437,7 +468,7 @@
     </div>
 
     <div class="field">
-      <label>标签筛选（多选，每多选一个额外下载对应数量的视频）</label>
+      <label>标签筛选（多选，每个标签作为一个独立分类下载）</label>
       <div class="tag-picker">
         <input id="tag_codes_input" type="hidden" value='{{ tag_codes_json | safe }}' />
         <div class="tag-toolbar">
@@ -448,14 +479,14 @@
           </div>
         </div>
         <div id="tag_chips" class="tag-chips"></div>
-        <div class="tag-summary">点击"选择标签"后在弹窗中多选，每个标签独立下载 max_daily_downloads 个视频。</div>
+        <div class="tag-summary">无论是否选择标签，都会下载“无标签”分类；每个所选标签也会分别下载“每类视频下载数”指定数量的视频。</div>
       </div>
     </div>
 
     <div class="actions">
       <button type="button" class="secondary" onclick="runNow()">立即执行任务</button>
       <button type="button" class="secondary" onclick="refreshStatus()">刷新状态</button>
-      <button type="button" class="secondary" onclick="goToPoster()">查看海报墙</button>
+      <button type="button" class="secondary" onclick="goToPoster()">海报墙</button>
     </div>
 
     <div class="status">
@@ -472,7 +503,10 @@
   <div id="settings_modal" class="settings-modal" aria-hidden="true" onclick="handleSettingsBackdrop(event)">
     <div class="settings-modal-dialog" role="dialog" aria-modal="true">
       <div class="settings-modal-header">
-        <h2 class="settings-modal-title">⚙ 设置</h2>
+        <h2 class="settings-modal-title">
+          <img class="settings-title-icon" src="{{ url_for('static', path='set.png') }}" alt="" aria-hidden="true" />
+          <span>设置</span>
+        </h2>
         <button type="button" class="settings-close-btn" aria-label="关闭设置弹窗" onclick="closeSettingsModal()">&times;</button>
       </div>
       <div class="settings-modal-body">
@@ -488,7 +522,7 @@
           </div>
 
           <div class="settings-field">
-            <label for="settings_max_daily_downloads">每日最大下载数量</label>
+            <label for="settings_max_daily_downloads">每类视频下载数</label>
             <input id="settings_max_daily_downloads" name="max_daily_downloads" type="number" min="1" required value="{{ config.max_daily_downloads }}" />
           </div>
 
@@ -511,18 +545,17 @@
           </div>
 
           <div class="settings-field">
-            <label for="settings_min_time">最短时长（分钟）</label>
-            <input id="settings_min_time" name="min_time" type="number" min="{{ time_filter_min }}" max="{{ time_filter_max }}" required value="{{ config.min_time }}" />
-          </div>
-
-          <div class="settings-field">
-            <label for="settings_max_time">最长时长（分钟）</label>
-            <input id="settings_max_time" name="max_time" type="number" min="{{ time_filter_min }}" max="{{ time_filter_max }}" required value="{{ config.max_time }}" />
+            <label for="settings_time_filter">时间筛选</label>
+            <select id="settings_time_filter" name="time_filter" required>
+              {% for option in time_filter_options %}
+              <option value="{{ option.min }}-{{ option.max }}" data-min="{{ option.min }}" data-max="{{ option.max }}" {% if config.min_time == option.min and config.max_time == option.max %}selected{% endif %}>{{ option.label }}</option>
+              {% endfor %}
+            </select>
           </div>
         </div>
       </div>
       <div class="settings-modal-footer">
-        <button type="button" class="secondary settings-close-btn" onclick="closeSettingsModal()">取消</button>
+        <button type="button" class="settings-cancel-btn" onclick="closeSettingsModal()">取消</button>
         <button type="button" class="settings-save-btn" onclick="saveSettings()">保存设置</button>
       </div>
     </div>
@@ -567,8 +600,13 @@
     const tagNextBtn = document.getElementById('tag_next_btn');
     const tagError = document.getElementById('tag_error');
     const tagClearBtn = document.getElementById('tag_clear_btn');
+    const downloadRootInput = document.getElementById('download_root');
 
     let selectedTagCodes = JSON.parse(tagCodesInput.value || '[]');
+    let tagSelectionDirty = false;
+    let downloadRootDirty = false;
+    let quickSaveTimer = null;
+    let quickSaveChain = Promise.resolve();
     // Store tag metadata for display
     const tagMetaMap = {};  // code -> {code, name}
 
@@ -607,8 +645,10 @@
         removeBtn.textContent = '×';
         removeBtn.onclick = () => {
           selectedTagCodes = selectedTagCodes.filter(c => c !== code);
+          tagSelectionDirty = true;
           updateTagDisplay();
           renderTags();
+          queueQuickConfigSave();
         };
         chip.appendChild(label);
         chip.appendChild(removeBtn);
@@ -641,8 +681,10 @@
 
     function clearAllTags() {
       selectedTagCodes = [];
+      tagSelectionDirty = true;
       updateTagDisplay();
       renderTags();
+      queueQuickConfigSave();
     }
 
     function renderTagPagination() {
@@ -693,9 +735,11 @@
           } else {
             selectedTagCodes.push(tag.code);
           }
+          tagSelectionDirty = true;
           tagMetaMap[tag.code] = tag;
           updateTagDisplay();
           renderTags();
+          queueQuickConfigSave();
         });
 
         tagList.appendChild(button);
@@ -780,6 +824,24 @@
     // --- Settings Modal ---
     const settingsModal = document.getElementById('settings_modal');
 
+    function setTimeFilterValue(minTime, maxTime) {
+      const select = document.getElementById('settings_time_filter');
+      const value = `${parseInt(minTime || 0)}-${parseInt(maxTime || 0)}`;
+      if ([...select.options].some(option => option.value === value)) {
+        select.value = value;
+      } else {
+        select.value = '0-86400';
+      }
+    }
+
+    function getSelectedTimeFilter() {
+      const option = document.getElementById('settings_time_filter').selectedOptions[0];
+      return {
+        min: parseInt(option.dataset.min || '0'),
+        max: parseInt(option.dataset.max || '86400'),
+      };
+    }
+
     function openSettingsModal() {
       // Refresh values from current config
       const downloadRoot = document.getElementById('download_root').value;
@@ -788,8 +850,7 @@
       document.getElementById('settings_max_daily_downloads').value = currentConfig.max_daily_downloads || 30;
       document.getElementById('settings_sort').value = currentConfig.sort || 'pv';
       document.getElementById('settings_range').value = currentConfig.range || 'daily';
-      document.getElementById('settings_min_time').value = currentConfig.min_time || 0;
-      document.getElementById('settings_max_time').value = currentConfig.max_time || 180;
+      setTimeFilterValue(currentConfig.min_time || 0, currentConfig.max_time || 86400);
 
       settingsModal.classList.add('show');
       settingsModal.setAttribute('aria-hidden', 'false');
@@ -816,24 +877,27 @@
       formData.append('max_daily_downloads', document.getElementById('settings_max_daily_downloads').value);
       formData.append('sort', document.getElementById('settings_sort').value);
       formData.append('range', document.getElementById('settings_range').value);
-      formData.append('min_time', document.getElementById('settings_min_time').value);
-      formData.append('max_time', document.getElementById('settings_max_time').value);
+      const timeFilter = getSelectedTimeFilter();
+      formData.append('min_time', timeFilter.min);
+      formData.append('max_time', timeFilter.max);
       formData.append('tag_codes', JSON.stringify(selectedTagCodes));
 
       try {
         const resp = await fetch('/save', { method: 'POST', body: formData });
         const data = await resp.json();
         if (data.ok) {
-          alert('设置保存成功');
           // Update local config cache
           currentConfig.proxy = document.getElementById('settings_proxy').value;
           currentConfig.schedule_time = document.getElementById('settings_schedule_time').value;
           currentConfig.max_daily_downloads = parseInt(document.getElementById('settings_max_daily_downloads').value);
           currentConfig.sort = document.getElementById('settings_sort').value;
           currentConfig.range = document.getElementById('settings_range').value;
-          currentConfig.min_time = parseInt(document.getElementById('settings_min_time').value);
-          currentConfig.max_time = parseInt(document.getElementById('settings_max_time').value);
-          currentConfig.tag_codes = selectedTagCodes;
+          currentConfig.min_time = timeFilter.min;
+          currentConfig.max_time = timeFilter.max;
+          currentConfig.download_root = downloadRootInput.value;
+          currentConfig.tag_codes = [...selectedTagCodes];
+          downloadRootDirty = false;
+          tagSelectionDirty = false;
           closeSettingsModal();
           refreshStatus();
         } else {
@@ -857,8 +921,75 @@
       tag_codes: selectedTagCodes,
     };
 
+    function sameTagCodes(left, right) {
+      return JSON.stringify(left || []) === JSON.stringify(right || []);
+    }
+
+    async function saveQuickConfigNow() {
+      if (!downloadRootDirty && !tagSelectionDirty) {
+        return true;
+      }
+
+      const downloadRootSnapshot = downloadRootInput.value;
+      const tagCodesSnapshot = [...selectedTagCodes];
+      const formData = new FormData();
+      formData.append('download_root', downloadRootSnapshot);
+      formData.append('tag_codes', JSON.stringify(tagCodesSnapshot));
+
+      try {
+        const resp = await fetch('/save-quick', { method: 'POST', body: formData });
+        const data = await resp.json();
+        if (!data.ok) {
+          throw new Error(data.error || '自动保存失败');
+        }
+
+        if (data.config) {
+          currentConfig = data.config;
+        }
+        if (downloadRootInput.value === downloadRootSnapshot) {
+          downloadRootDirty = false;
+        }
+        if (sameTagCodes(selectedTagCodes, tagCodesSnapshot)) {
+          tagSelectionDirty = false;
+        }
+        return true;
+      } catch (error) {
+        console.error(error);
+        return false;
+      }
+    }
+
+    function queueQuickConfigSave(delay = 0) {
+      window.clearTimeout(quickSaveTimer);
+      quickSaveTimer = window.setTimeout(() => {
+        quickSaveChain = quickSaveChain.then(saveQuickConfigNow);
+      }, delay);
+    }
+
+    async function flushQuickConfigSave() {
+      window.clearTimeout(quickSaveTimer);
+      quickSaveChain = quickSaveChain.then(saveQuickConfigNow);
+      return quickSaveChain;
+    }
+
+    downloadRootInput.addEventListener('input', () => {
+      downloadRootDirty = true;
+      currentConfig.download_root = downloadRootInput.value;
+      queueQuickConfigSave(500);
+    });
+    downloadRootInput.addEventListener('change', () => {
+      downloadRootDirty = true;
+      currentConfig.download_root = downloadRootInput.value;
+      queueQuickConfigSave();
+    });
+
     // --- Status refresh ---
     async function runNow() {
+      const quickSaved = await flushQuickConfigSave();
+      if (!quickSaved) {
+        alert('下载根目录或标签筛选自动保存失败，请检查后重试');
+        return;
+      }
       const resp = await fetch('/run-now', { method: 'POST' });
       const data = await resp.json();
       if (!data.ok) {
@@ -881,10 +1012,12 @@
       // Update local config cache from server
       if (data.config) {
         currentConfig = data.config;
-        document.getElementById('download_root').value = currentConfig.download_root || '';
+        if (!downloadRootDirty) {
+          downloadRootInput.value = currentConfig.download_root || '';
+        }
         // Update tag selection if config changed
-        if (Array.isArray(currentConfig.tag_codes)) {
-          selectedTagCodes = currentConfig.tag_codes;
+        if (!tagSelectionDirty && Array.isArray(currentConfig.tag_codes)) {
+          selectedTagCodes = [...currentConfig.tag_codes];
           updateTagDisplay();
         }
       }
