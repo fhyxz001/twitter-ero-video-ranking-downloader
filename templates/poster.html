@@ -491,7 +491,7 @@
       }
     }
   </style>
-</head>
+  </head>
 <body>
   <div class="shell">
     <section class="hero">
@@ -580,7 +580,7 @@
         <button class="close-btn" type="button" onclick="closePreview()">&times;</button>
       </div>
       <div class="preview-wrap">
-        <video id="previewVideo" controls playsinline preload="metadata"></video>
+        <video id="previewVideo" controls preload="metadata"></video>
       </div>
     </div>
   </div>
@@ -891,23 +891,22 @@
     function openPreview(key) {
       const item = findItemByKey(key);
       if (!item) return;
-      const modal = document.getElementById('previewModal');
-      const video = document.getElementById('previewVideo');
       document.getElementById('previewTitle').textContent = item.video;
       document.getElementById('previewMeta').textContent =
         `${formatDateLabel(item.date)} · ${fmtSize(item.size)} · 时长 ${durationLabel(item)}`;
+      const video = document.getElementById('previewVideo');
+      video.poster = item.thumb_url || item.thumbnail_url || '';
       video.src = item.video_url;
-      modal.classList.add('open');
       video.play().catch(() => {});
+      document.getElementById('previewModal').classList.add('open');
     }
 
     function closePreview() {
-      const modal = document.getElementById('previewModal');
       const video = document.getElementById('previewVideo');
       video.pause();
-      video.removeAttribute('src');
-      video.load();
-      modal.classList.remove('open');
+      video.src = '';
+      video.poster = '';
+      document.getElementById('previewModal').classList.remove('open');
     }
 
     function closePreviewOnMask(event) {

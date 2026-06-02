@@ -487,6 +487,7 @@
       <button type="button" class="secondary" onclick="runNow()">立即执行任务</button>
       <button type="button" class="secondary" onclick="refreshStatus()">刷新状态</button>
       <button type="button" class="secondary" onclick="goToPoster()">海报墙</button>
+      <button type="button" class="secondary" onclick="goToWaterfall()">瀑布流</button>
     </div>
 
     <div class="status">
@@ -1027,6 +1028,15 @@
 
     function goToPoster() {
       window.location.href = '/poster';
+    }
+
+    async function goToWaterfall() {
+      const quickSaved = await flushQuickConfigSave();
+      if (!quickSaved) {
+        alert('当前配置自动保存失败，请检查后重试');
+        return;
+      }
+      window.location.href = '/waterfall';
     }
   </script>
 </body>

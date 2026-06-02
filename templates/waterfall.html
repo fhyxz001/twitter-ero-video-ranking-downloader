@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>瀑布流预览</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    :root {
+      color-scheme: light;
+      --bg: #f4f1ea;
+      --ink: #191c1b;
+      --muted: #6b6f6a;
+      --panel: rgba(255, 255, 255, 0.88);
+      --line: rgba(38, 42, 39, 0.12);
+      --accent: #0f766e;
+      --accent-dark: #115e59;
+      --danger: #b91c1c;
+      --shadow: 0 18px 42px rgba(31, 28, 23, 0.14);
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(25, 28, 27, 0.05) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(25, 28, 27, 0.04) 1px, transparent 1px),
+        var(--bg);
+      background-size: 42px 42px;
+    }
+    button {
+      font: inherit;
+    }
+    .shell {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 22px 0 48px;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 18px;
+      margin-bottom: 16px;
+    }
+    .back {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 14px;
+    }
+    h1 {
+      margin: 8px 0 0;
+      font-size: clamp(26px, 4vw, 42px);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+    .config-line {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .btn {
+      height: 40px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      padding: 0 14px;
+      cursor: pointer;
+      background: #fff;
+      color: var(--ink);
+      font-weight: 700;
+    }
+    .btn:hover {
+      border-color: rgba(15, 118, 110, 0.45);
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    .btn-primary:hover {
+      background: var(--accent-dark);
+    }
+    .btn:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+    .dock {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      padding: 12px 0 14px;
+      background: linear-gradient(180deg, rgba(244, 241, 234, 0.98), rgba(244, 241, 234, 0.82));
+      backdrop-filter: blur(12px);
+    }
+    .tabs {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+    .tab {
+      height: 38px;
+      white-space: nowrap;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.72);
+      color: var(--muted);
+      padding: 0 14px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .tab.active {
+      color: #fff;
+      background: #191c1b;
+      border-color: #191c1b;
+    }
+    .status {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      margin: 12px 0 18px;
+      color: var(--muted);
+      font-size: 14px;
+      flex-wrap: wrap;
+    }
+    .status strong {
+      color: var(--ink);
+    }
+    .masonry {
+      width: min(980px, 100%);
+      margin: 0 auto;
+      column-count: 3;
+      column-gap: 18px;
+    }
+    .card {
+      display: inline-block;
+      width: 100%;
+      break-inside: avoid;
+      margin: 0 0 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      transition: transform .16s ease, border-color .16s ease;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(15, 118, 110, 0.38);
+    }
+    .card.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.16), var(--shadow);
+    }
+    .poster {
+      position: relative;
+      min-height: 190px;
+      background: #242825;
+      cursor: pointer;
+    }
+    .poster img {
+      display: block;
+      width: 100%;
+      height: auto;
+      min-height: 190px;
+      object-fit: cover;
+    }
+    .fallback {
+      min-height: 260px;
+      display: grid;
+      place-items: center;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 36px;
+      font-weight: 800;
+    }
+    .select {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      width: 22px;
+      height: 22px;
+      accent-color: var(--accent);
+      z-index: 2;
+      cursor: pointer;
+    }
+    .play {
+      position: absolute;
+      right: 10px;
+      bottom: 10px;
+      width: 42px;
+      height: 42px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      background: rgba(0, 0, 0, 0.54);
+      display: grid;
+      place-items: center;
+    }
+    .play::before {
+      content: "";
+      width: 0;
+      height: 0;
+      border-top: 9px solid transparent;
+      border-bottom: 9px solid transparent;
+      border-left: 14px solid #fff;
+      margin-left: 3px;
+    }
+    .body {
+      padding: 12px;
+    }
+    .title {
+      margin: 0 0 9px;
+      font-size: 13px;
+      line-height: 1.45;
+      word-break: break-word;
+      font-weight: 800;
+    }
+    .meta {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .pill {
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(25, 28, 27, 0.06);
+    }
+    .empty {
+      display: none;
+      width: min(720px, 100%);
+      margin: 42px auto 0;
+      padding: 46px 20px;
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      text-align: center;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.58);
+    }
+    .modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(8, 10, 9, 0.76);
+      z-index: 100;
+    }
+    .modal.open {
+      display: flex;
+    }
+    .player {
+      width: min(1020px, 100%);
+      background: #0d0f0e;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+    }
+    .player-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      color: #fff;
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .player-title {
+      font-weight: 800;
+      font-size: 14px;
+      word-break: break-word;
+    }
+    .close {
+      min-width: 38px;
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      cursor: pointer;
+      font-size: 22px;
+    }
+    video {
+      width: 100%;
+      max-height: 78vh;
+      display: block;
+      background: #000;
+    }
+    @media (max-width: 920px) {
+      .masonry { column-count: 2; }
+      .topbar { align-items: flex-start; flex-direction: column; }
+      .actions { justify-content: flex-start; }
+    }
+    @media (max-width: 620px) {
+      .shell { width: min(100% - 20px, 1180px); padding-top: 14px; }
+      .masonry { column-count: 1; }
+      .actions .btn { flex: 1; min-width: 128px; }
+      .status { align-items: flex-start; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <a class="back" href="/">&larr; 返回首页</a>
+        <h1>瀑布流</h1>
+        <div id="configLine" class="config-line"></div>
+      </div>
+      <div class="actions">
+        <button class="btn" type="button" onclick="reloadData()">刷新</button>
+        <button class="btn" type="button" id="selectAllBtn" onclick="toggleSelectAll()">全选当前页</button>
+        <button class="btn btn-primary" type="button" id="downloadBtn" onclick="downloadSelected()" disabled>下载选中</button>
+      </div>
+    </header>
+
+    <section class="dock">
+      <nav id="tabs" class="tabs" aria-label="标签"></nav>
+      <div class="status">
+        <div id="statusText">正在加载...</div>
+        <div>已选 <strong id="selectedCount">0</strong> 个</div>
+      </div>
+    </section>
+
+    <section id="masonry" class="masonry"></section>
+    <div id="empty" class="empty">当前配置下没有可预览的视频。</div>
+  </main>
+
+  <div id="previewModal" class="modal" onclick="closePreviewOnMask(event)">
+    <div class="player">
+      <div class="player-head">
+        <div id="previewTitle" class="player-title">视频预览</div>
+        <button class="close" type="button" onclick="closePreview()">&times;</button>
+      </div>
+      <div class="preview-wrap">
+        <video id="previewVideo" controls preload="metadata"></video>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const initialTabs = {{ tabs | tojson }};
+    const initialConfig = {{ config | tojson }};
+    let tabs = initialTabs;
+    let currentTag = new URLSearchParams(location.search).get('tag') || '';
+    let items = [];
+    let selectedIds = new Set();
+    let loading = false;
+
+    function renderConfigLine(cfg) {
+      if (!cfg) return;
+      document.getElementById('configLine').textContent =
+        `排序 ${cfg.sort || '-'} / 范围 ${cfg.range || '-'} / 时长 ${cfg.min_time || 0}-${cfg.max_time || 0} 秒 / 数量 ${cfg.max_daily_downloads || '-'}`;
+    }
+    renderConfigLine(initialConfig);
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    function jsString(value) {
+      return String(value || '')
+        .replaceAll('\\', '\\\\')
+        .replaceAll("'", "\\'")
+        .replaceAll('\n', '\\n')
+        .replaceAll('\r', '\\r');
+    }
+
+    function itemById(id) {
+      return items.find(item => item.id === id) || null;
+    }
+
+    function tabName(code) {
+      const tab = tabs.find(item => item.code === code);
+      return tab ? tab.name : '全部';
+    }
+
+    function renderTabs() {
+      const box = document.getElementById('tabs');
+      box.innerHTML = tabs.map(tab => `
+        <button
+          type="button"
+          class="tab${tab.code === currentTag ? ' active' : ''}"
+          onclick="switchTab('${jsString(tab.code)}')"
+        >${escapeHtml(tab.name)}</button>
+      `).join('');
+    }
+
+    function renderStatus() {
+      const status = document.getElementById('statusText');
+      const selectedCount = document.getElementById('selectedCount');
+      const selectAllBtn = document.getElementById('selectAllBtn');
+      const downloadBtn = document.getElementById('downloadBtn');
+      selectedCount.textContent = String(selectedIds.size);
+      downloadBtn.disabled = selectedIds.size === 0 || loading;
+      selectAllBtn.disabled = items.length === 0 || loading;
+      selectAllBtn.textContent = items.length && items.every(item => selectedIds.has(item.id))
+        ? '取消全选'
+        : '全选当前页';
+      status.innerHTML = loading
+        ? `正在加载 <strong>${escapeHtml(tabName(currentTag))}</strong> ...`
+        : `<strong>${escapeHtml(tabName(currentTag))}</strong> 共 ${items.length} 个视频`;
+    }
+
+    function renderCards() {
+      const masonry = document.getElementById('masonry');
+      const empty = document.getElementById('empty');
+      if (!items.length) {
+        masonry.innerHTML = '';
+        empty.style.display = loading ? 'none' : 'block';
+        renderStatus();
+        return;
+      }
+      empty.style.display = 'none';
+      masonry.innerHTML = items.map(item => {
+        const selected = selectedIds.has(item.id);
+        const thumb = item.thumbnail
+          ? `<img src="${escapeHtml(item.thumbnail)}" alt="${escapeHtml(item.title)}" loading="lazy" />`
+          : `<div class="fallback">VIDEO</div>`;
+        const duration = item.duration ? `<span class="pill">${escapeHtml(item.duration)} 秒</span>` : '';
+        const pv = item.pv ? `<span class="pill">播放 ${escapeHtml(item.pv)}</span>` : '';
+        const favorite = item.favorite ? `<span class="pill">收藏 ${escapeHtml(item.favorite)}</span>` : '';
+        return `
+          <article class="card${selected ? ' selected' : ''}">
+            <div class="poster" onclick="openPreview('${jsString(item.id)}')">
+              <input
+                class="select"
+                type="checkbox"
+                ${selected ? 'checked' : ''}
+                onclick="event.stopPropagation()"
+                onchange="toggleSelect('${jsString(item.id)}')"
+                aria-label="选择视频"
+              />
+              ${thumb}
+              <div class="play" aria-hidden="true"></div>
+            </div>
+            <div class="body">
+              <p class="title">${escapeHtml(item.title || item.id)}</p>
+              <div class="meta">
+                <span class="pill">${escapeHtml(item.id)}</span>
+                ${duration}${pv}${favorite}
+              </div>
+            </div>
+          </article>
+        `;
+      }).join('');
+      renderStatus();
+    }
+
+    async function loadData() {
+      loading = true;
+      selectedIds.clear();
+      renderTabs();
+      renderCards();
+      try {
+        const query = currentTag ? `?tag=${encodeURIComponent(currentTag)}` : '';
+        const resp = await fetch(`/api/waterfall${query}`);
+        const data = await resp.json();
+        if (!data.ok) {
+          throw new Error(data.error || '加载失败');
+        }
+        tabs = Array.isArray(data.tabs) ? data.tabs : tabs;
+        items = Array.isArray(data.items) ? data.items : [];
+        renderConfigLine(data.config || {});
+      } catch (error) {
+        items = [];
+        document.getElementById('statusText').textContent = error.message || '加载失败';
+        renderConfigLine(initialConfig);
+      } finally {
+        loading = false;
+        renderTabs();
+        renderCards();
+      }
+    }
+
+    function switchTab(code) {
+      if (code === currentTag || loading) return;
+      currentTag = code;
+      const nextUrl = code ? `/waterfall?tag=${encodeURIComponent(code)}` : '/waterfall';
+      history.replaceState(null, '', nextUrl);
+      loadData();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function reloadData() {
+      if (loading) return;
+      loadData();
+    }
+
+    function toggleSelect(id) {
+      if (selectedIds.has(id)) {
+        selectedIds.delete(id);
+      } else {
+        selectedIds.add(id);
+      }
+      renderCards();
+    }
+
+    function toggleSelectAll() {
+      if (!items.length) return;
+      const allSelected = items.every(item => selectedIds.has(item.id));
+      if (allSelected) {
+        items.forEach(item => selectedIds.delete(item.id));
+      } else {
+        items.forEach(item => selectedIds.add(item.id));
+      }
+      renderCards();
+    }
+
+    function openPreview(id) {
+      const item = itemById(id);
+      if (!item) return;
+      const previewUrl = item.preview_url || item.url;
+      if (!previewUrl) return;
+      document.getElementById('previewTitle').textContent = item.title || item.id;
+      const video = document.getElementById('previewVideo');
+      video.poster = item.thumbnail || '';
+      video.src = previewUrl;
+      video.play().catch(() => {});
+      document.getElementById('previewModal').classList.add('open');
+    }
+
+    function closePreview() {
+      const video = document.getElementById('previewVideo');
+      video.pause();
+      video.src = '';
+      video.poster = '';
+      document.getElementById('previewModal').classList.remove('open');
+    }
+
+    function closePreviewOnMask(event) {
+      if (event.target.id === 'previewModal') {
+        closePreview();
+      }
+    }
+
+    async function downloadSelected() {
+      const selectedItems = items.filter(item => selectedIds.has(item.id));
+      if (!selectedItems.length || loading) return;
+      const downloadBtn = document.getElementById('downloadBtn');
+      downloadBtn.disabled = true;
+      downloadBtn.textContent = '下载中...';
+      try {
+        const resp = await fetch('/api/waterfall/download', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tag_code: currentTag, items: selectedItems }),
+        });
+        const data = await resp.json();
+        if (!data.ok) {
+          throw new Error(data.error || '下载失败');
+        }
+        alert(`下载完成：成功 ${data.success}，跳过 ${data.skipped}，失败 ${data.failed}`);
+        selectedIds.clear();
+        renderCards();
+      } catch (error) {
+        alert(error.message || '下载失败');
+      } finally {
+        downloadBtn.textContent = '下载选中';
+        renderStatus();
+      }
+    }
+
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') {
+        closePreview();
+      }
+    });
+
+    if (!tabs.some(tab => tab.code === currentTag)) {
+      currentTag = '';
+    }
+    renderTabs();
+    loadData();
+  </script>
+</body>
+</html>

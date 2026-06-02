@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Dict, List, Optional
 from urllib.parse import quote, urlparse
 
+from contextlib import asynccontextmanager
+
 import requests
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -62,7 +64,22 @@ DEFAULT_CONFIG: Dict[str, object] = {
     "tag_codes": [],
 }
 
-app = FastAPI(title="twitter-ero-video-ranking-downloader")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # startup
+    cfg = get_current_config()
+    if not scheduler.running:
+        scheduler.start()
+    update_schedule(cfg)
+    append_log("服务启动完成")
+    yield
+    # shutdown
+    if scheduler.running:
+        scheduler.shutdown(wait=False)
+    append_log("服务已停止")
+
+
+app = FastAPI(title="twitter-ero-video-ranking-downloader", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=str(STATIC_PATH)), name="static")
 templates = Jinja2Templates(directory=str(TEMPLATES_PATH))
 scheduler = BackgroundScheduler(timezone="Asia/Shanghai")
@@ -228,10 +245,10 @@ def build_proxies(proxy: str) -> Optional[Dict[str, str]]:
     return {"http": proxy, "https": proxy}
 
 
-def build_media_request_params(cfg: Dict[str, object], tag_code: str = "") -> Dict[str, object]:
+def build_media_request_params(cfg: Dict[str, object], tag_code: str = "", per_page: int = 30) -> Dict[str, object]:
     params: Dict[str, object] = {
         "page": 1,
-        "per_page": 30,
+        "per_page": per_page,
         "ids": "",
         "isAnimeOnly": 0,
         "sort": str(cfg["sort"]),
@@ -413,6 +430,48 @@ def _download_items(session: requests.Session, items: list, target_dir: Path, ma
     return success_count, skip_count, fail_count
 
 
+def _is_safe_remote_media_url(url: str) -> bool:
+    parsed = urlparse(str(url or "").strip())
+    return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+
+
+def _normalize_waterfall_item(item: dict, tag_code: str) -> Optional[dict]:
+    if not isinstance(item, dict):
+        return None
+    video_id = str(item.get("id", "")).strip()
+    video_url = str(item.get("url", "")).strip()
+    thumbnail_url = str(item.get("thumbnail", "")).strip()
+    if not video_id or not _is_safe_remote_media_url(video_url):
+        return None
+    return {
+        "id": video_id,
+        "url": video_url,
+        "preview_url": video_url,
+        "thumbnail": thumbnail_url if _is_safe_remote_media_url(thumbnail_url) else "",
+        "tag_code": tag_code,
+        "title": str(item.get("title") or item.get("name") or video_id),
+        "duration": item.get("duration") or item.get("time") or "",
+        "favorite": item.get("favorite") or item.get("favorites") or "",
+        "pv": item.get("pv") or item.get("views") or "",
+    }
+
+
+def _waterfall_tabs(cfg: Dict[str, object]) -> List[dict]:
+    tabs = [{"code": "", "name": "全部"}]
+    for tag_code in cfg.get("tag_codes", []):
+        code = str(tag_code).strip()
+        if code:
+            tabs.append({"code": code, "name": get_tag_name(code) or code})
+    return tabs
+
+
+def _validate_waterfall_tag(cfg: Dict[str, object], tag_code: str) -> bool:
+    code = str(tag_code or "").strip()
+    if not code:
+        return True
+    return code in {str(t).strip() for t in cfg.get("tag_codes", [])}
+
+
 def run_download_job() -> None:
     with runtime_lock:
         if runtime_state["is_running"]:
@@ -480,22 +539,6 @@ def run_download_job() -> None:
         runtime_state["last_result"] = err_msg
     finally:
         runtime_state["is_running"] = False
-
-
-@app.on_event("startup")
-def on_startup() -> None:
-    cfg = get_current_config()
-    if not scheduler.running:
-        scheduler.start()
-    update_schedule(cfg)
-    append_log("服务启动完成")
-
-
-@app.on_event("shutdown")
-def on_shutdown() -> None:
-    if scheduler.running:
-        scheduler.shutdown(wait=False)
-    append_log("服务已停止")
 
 
 @app.get("/")
@@ -645,6 +688,94 @@ def api_tags(page: int = 1, per_page: int = 10):
             },
         }
     )
+
+
+@app.get("/api/waterfall")
+def api_waterfall(tag: str = ""):
+    cfg = get_current_config()
+    tag_code = str(tag or "").strip()
+    if not _validate_waterfall_tag(cfg, tag_code):
+        return JSONResponse({"ok": False, "error": "无效标签"}, status_code=400)
+
+    per_page = max(1, min(int(cfg.get("max_daily_downloads", 30)), 100))
+    proxies = build_proxies(str(cfg.get("proxy", "")).strip())
+    session = requests.Session()
+    try:
+        params = build_media_request_params(cfg, tag_code=tag_code, per_page=per_page)
+        resp = session.get(MEDIA_API_URL, params=params, timeout=REQUEST_TIMEOUT, proxies=proxies)
+        resp.raise_for_status()
+        payload = resp.json()
+        raw_items = payload.get("items", [])
+        if not isinstance(raw_items, list):
+            raise ValueError("API 返回的 items 不是数组")
+        items = [
+            normalized
+            for normalized in (_normalize_waterfall_item(item, tag_code) for item in raw_items)
+            if normalized is not None
+        ]
+        return JSONResponse({
+            "ok": True,
+            "tag": tag_code,
+            "tabs": _waterfall_tabs(cfg),
+            "items": items,
+            "config": {
+                "sort": cfg["sort"],
+                "range": cfg["range"],
+                "min_time": cfg["min_time"],
+                "max_time": cfg["max_time"],
+                "max_daily_downloads": cfg["max_daily_downloads"],
+            },
+        })
+    except Exception as exc:
+        append_log(f"瀑布流预览加载失败：{exc}")
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=502)
+
+
+@app.post("/api/waterfall/download")
+async def api_waterfall_download(request: Request):
+    body = await request.json()
+    tag_code = str(body.get("tag_code", "")).strip()
+    raw_items = body.get("items", [])
+    if not isinstance(raw_items, list):
+        return JSONResponse({"ok": False, "error": "items 必须是数组"}, status_code=400)
+
+    cfg = get_current_config()
+    if not _validate_waterfall_tag(cfg, tag_code):
+        return JSONResponse({"ok": False, "error": "无效标签"}, status_code=400)
+
+    items = [
+        normalized
+        for normalized in (_normalize_waterfall_item(item, tag_code) for item in raw_items)
+        if normalized is not None
+    ]
+    if not items:
+        return JSONResponse({"ok": False, "error": "没有可下载的视频"}, status_code=400)
+
+    root = resolve_download_root(cfg["download_root"])
+    target_dir = resolve_target_dir(cfg, root, tag_code=tag_code)
+    root.mkdir(parents=True, exist_ok=True)
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    proxies = build_proxies(str(cfg.get("proxy", "")).strip())
+    session = requests.Session()
+    success_count, skip_count, fail_count = _download_items(
+        session,
+        items,
+        target_dir,
+        max_count=len(items),
+        proxies=proxies,
+    )
+    append_log(
+        f"瀑布流手动下载完成：分类={get_tag_name(tag_code) or '全部'}，"
+        f"成功 {success_count}，跳过 {skip_count}，失败 {fail_count}"
+    )
+    return JSONResponse({
+        "ok": True,
+        "target_dir": str(target_dir),
+        "success": success_count,
+        "skipped": skip_count,
+        "failed": fail_count,
+    })
 
 
 @app.get("/health")
@@ -891,6 +1022,25 @@ async def api_replace_cover(folder: str = Form(""), stem: str = Form(...), file:
 @app.get("/poster")
 def poster_page(request: Request, folder: str = ""):
     return templates.TemplateResponse("poster.html", {"request": request, "folder": folder})
+
+
+@app.get("/waterfall")
+def waterfall_page(request: Request):
+    cfg = get_current_config()
+    return templates.TemplateResponse(
+        "waterfall.html",
+        {
+            "request": request,
+            "tabs": _waterfall_tabs(cfg),
+            "config": {
+                "sort": cfg["sort"],
+                "range": cfg["range"],
+                "min_time": cfg["min_time"],
+                "max_time": cfg["max_time"],
+                "max_daily_downloads": cfg["max_daily_downloads"],
+            },
+        },
+    )
 
 
 if __name__ == "__main__":
