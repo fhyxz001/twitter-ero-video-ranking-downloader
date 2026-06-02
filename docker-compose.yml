@@ -1,8 +1,7 @@
-version: "3.8"
-
 services:
   twitter-ero-video-ranking-downloader:
     build: .
+    image: twitter-ero-video-ranking-downloader:latest
     container_name: twitter-ero-video-ranking-downloader
     restart: unless-stopped
     ports:
