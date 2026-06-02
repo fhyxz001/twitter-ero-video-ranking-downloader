@@ -361,12 +361,12 @@
 
     <form method="post" action="/save">
       <div class="grid">
-        <div class="field full">
+        <div class="field">
           <label for="download_root">视频下载根目录</label>
           <input id="download_root" name="download_root" type="text" required value="{{ config.download_root }}" />
         </div>
 
-        <div class="field full">
+        <div class="field">
           <label for="proxy">HTTP/HTTPS 代理（可空）</label>
           <input id="proxy" name="proxy" type="text" placeholder="例如：http://127.0.0.1:7890" value="{{ config.proxy }}" />
         </div>

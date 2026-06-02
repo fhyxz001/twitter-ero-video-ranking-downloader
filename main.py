@@ -5,7 +5,6 @@ import sys
 import threading
 import time
 from datetime import datetime
-from hashlib import sha256
 from pathlib import Path
 from typing import Dict, List, Optional
 from urllib.parse import quote, urlparse
@@ -40,7 +39,7 @@ def get_exe_dir() -> Path:
 APP_DIR = get_exe_dir()
 CONFIG_PATH = APP_DIR / "config.json"
 TEMPLATES_PATH = get_resource_path("templates")
-MEDIA_API_URL = "https://truvaze.com/api/"
+MEDIA_API_URL = "https://truvaze.com/api/media"
 REQUEST_TIMEOUT = 30
 TIME_FILTER_MIN = 0
 TIME_FILTER_MAX = 10800
@@ -48,7 +47,7 @@ ALLOWED_SORTS = {"time", "favorite", "pv"}
 ALLOWED_RANGES = {"daily", "weekly", "monthly", "all"}
 
 DEFAULT_CONFIG: Dict[str, object] = {
-    "download_root": "/data/downloads",
+    "download_root": "/vol1/1000/AdultMedia/tw",
     "proxy": "",
     "schedule_time": "03:00",
     "max_daily_downloads": 30,
@@ -239,35 +238,38 @@ def _load_tags_static() -> List[Dict[str, object]]:
     return tags
 
 
-def already_downloaded(day_dir: Path) -> int:
-    if not day_dir.exists():
-        return 0
-    # 只统计视频文件，避免封面数量干扰每日限制判断。
-    count = 0
-    for item in day_dir.iterdir():
-        if item.is_file() and item.suffix.lower() in {".mp4", ".mkv", ".avi", ".mov", ".flv", ".wmv"}:
-            count += 1
-    return count
+_INVALID_FOLDER_CHARS = '\\/:*?"<>|'
 
 
-def load_downloaded_url_hashes(day_dir: Path) -> set:
-    marker_file = day_dir / ".downloaded_urls.txt"
-    if not marker_file.exists():
-        return set()
-    try:
-        return {line.strip() for line in marker_file.read_text(encoding="utf-8").splitlines() if line.strip()}
-    except Exception as exc:
-        append_log(f"读取去重记录失败：{exc}")
-        return set()
+def sanitize_folder_name(name: str) -> str:
+    """清理文件夹名中的非法字符与控制字符，保证可作为目录名。"""
+    cleaned = "".join(
+        ch for ch in str(name)
+        if ch not in _INVALID_FOLDER_CHARS and ord(ch) >= 32
+    ).strip().strip(".")
+    return cleaned
 
 
-def append_downloaded_url_hash(day_dir: Path, url_hash: str) -> None:
-    marker_file = day_dir / ".downloaded_urls.txt"
-    try:
-        with marker_file.open("a", encoding="utf-8") as f:
-            f.write(f"{url_hash}\n")
-    except Exception as exc:
-        append_log(f"写入去重记录失败：{exc}")
+def get_tag_name(tag_code: str) -> str:
+    """根据标签 code 查中文名，查不到则回退到 code 本身。"""
+    code = str(tag_code).strip()
+    if not code:
+        return ""
+    for tag in _load_tags_static():
+        if tag.get("code") == code:
+            return str(tag.get("name") or code)
+    return code
+
+
+def resolve_target_dir(cfg: Dict[str, object], download_root: Path) -> Path:
+    """根据是否选中标签，决定视频落地的目标文件夹（根目录或标签子文件夹）。"""
+    tag_code = str(cfg.get("tag_code", "")).strip()
+    if not tag_code:
+        return download_root
+    folder = sanitize_folder_name(get_tag_name(tag_code)) or sanitize_folder_name(tag_code)
+    if not folder:
+        return download_root
+    return download_root / folder
 
 
 def download_binary(session: requests.Session, url: str, target_path: Path, proxies: Optional[Dict[str, str]]) -> bool:
@@ -304,17 +306,10 @@ def run_download_job() -> None:
         cfg = get_current_config()
         download_root = resolve_download_root(cfg["download_root"])
         download_root.mkdir(parents=True, exist_ok=True)
-        day_dir = download_root / datetime.now().strftime("%Y%m%d")
-        day_dir.mkdir(parents=True, exist_ok=True)
+        target_dir = resolve_target_dir(cfg, download_root)
+        target_dir.mkdir(parents=True, exist_ok=True)
 
-        max_daily = int(cfg["max_daily_downloads"])
-        already_count = already_downloaded(day_dir)
-        downloaded_hashes = load_downloaded_url_hashes(day_dir)
-        if already_count >= max_daily:
-            msg = f"今日已下载 {already_count} 个视频，达到上限 {max_daily}，任务结束"
-            append_log(msg)
-            runtime_state["last_result"] = msg
-            return
+        max_per_run = int(cfg["max_daily_downloads"])
 
         proxy = str(cfg["proxy"]).strip()
         proxies = build_proxies(proxy)
@@ -323,7 +318,8 @@ def run_download_job() -> None:
         append_log(
             f"当前筛选：range={cfg['range']} sort={cfg['sort']} "
             f"time={cfg['min_time']}s-{cfg['max_time']}s "
-            f"tag={cfg.get('tag_code') or 'default'}"
+            f"tag={cfg.get('tag_code') or 'default'} "
+            f"目录={target_dir.name if target_dir != download_root else '(根目录)'}"
         )
         resp = session.get(
             MEDIA_API_URL,
@@ -349,37 +345,36 @@ def run_download_job() -> None:
         fail_count = 0
 
         for item in items:
-            if success_count + already_count >= max_daily:
-                append_log("已达到当日最大下载数量，停止继续下载")
+            if success_count >= max_per_run:
+                append_log(f"本次已下载 {success_count} 个，达到上限 {max_per_run}，停止继续下载")
                 break
 
             if not isinstance(item, dict):
                 skip_count += 1
                 continue
 
+            video_id = str(item.get("id", "")).strip()
             video_url = str(item.get("url", "")).strip()
             thumbnail_url = str(item.get("thumbnail", "")).strip()
+            if not video_id:
+                skip_count += 1
+                append_log("条目缺少 id，已跳过")
+                continue
             if not video_url:
                 skip_count += 1
-                append_log("条目缺少 url，已跳过")
-                continue
-            video_hash = sha256(video_url.encode("utf-8")).hexdigest()
-            if video_hash in downloaded_hashes:
-                skip_count += 1
-                append_log("检测到重复视频 URL，已跳过")
+                append_log(f"条目 {video_id} 缺少 url，已跳过")
                 continue
 
-            timestamp = str(int(time.time() * 1000))
+            # 以 id 命名，去重只检查目标文件夹内是否已存在同 id 的视频文件。
+            if any((target_dir / f"{video_id}{ext}").exists() for ext in VIDEO_EXTS):
+                skip_count += 1
+                append_log(f"id {video_id} 已存在，跳过")
+                continue
+
             video_ext = get_file_ext_from_url(video_url, ".mp4")
             thumb_ext = get_file_ext_from_url(thumbnail_url, ".jpg") if thumbnail_url else ".jpg"
-            video_path = day_dir / f"{timestamp}{video_ext}"
-            thumb_path = day_dir / f"{timestamp}{thumb_ext}"
-
-            # 同名文件存在即认为本条已处理过，避免重复下载。
-            if video_path.exists() or thumb_path.exists():
-                skip_count += 1
-                append_log(f"发现重复文件名 {timestamp}，已跳过")
-                continue
+            video_path = target_dir / f"{video_id}{video_ext}"
+            thumb_path = target_dir / f"{video_id}{thumb_ext}"
 
             ok_video = download_binary(session, video_url, video_path, proxies)
             ok_thumb = True
@@ -388,14 +383,9 @@ def run_download_job() -> None:
 
             if ok_video and ok_thumb:
                 success_count += 1
-                downloaded_hashes.add(video_hash)
-                append_downloaded_url_hash(day_dir, video_hash)
                 append_log(f"下载完成：{video_path.name}")
             else:
                 fail_count += 1
-
-            # 防止同毫秒命名冲突
-            time.sleep(0.01)
 
         result = f"任务完成：成功 {success_count}，跳过 {skip_count}，失败 {fail_count}"
         append_log(result)
@@ -541,22 +531,56 @@ VIDEO_EXTS = {".mp4", ".mkv", ".avi", ".mov", ".flv", ".wmv"}
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 
 
-def _day_dirs(download_root: Path) -> List[Path]:
-    if not download_root.exists():
-        return []
-    dirs = sorted(
-        (d for d in download_root.iterdir() if d.is_dir() and d.name.isdigit() and len(d.name) == 8),
-        reverse=True,
+def resolve_media_folder(root: Path, folder: str) -> Optional[Path]:
+    """把 folder 参数（空=根目录 / 一级子文件夹名）解析为安全的目录路径。
+
+    非法（含路径分隔符、.. 或越权、非目录）时返回 None。
+    """
+    folder = str(folder or "").strip()
+    if not folder:
+        return root
+    if "/" in folder or "\\" in folder or folder in {".", ".."}:
+        return None
+    candidate = root / folder
+    try:
+        resolved = candidate.resolve()
+    except OSError:
+        return None
+    if resolved.parent != root.resolve() or not candidate.is_dir():
+        return None
+    return candidate
+
+
+def _count_videos(directory: Path) -> int:
+    if not directory.exists():
+        return 0
+    return sum(
+        1 for p in directory.iterdir()
+        if p.is_file() and p.suffix.lower() in VIDEO_EXTS
     )
-    return dirs
 
 
-def _list_day_items(day_dir: Path) -> List[dict]:
+def _media_folders(download_root: Path) -> List[dict]:
+    """返回含视频的文件夹列表：根目录（folder=""）+ 各一级子文件夹。"""
+    folders: List[dict] = []
+    if not download_root.exists():
+        return folders
+    root_count = _count_videos(download_root)
+    if root_count > 0:
+        folders.append({"folder": "", "count": root_count})
+    for d in sorted(p for p in download_root.iterdir() if p.is_dir()):
+        count = _count_videos(d)
+        if count > 0:
+            folders.append({"folder": d.name, "count": count})
+    return folders
+
+
+def _list_folder_items(directory: Path) -> List[dict]:
     items = []
-    if not day_dir.exists():
+    if not directory.exists():
         return items
-    videos = {p.stem: p for p in day_dir.iterdir() if p.is_file() and p.suffix.lower() in VIDEO_EXTS}
-    thumbs = {p.stem: p for p in day_dir.iterdir() if p.is_file() and p.suffix.lower() in IMAGE_EXTS}
+    videos = {p.stem: p for p in directory.iterdir() if p.is_file() and p.suffix.lower() in VIDEO_EXTS}
+    thumbs = {p.stem: p for p in directory.iterdir() if p.is_file() and p.suffix.lower() in IMAGE_EXTS}
     for stem, vp in videos.items():
         tp = thumbs.get(stem)
         items.append({
@@ -613,79 +637,65 @@ def _probe_video_duration(video_path: Path) -> Optional[str]:
         return None
 
 
-def _build_poster_item(date: str, item: dict) -> dict:
+def _build_poster_item(folder: str, item: dict) -> dict:
     thumb_name = item.get("thumb")
     video_name = item.get("video")
+    folder_q = quote(folder)
     return {
         **item,
-        "date": date,
+        "folder": folder,
         "thumbnail_url": (
-            f"/api/poster/{date}/thumb/{quote(thumb_name)}"
+            f"/api/poster-thumb?folder={folder_q}&name={quote(thumb_name)}"
             if thumb_name
             else None
         ),
-        "video_url": f"/api/poster/{date}/video/{quote(video_name)}",
+        "video_url": f"/api/poster-video?folder={folder_q}&name={quote(video_name)}",
         "duration": None,
     }
 
 
-def _collect_poster_items(download_root: Path, date: str = "") -> List[dict]:
-    dates = [date] if date else [d.name for d in _day_dirs(download_root)]
+def _collect_poster_items(download_root: Path, folder: Optional[str] = None) -> List[dict]:
+    if folder is None:
+        folder_names = [f["folder"] for f in _media_folders(download_root)]
+    else:
+        folder_names = [folder]
     items: List[dict] = []
-    for current_date in dates:
-        day_dir = download_root / current_date
-        for item in _list_day_items(day_dir):
-            built = _build_poster_item(current_date, item)
-            built["duration"] = _probe_video_duration(day_dir / item["video"])
+    for name in folder_names:
+        directory = resolve_media_folder(download_root, name)
+        if directory is None:
+            continue
+        for item in _list_folder_items(directory):
+            built = _build_poster_item(name, item)
+            built["duration"] = _probe_video_duration(directory / item["video"])
             items.append(built)
 
-    items.sort(key=lambda x: (x["date"], x["stem"]), reverse=True)
+    items.sort(key=lambda x: (x["folder"], x["stem"]), reverse=True)
     return items
 
 
-def _list_poster_days(download_root: Path) -> List[dict]:
-    days = []
-    for day_dir in _day_dirs(download_root):
-        count = sum(1 for p in day_dir.iterdir() if p.is_file() and p.suffix.lower() in VIDEO_EXTS)
-        if count > 0:
-            days.append({"date": day_dir.name, "count": count})
-    return days
-
-
-@app.get("/api/poster-days")
-def api_poster_days():
-    cfg = get_current_config()
-    root = resolve_download_root(cfg["download_root"])
-    return JSONResponse({"days": _list_poster_days(root)})
-
-
 @app.get("/api/poster")
-def api_poster_all(date: str = ""):
-    if date and (not date.isdigit() or len(date) != 8):
-        return JSONResponse({"ok": False, "error": "无效日期"}, status_code=400)
+def api_poster_all(folder: Optional[str] = None):
     cfg = get_current_config()
     root = resolve_download_root(cfg["download_root"])
-    items = _collect_poster_items(root, date=date)
-    return JSONResponse({"ok": True, "date": date or None, "days": _list_poster_days(root), "items": items})
+    if folder is not None and resolve_media_folder(root, folder) is None:
+        return JSONResponse({"ok": False, "error": "无效文件夹"}, status_code=400)
+    items = _collect_poster_items(root, folder=folder)
+    return JSONResponse({
+        "ok": True,
+        "folder": folder,
+        "folders": _media_folders(root),
+        "items": items,
+    })
 
 
-@app.get("/api/poster/{date}")
-def api_poster_date(date: str):
-    if not date.isdigit() or len(date) != 8:
-        return JSONResponse({"ok": False, "error": "无效日期"}, status_code=400)
+@app.get("/api/poster-thumb")
+def api_thumb(folder: str = "", name: str = ""):
     cfg = get_current_config()
     root = resolve_download_root(cfg["download_root"])
-    items = _collect_poster_items(root, date=date)
-    return JSONResponse({"ok": True, "date": date, "items": items})
-
-
-@app.get("/api/poster/{date}/thumb/{filename}")
-def api_thumb(date: str, filename: str):
-    if not date.isdigit() or len(date) != 8:
-        return JSONResponse({"error": "无效日期"}, status_code=400)
-    cfg = get_current_config()
-    root = resolve_download_root(cfg["download_root"])
-    path = root / date / filename
+    directory = resolve_media_folder(root, folder)
+    if directory is None or "/" in name or "\\" in name:
+        return JSONResponse({"error": "无效路径"}, status_code=400)
+    path = directory / name
     if not path.exists() or not path.is_file():
         return JSONResponse({"error": "文件不存在"}, status_code=404)
     resolved = path.resolve()
@@ -694,13 +704,14 @@ def api_thumb(date: str, filename: str):
     return FileResponse(str(resolved))
 
 
-@app.get("/api/poster/{date}/video/{filename}")
-def api_video(date: str, filename: str):
-    if not date.isdigit() or len(date) != 8:
-        return JSONResponse({"error": "无效日期"}, status_code=400)
+@app.get("/api/poster-video")
+def api_video(folder: str = "", name: str = ""):
     cfg = get_current_config()
     root = resolve_download_root(cfg["download_root"])
-    path = root / date / filename
+    directory = resolve_media_folder(root, folder)
+    if directory is None or "/" in name or "\\" in name:
+        return JSONResponse({"error": "无效路径"}, status_code=400)
+    path = directory / name
     if not path.exists() or not path.is_file():
         return JSONResponse({"error": "文件不存在"}, status_code=404)
     if path.suffix.lower() not in VIDEO_EXTS:
@@ -711,64 +722,50 @@ def api_video(date: str, filename: str):
     return FileResponse(str(resolved))
 
 
-@app.delete("/api/poster/{date}/{stem}")
-def api_delete_item(date: str, stem: str):
-    if not date.isdigit() or len(date) != 8:
-        return JSONResponse({"ok": False, "error": "无效日期"}, status_code=400)
-    cfg = get_current_config()
-    root = resolve_download_root(cfg["download_root"])
-    day_dir = root / date
-    deleted = []
-    for p in list(day_dir.glob(f"{stem}.*")):
-        if p.suffix.lower() in VIDEO_EXTS | IMAGE_EXTS:
-            p.unlink(missing_ok=True)
-            deleted.append(p.name)
-    return JSONResponse({"ok": True, "deleted": deleted})
-
-
-@app.post("/api/poster/{date}/batch-delete")
-async def api_batch_delete(date: str, request: Request):
-    if not date.isdigit() or len(date) != 8:
-        return JSONResponse({"ok": False, "error": "无效日期"}, status_code=400)
+@app.post("/api/poster/delete")
+async def api_delete(request: Request):
     body = await request.json()
+    folder = str(body.get("folder", ""))
     stems: List[str] = body.get("stems", [])
     cfg = get_current_config()
     root = resolve_download_root(cfg["download_root"])
-    day_dir = root / date
+    directory = resolve_media_folder(root, folder)
+    if directory is None:
+        return JSONResponse({"ok": False, "error": "无效文件夹"}, status_code=400)
     deleted = []
     for stem in stems:
-        for p in list(day_dir.glob(f"{stem}.*")):
+        if "/" in str(stem) or "\\" in str(stem):
+            continue
+        for p in list(directory.glob(f"{stem}.*")):
             if p.suffix.lower() in VIDEO_EXTS | IMAGE_EXTS:
                 p.unlink(missing_ok=True)
                 deleted.append(p.name)
     return JSONResponse({"ok": True, "deleted": deleted})
 
 
-@app.post("/api/poster/{date}/{stem}/replace-cover")
-async def api_replace_cover(date: str, stem: str, file: UploadFile = File(...)):
-    if not date.isdigit() or len(date) != 8:
-        return JSONResponse({"ok": False, "error": "无效日期"}, status_code=400)
+@app.post("/api/poster/replace-cover")
+async def api_replace_cover(folder: str = Form(""), stem: str = Form(...), file: UploadFile = File(...)):
     cfg = get_current_config()
     root = resolve_download_root(cfg["download_root"])
-    day_dir = root / date
-    if not day_dir.exists():
-        return JSONResponse({"ok": False, "error": "日期目录不存在"}, status_code=404)
+    directory = resolve_media_folder(root, folder)
+    if directory is None or "/" in stem or "\\" in stem:
+        return JSONResponse({"ok": False, "error": "无效路径"}, status_code=400)
     suffix = Path(file.filename or "cover.jpg").suffix.lower() or ".jpg"
     if suffix not in IMAGE_EXTS:
         return JSONResponse({"ok": False, "error": "不支持的图片格式"}, status_code=400)
     # Remove old thumb files for this stem
-    for p in list(day_dir.glob(f"{stem}.*")):
+    for p in list(directory.glob(f"{stem}.*")):
         if p.suffix.lower() in IMAGE_EXTS:
             p.unlink(missing_ok=True)
-    new_path = day_dir / f"{stem}{suffix}"
+    new_path = directory / f"{stem}{suffix}"
     content = await file.read()
     new_path.write_bytes(content)
     return JSONResponse({"ok": True, "thumb": new_path.name})
 
 
 @app.get("/poster")
-def poster_page(request: Request, date: str = ""):
-    return templates.TemplateResponse("poster.html", {"request": request, "date": date})
+def poster_page(request: Request, folder: str = ""):
+    return templates.TemplateResponse("poster.html", {"request": request, "folder": folder})
 
 
 if __name__ == "__main__":
