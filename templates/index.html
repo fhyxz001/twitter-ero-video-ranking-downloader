@@ -20,26 +20,42 @@
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
       padding: 24px;
     }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
     h1 {
-      margin-top: 0;
+      margin: 0;
       font-size: 24px;
     }
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
+    .settings-btn {
+      border: 1px solid #d1d5db;
+      background: #fff;
+      color: #374151;
+      border-radius: 8px;
+      width: 40px;
+      height: 40px;
+      font-size: 22px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+    .settings-btn:hover {
+      background: #f3f4f6;
     }
     .field {
       display: flex;
       flex-direction: column;
-    }
-    .field.full {
-      grid-column: 1 / -1;
+      margin-top: 14px;
     }
     label {
       font-size: 14px;
       margin-bottom: 6px;
       color: #374151;
+      font-weight: 600;
     }
     input[type="text"],
     input[type="time"],
@@ -52,17 +68,13 @@
       font-size: 14px;
       background: #fff;
     }
-    .duration-filter {
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      background: #f9fafb;
-      padding: 14px;
-    }
+    /* Tag picker */
     .tag-picker {
       border: 1px solid #e5e7eb;
       border-radius: 8px;
       background: #f9fafb;
       padding: 14px;
+      margin-top: 14px;
     }
     .tag-toolbar {
       display: flex;
@@ -91,11 +103,42 @@
       height: 34px;
       cursor: pointer;
     }
+    .tag-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .tag-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #eff6ff;
+      border: 1px solid #2563eb;
+      color: #1d4ed8;
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .tag-chip-remove {
+      background: none;
+      border: none;
+      color: #1d4ed8;
+      font-size: 16px;
+      cursor: pointer;
+      padding: 0 2px;
+      line-height: 1;
+    }
+    .tag-chip-remove:hover {
+      color: #dc2626;
+    }
     .tag-summary {
       margin-top: 10px;
       font-size: 12px;
       color: #6b7280;
     }
+    /* Tag modal */
     .tag-modal {
       position: fixed;
       inset: 0;
@@ -153,6 +196,25 @@
       padding: 16px 20px 20px;
       overflow: auto;
     }
+    .tag-modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      padding: 12px 20px;
+      border-top: 1px solid #e5e7eb;
+    }
+    .tag-confirm-btn {
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      height: 36px;
+      padding: 0 16px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .tag-confirm-btn:hover {
+      opacity: 0.9;
+    }
     .tag-list {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -170,14 +232,15 @@
       flex-direction: column;
       justify-content: center;
       gap: 4px;
+      cursor: pointer;
+      position: relative;
     }
     .tag-item.active {
       border-color: #2563eb;
       background: #eff6ff;
       color: #1d4ed8;
     }
-    .tag-item:disabled,
-    .tag-clear-btn:disabled {
+    .tag-item:disabled {
       cursor: not-allowed;
       opacity: 0.65;
     }
@@ -193,6 +256,13 @@
     }
     .tag-item.active .tag-code {
       color: #1d4ed8;
+    }
+    .tag-check {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      font-size: 16px;
+      color: #2563eb;
     }
     .tag-pager {
       margin-top: 12px;
@@ -211,100 +281,102 @@
       color: #dc2626;
       font-size: 12px;
     }
-    body.modal-open {
+    /* Settings modal */
+    .settings-modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(15, 23, 42, 0.46);
+      z-index: 1000;
+    }
+    .settings-modal.show {
+      display: flex;
+    }
+    .settings-modal-dialog {
+      width: min(520px, 100%);
+      max-height: min(85vh, 700px);
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 18px 48px rgba(15, 23, 42, 0.22);
       overflow: hidden;
     }
-    .duration-summary {
+    .settings-modal-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid #e5e7eb;
     }
-    .duration-seconds {
-      font-size: 15px;
-      font-weight: 700;
+    .settings-modal-title {
+      margin: 0;
+      font-size: 18px;
       color: #111827;
     }
-    .duration-minutes {
-      font-size: 13px;
-      color: #4b5563;
-    }
-    .range-slider {
-      position: relative;
-      height: 42px;
-      margin-top: 12px;
-    }
-    .range-track,
-    .range-fill {
-      position: absolute;
-      top: 18px;
-      height: 6px;
-      border-radius: 999px;
-    }
-    .range-track {
-      left: 0;
-      right: 0;
-      background: #d1d5db;
-    }
-    .range-fill {
-      background: #2563eb;
-    }
-    .range-slider input[type="range"] {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 42px;
-      margin: 0;
-      pointer-events: none;
-      -webkit-appearance: none;
-      appearance: none;
-      background: none;
-    }
-    .range-slider input[type="range"]::-webkit-slider-runnable-track {
-      height: 6px;
-      background: transparent;
-    }
-    .range-slider input[type="range"]::-moz-range-track {
-      height: 6px;
-      background: transparent;
-    }
-    .range-slider input[type="range"]::-webkit-slider-thumb {
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      border: 2px solid #2563eb;
+    .settings-close-btn {
+      border: 1px solid #d1d5db;
       background: #fff;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
-      pointer-events: auto;
-      cursor: pointer;
-      -webkit-appearance: none;
-      appearance: none;
-      margin-top: -6px;
-    }
-    .range-slider input[type="range"]::-moz-range-thumb {
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      border: 2px solid #2563eb;
-      background: #fff;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
-      pointer-events: auto;
+      color: #374151;
+      border-radius: 6px;
+      width: 36px;
+      min-width: 36px;
+      padding: 0;
+      font-size: 18px;
+      line-height: 1;
       cursor: pointer;
     }
-    .range-scale {
+    .settings-modal-body {
+      padding: 16px 20px 20px;
+      overflow: auto;
+    }
+    .settings-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .settings-field {
       display: flex;
-      justify-content: space-between;
-      margin-top: 4px;
-      color: #6b7280;
-      font-size: 12px;
+      flex-direction: column;
     }
+    .settings-field.full {
+      grid-column: 1 / -1;
+    }
+    .settings-modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 12px 20px;
+      border-top: 1px solid #e5e7eb;
+    }
+    .settings-save-btn {
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      height: 36px;
+      padding: 0 16px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .settings-save-btn:hover {
+      opacity: 0.9;
+    }
+    body.modal-open {
+      overflow: hidden;
+    }
+    /* Actions */
     .actions {
       margin-top: 16px;
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
+    }
+    button.secondary {
+      background: #4b5563;
     }
     button {
       border: none;
@@ -314,9 +386,6 @@
       height: 36px;
       padding: 0 14px;
       cursor: pointer;
-    }
-    button.secondary {
-      background: #4b5563;
     }
     button:hover {
       opacity: 0.9;
@@ -349,7 +418,7 @@
       font-size: 12px;
     }
     @media (max-width: 720px) {
-      .grid {
+      .settings-grid {
         grid-template-columns: 1fr;
       }
     }
@@ -357,110 +426,37 @@
 </head>
 <body>
   <div class="container">
-    <h1>twitter-ero-video-ranking-downloader</h1>
+    <div class="header">
+      <h1>twitter-ero-video-ranking-downloader</h1>
+      <button class="settings-btn" onclick="openSettingsModal()" title="设置">⚙</button>
+    </div>
 
-    <form method="post" action="/save">
-      <div class="grid">
-        <div class="field">
-          <label for="download_root">视频下载根目录</label>
-          <input id="download_root" name="download_root" type="text" required value="{{ config.download_root }}" />
-        </div>
+    <div class="field">
+      <label for="download_root">视频下载根目录</label>
+      <input id="download_root" type="text" value="{{ config.download_root }}" />
+    </div>
 
-        <div class="field">
-          <label for="proxy">HTTP/HTTPS 代理（可空）</label>
-          <input id="proxy" name="proxy" type="text" placeholder="例如：http://127.0.0.1:7890" value="{{ config.proxy }}" />
-        </div>
-
-        <div class="field">
-          <label for="schedule_time">每日定时执行时间（HH:MM）</label>
-          <input id="schedule_time" name="schedule_time" type="time" required value="{{ config.schedule_time }}" />
-        </div>
-
-        <div class="field">
-          <label for="max_daily_downloads">每日最大下载数量</label>
-          <input id="max_daily_downloads" name="max_daily_downloads" type="number" min="1" required value="{{ config.max_daily_downloads }}" />
-        </div>
-
-        <div class="field">
-          <label for="sort">排序方式</label>
-          <select id="sort" name="sort" required>
-            {% for option in sort_options %}
-            <option value="{{ option.value }}" {% if config.sort == option.value %}selected{% endif %}>{{ option.label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <div class="field">
-          <label for="range">时间范围</label>
-          <select id="range" name="range" required>
-            {% for option in range_options %}
-            <option value="{{ option.value }}" {% if config.range == option.value %}selected{% endif %}>{{ option.label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <div class="field full">
-          <label for="tag_code">标签筛选（单选，可空）</label>
-          <div class="tag-picker">
-            <input id="tag_code" name="tag_code" type="hidden" value="{{ config.tag_code or '' }}" />
-            <div class="tag-toolbar">
-              <div id="tag_selection_text" class="tag-selection-text">当前：{{ config.tag_code or "不筛选" }}</div>
-              <div class="tag-toolbar-actions">
-                <button id="tag_open_btn" type="button" class="tag-open-btn" onclick="openTagModal()">选择标签</button>
-                <button id="tag_clear_btn" type="button" class="tag-clear-btn" onclick="clearSelectedTag()">清空标签</button>
-              </div>
-            </div>
-            <div class="tag-summary">点击“选择标签”后会弹出标签列表，在弹窗中单选。</div>
+    <div class="field">
+      <label>标签筛选（多选，每多选一个额外下载对应数量的视频）</label>
+      <div class="tag-picker">
+        <input id="tag_codes_input" type="hidden" value='{{ tag_codes_json | safe }}' />
+        <div class="tag-toolbar">
+          <div id="tag_selection_text" class="tag-selection-text">当前：不筛选</div>
+          <div class="tag-toolbar-actions">
+            <button id="tag_open_btn" type="button" class="tag-open-btn" onclick="openTagModal()">选择标签</button>
+            <button id="tag_clear_btn" type="button" class="tag-clear-btn" onclick="clearAllTags()">清空标签</button>
           </div>
         </div>
-
-        <div class="field full">
-          <label for="min_time_slider">视频时长筛选（秒）</label>
-          <div class="duration-filter">
-            <div class="duration-summary">
-              <div id="duration_seconds" class="duration-seconds"></div>
-              <div id="duration_minutes" class="duration-minutes"></div>
-            </div>
-
-            <div class="range-slider">
-              <div class="range-track"></div>
-              <div id="range_fill" class="range-fill"></div>
-              <input
-                id="min_time_slider"
-                type="range"
-                min="{{ time_filter_min }}"
-                max="{{ time_filter_max }}"
-                step="1"
-                value="{{ config.min_time }}"
-              />
-              <input
-                id="max_time_slider"
-                type="range"
-                min="{{ time_filter_min }}"
-                max="{{ time_filter_max }}"
-                step="1"
-                value="{{ config.max_time }}"
-              />
-            </div>
-
-            <div class="range-scale">
-              <span>{{ time_filter_min // 60 }} 分钟</span>
-              <span>{{ time_filter_max // 60 }} 分钟</span>
-            </div>
-
-            <input id="min_time" name="min_time" type="hidden" value="{{ config.min_time }}" />
-            <input id="max_time" name="max_time" type="hidden" value="{{ config.max_time }}" />
-          </div>
-        </div>
+        <div id="tag_chips" class="tag-chips"></div>
+        <div class="tag-summary">点击"选择标签"后在弹窗中多选，每个标签独立下载 max_daily_downloads 个视频。</div>
       </div>
+    </div>
 
-      <div class="actions">
-        <button type="submit">保存配置</button>
-        <button type="button" class="secondary" onclick="runNow()">立即执行任务</button>
-        <button type="button" class="secondary" onclick="refreshStatus()">刷新状态</button>
-        <button type="button" class="secondary" onclick="goToPoster()">查看海报墙</button>
-      </div>
-    </form>
+    <div class="actions">
+      <button type="button" class="secondary" onclick="runNow()">立即执行任务</button>
+      <button type="button" class="secondary" onclick="refreshStatus()">刷新状态</button>
+      <button type="button" class="secondary" onclick="goToPoster()">查看海报墙</button>
+    </div>
 
     <div class="status">
       <div>运行中：<span id="is_running">{{ "是" if state.is_running else "否" }}</span></div>
@@ -472,12 +468,73 @@
     <div id="logs" class="logs">{{ logs }}</div>
   </div>
 
+  <!-- Settings Modal -->
+  <div id="settings_modal" class="settings-modal" aria-hidden="true" onclick="handleSettingsBackdrop(event)">
+    <div class="settings-modal-dialog" role="dialog" aria-modal="true">
+      <div class="settings-modal-header">
+        <h2 class="settings-modal-title">⚙ 设置</h2>
+        <button type="button" class="settings-close-btn" aria-label="关闭设置弹窗" onclick="closeSettingsModal()">&times;</button>
+      </div>
+      <div class="settings-modal-body">
+        <div class="settings-grid">
+          <div class="settings-field">
+            <label for="settings_proxy">HTTP/HTTPS 代理（可空）</label>
+            <input id="settings_proxy" name="proxy" type="text" placeholder="例如：http://127.0.0.1:7890" value="{{ config.proxy }}" />
+          </div>
+
+          <div class="settings-field">
+            <label for="settings_schedule_time">每日定时执行时间（HH:MM）</label>
+            <input id="settings_schedule_time" name="schedule_time" type="time" required value="{{ config.schedule_time }}" />
+          </div>
+
+          <div class="settings-field">
+            <label for="settings_max_daily_downloads">每日最大下载数量</label>
+            <input id="settings_max_daily_downloads" name="max_daily_downloads" type="number" min="1" required value="{{ config.max_daily_downloads }}" />
+          </div>
+
+          <div class="settings-field">
+            <label for="settings_sort">排序方式</label>
+            <select id="settings_sort" name="sort" required>
+              {% for option in sort_options %}
+              <option value="{{ option.value }}" {% if config.sort == option.value %}selected{% endif %}>{{ option.label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="settings-field">
+            <label for="settings_range">时间范围</label>
+            <select id="settings_range" name="range" required>
+              {% for option in range_options %}
+              <option value="{{ option.value }}" {% if config.range == option.value %}selected{% endif %}>{{ option.label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="settings-field">
+            <label for="settings_min_time">最短时长（分钟）</label>
+            <input id="settings_min_time" name="min_time" type="number" min="{{ time_filter_min }}" max="{{ time_filter_max }}" required value="{{ config.min_time }}" />
+          </div>
+
+          <div class="settings-field">
+            <label for="settings_max_time">最长时长（分钟）</label>
+            <input id="settings_max_time" name="max_time" type="number" min="{{ time_filter_min }}" max="{{ time_filter_max }}" required value="{{ config.max_time }}" />
+          </div>
+        </div>
+      </div>
+      <div class="settings-modal-footer">
+        <button type="button" class="secondary settings-close-btn" onclick="closeSettingsModal()">取消</button>
+        <button type="button" class="settings-save-btn" onclick="saveSettings()">保存设置</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tag Modal -->
   <div id="tag_modal" class="tag-modal" aria-hidden="true" onclick="handleTagModalBackdrop(event)">
     <div class="tag-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="tag_modal_title">
       <div class="tag-modal-header">
         <div>
           <h2 id="tag_modal_title" class="tag-modal-title">选择标签</h2>
-          <div class="tag-modal-subtitle">支持分页浏览，点击任意标签即可完成单选并关闭弹窗。</div>
+          <div class="tag-modal-subtitle">支持分页浏览，点击标签进行多选/取消选择，完成后点击"确认"关闭弹窗。</div>
         </div>
         <button type="button" class="tag-close-btn" aria-label="关闭标签弹窗" onclick="closeTagModal()">&times;</button>
       </div>
@@ -492,26 +549,29 @@
         </div>
         <div id="tag_error" class="tag-error"></div>
       </div>
+      <div class="tag-modal-footer">
+        <button type="button" class="tag-confirm-btn" onclick="closeTagModal()">确认选择</button>
+      </div>
     </div>
   </div>
 
   <script>
-    const minSlider = document.getElementById('min_time_slider');
-    const maxSlider = document.getElementById('max_time_slider');
-    const minTimeInput = document.getElementById('min_time');
-    const maxTimeInput = document.getElementById('max_time');
-    const rangeFill = document.getElementById('range_fill');
-    const durationSeconds = document.getElementById('duration_seconds');
-    const durationMinutes = document.getElementById('duration_minutes');
-    const tagInput = document.getElementById('tag_code');
+    // --- Tag multi-select ---
+    const tagCodesInput = document.getElementById('tag_codes_input');
     const tagModal = document.getElementById('tag_modal');
     const tagList = document.getElementById('tag_list');
     const tagSelectionText = document.getElementById('tag_selection_text');
+    const tagChipsContainer = document.getElementById('tag_chips');
     const tagPageInfo = document.getElementById('tag_page_info');
     const tagPrevBtn = document.getElementById('tag_prev_btn');
     const tagNextBtn = document.getElementById('tag_next_btn');
     const tagError = document.getElementById('tag_error');
     const tagClearBtn = document.getElementById('tag_clear_btn');
+
+    let selectedTagCodes = JSON.parse(tagCodesInput.value || '[]');
+    // Store tag metadata for display
+    const tagMetaMap = {};  // code -> {code, name}
+
     const tagState = {
       page: 1,
       perPage: 10,
@@ -520,58 +580,40 @@
       items: [],
       loading: false,
     };
-    let selectedTagMeta = null;
 
-    function formatMinuteText(seconds) {
-      const minutes = seconds / 60;
-      if (Number.isInteger(minutes)) {
-        return `${minutes} 分钟`;
-      }
-      return `${minutes.toFixed(1)} 分钟`;
-    }
-
-    function syncDurationRange(changedSlider) {
-      let minValue = Number(minSlider.value);
-      let maxValue = Number(maxSlider.value);
-
-      if (minValue > maxValue) {
-        if (changedSlider === minSlider) {
-          maxValue = minValue;
-          maxSlider.value = String(maxValue);
-        } else {
-          minValue = maxValue;
-          minSlider.value = String(minValue);
-        }
-      }
-
-      minTimeInput.value = String(minValue);
-      maxTimeInput.value = String(maxValue);
-
-      const sliderMin = Number(minSlider.min);
-      const sliderMax = Number(minSlider.max);
-      const total = sliderMax - sliderMin || 1;
-      const left = ((minValue - sliderMin) / total) * 100;
-      const right = ((maxValue - sliderMin) / total) * 100;
-
-      rangeFill.style.left = `${left}%`;
-      rangeFill.style.width = `${right - left}%`;
-      durationSeconds.textContent = `${minValue} 秒 - ${maxValue} 秒`;
-      durationMinutes.textContent = `约 ${formatMinuteText(minValue)} - ${formatMinuteText(maxValue)}`;
-    }
-
-    minSlider.addEventListener('input', () => syncDurationRange(minSlider));
-    maxSlider.addEventListener('input', () => syncDurationRange(maxSlider));
-    syncDurationRange();
-
-    function updateTagSelectionText() {
-      if (selectedTagMeta && selectedTagMeta.code === tagInput.value) {
-        tagSelectionText.textContent = `当前：${selectedTagMeta.name} (${selectedTagMeta.code})`;
-      } else if (tagInput.value) {
-        tagSelectionText.textContent = `当前：${tagInput.value}`;
-      } else {
+    function updateTagDisplay() {
+      tagCodesInput.value = JSON.stringify(selectedTagCodes);
+      if (selectedTagCodes.length === 0) {
         tagSelectionText.textContent = '当前：不筛选';
+      } else {
+        const names = selectedTagCodes.map(code => {
+          const meta = tagMetaMap[code];
+          return meta ? `${meta.name} (${meta.code})` : code;
+        });
+        tagSelectionText.textContent = `已选 ${selectedTagCodes.length} 个标签`;
       }
-      tagClearBtn.disabled = tagState.loading || !tagInput.value;
+      tagClearBtn.disabled = selectedTagCodes.length === 0;
+
+      // Render chips
+      tagChipsContainer.innerHTML = '';
+      selectedTagCodes.forEach(code => {
+        const meta = tagMetaMap[code];
+        const chip = document.createElement('div');
+        chip.className = 'tag-chip';
+        const label = document.createElement('span');
+        label.textContent = meta ? `${meta.name}` : code;
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'tag-chip-remove';
+        removeBtn.textContent = '×';
+        removeBtn.onclick = () => {
+          selectedTagCodes = selectedTagCodes.filter(c => c !== code);
+          updateTagDisplay();
+          renderTags();
+        };
+        chip.appendChild(label);
+        chip.appendChild(removeBtn);
+        tagChipsContainer.appendChild(chip);
+      });
     }
 
     function openTagModal() {
@@ -580,6 +622,8 @@
       document.body.classList.add('modal-open');
       if (!tagState.items.length && !tagState.loading) {
         loadTags(tagState.page);
+      } else {
+        renderTags();
       }
     }
 
@@ -593,6 +637,12 @@
       if (event.target === tagModal) {
         closeTagModal();
       }
+    }
+
+    function clearAllTags() {
+      selectedTagCodes = [];
+      updateTagDisplay();
+      renderTags();
     }
 
     function renderTagPagination() {
@@ -610,22 +660,21 @@
         empty.textContent = tagState.loading ? '正在加载标签...' : '暂无可用标签';
         tagList.appendChild(empty);
         renderTagPagination();
-        updateTagSelectionText();
         return;
       }
 
       tagState.items.forEach((tag) => {
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = `tag-item${tagInput.value === tag.code ? ' active' : ''}`;
+        const isActive = selectedTagCodes.includes(tag.code);
+        button.className = `tag-item${isActive ? ' active' : ''}`;
         button.disabled = tagState.loading;
-        button.addEventListener('click', () => {
-          tagInput.value = tag.code;
-          selectedTagMeta = tag;
-          renderTags();
-          updateTagSelectionText();
-          closeTagModal();
-        });
+
+        // Check mark
+        const check = document.createElement('span');
+        check.className = 'tag-check';
+        check.textContent = isActive ? '✓' : '';
+        button.appendChild(check);
 
         const name = document.createElement('div');
         name.className = 'tag-name';
@@ -637,11 +686,23 @@
 
         button.appendChild(name);
         button.appendChild(code);
+
+        button.addEventListener('click', () => {
+          if (selectedTagCodes.includes(tag.code)) {
+            selectedTagCodes = selectedTagCodes.filter(c => c !== tag.code);
+          } else {
+            selectedTagCodes.push(tag.code);
+          }
+          tagMetaMap[tag.code] = tag;
+          updateTagDisplay();
+          renderTags();
+        });
+
         tagList.appendChild(button);
       });
 
       renderTagPagination();
-      updateTagSelectionText();
+      updateTagDisplay();
     }
 
     async function loadTags(page = 1) {
@@ -662,10 +723,10 @@
         tagState.totalPages = data.pagination?.total_pages || 1;
         tagState.items = Array.isArray(data.items) ? data.items : [];
 
-        const selected = tagState.items.find((tag) => tag.code === tagInput.value);
-        if (selected) {
-          selectedTagMeta = selected;
-        }
+        // Store metadata for all loaded tags
+        tagState.items.forEach(tag => {
+          tagMetaMap[tag.code] = tag;
+        });
       } catch (error) {
         tagState.items = [];
         tagState.total = 0;
@@ -678,22 +739,125 @@
       }
     }
 
-    function clearSelectedTag() {
-      tagInput.value = '';
-      selectedTagMeta = null;
-      renderTags();
-      updateTagSelectionText();
-    }
-
     document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && tagModal.classList.contains('show')) {
-        closeTagModal();
+      if (event.key === 'Escape') {
+        if (tagModal.classList.contains('show')) {
+          closeTagModal();
+        }
+        if (document.getElementById('settings_modal').classList.contains('show')) {
+          closeSettingsModal();
+        }
       }
     });
 
-    updateTagSelectionText();
-    loadTags();
+    updateTagDisplay();
 
+    // Pre-load all tag metadata for chip display
+    async function preloadAllTagNames() {
+      try {
+        const resp = await fetch(`/api/tags?page=1&per_page=30`);
+        const data = await resp.json();
+        if (data.ok && data.items) {
+          data.items.forEach(tag => { tagMetaMap[tag.code] = tag; });
+        }
+        // Load remaining pages if needed
+        if (data.pagination && data.pagination.total_pages > 1) {
+          for (let p = 2; p <= data.pagination.total_pages; p++) {
+            const resp2 = await fetch(`/api/tags?page=${p}&per_page=30`);
+            const data2 = await resp2.json();
+            if (data2.ok && data2.items) {
+              data2.items.forEach(tag => { tagMetaMap[tag.code] = tag; });
+            }
+          }
+        }
+        updateTagDisplay();
+      } catch (e) {
+        // ignore
+      }
+    }
+    preloadAllTagNames();
+
+    // --- Settings Modal ---
+    const settingsModal = document.getElementById('settings_modal');
+
+    function openSettingsModal() {
+      // Refresh values from current config
+      const downloadRoot = document.getElementById('download_root').value;
+      document.getElementById('settings_proxy').value = currentConfig.proxy || '';
+      document.getElementById('settings_schedule_time').value = currentConfig.schedule_time || '03:00';
+      document.getElementById('settings_max_daily_downloads').value = currentConfig.max_daily_downloads || 30;
+      document.getElementById('settings_sort').value = currentConfig.sort || 'pv';
+      document.getElementById('settings_range').value = currentConfig.range || 'daily';
+      document.getElementById('settings_min_time').value = currentConfig.min_time || 0;
+      document.getElementById('settings_max_time').value = currentConfig.max_time || 180;
+
+      settingsModal.classList.add('show');
+      settingsModal.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('modal-open');
+    }
+
+    function closeSettingsModal() {
+      settingsModal.classList.remove('show');
+      settingsModal.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('modal-open');
+    }
+
+    function handleSettingsBackdrop(event) {
+      if (event.target === settingsModal) {
+        closeSettingsModal();
+      }
+    }
+
+    async function saveSettings() {
+      const formData = new FormData();
+      formData.append('download_root', document.getElementById('download_root').value);
+      formData.append('proxy', document.getElementById('settings_proxy').value);
+      formData.append('schedule_time', document.getElementById('settings_schedule_time').value);
+      formData.append('max_daily_downloads', document.getElementById('settings_max_daily_downloads').value);
+      formData.append('sort', document.getElementById('settings_sort').value);
+      formData.append('range', document.getElementById('settings_range').value);
+      formData.append('min_time', document.getElementById('settings_min_time').value);
+      formData.append('max_time', document.getElementById('settings_max_time').value);
+      formData.append('tag_codes', JSON.stringify(selectedTagCodes));
+
+      try {
+        const resp = await fetch('/save', { method: 'POST', body: formData });
+        const data = await resp.json();
+        if (data.ok) {
+          alert('设置保存成功');
+          // Update local config cache
+          currentConfig.proxy = document.getElementById('settings_proxy').value;
+          currentConfig.schedule_time = document.getElementById('settings_schedule_time').value;
+          currentConfig.max_daily_downloads = parseInt(document.getElementById('settings_max_daily_downloads').value);
+          currentConfig.sort = document.getElementById('settings_sort').value;
+          currentConfig.range = document.getElementById('settings_range').value;
+          currentConfig.min_time = parseInt(document.getElementById('settings_min_time').value);
+          currentConfig.max_time = parseInt(document.getElementById('settings_max_time').value);
+          currentConfig.tag_codes = selectedTagCodes;
+          closeSettingsModal();
+          refreshStatus();
+        } else {
+          alert('保存失败：' + (data.error || '未知错误'));
+        }
+      } catch (e) {
+        alert('保存失败：网络错误');
+      }
+    }
+
+    // --- Current config (fetched on page load) ---
+    let currentConfig = {
+      download_root: "{{ config.download_root }}",
+      proxy: "{{ config.proxy }}",
+      schedule_time: "{{ config.schedule_time }}",
+      max_daily_downloads: {{ config.max_daily_downloads }},
+      sort: "{{ config.sort }}",
+      range: "{{ config.range }}",
+      min_time: {{ config.min_time }},
+      max_time: {{ config.max_time }},
+      tag_codes: selectedTagCodes,
+    };
+
+    // --- Status refresh ---
     async function runNow() {
       const resp = await fetch('/run-now', { method: 'POST' });
       const data = await resp.json();
@@ -714,6 +878,16 @@
       document.getElementById('last_run_time').innerText = data.state.last_run_time || '暂无';
       document.getElementById('last_result').innerText = data.state.last_result || '';
       document.getElementById('logs').innerText = (data.logs || []).join('\n');
+      // Update local config cache from server
+      if (data.config) {
+        currentConfig = data.config;
+        document.getElementById('download_root').value = currentConfig.download_root || '';
+        // Update tag selection if config changed
+        if (Array.isArray(currentConfig.tag_codes)) {
+          selectedTagCodes = currentConfig.tag_codes;
+          updateTagDisplay();
+        }
+      }
     }
 
     setInterval(refreshStatus, 5000);

@@ -42,7 +42,7 @@ TEMPLATES_PATH = get_resource_path("templates")
 MEDIA_API_URL = "https://truvaze.com/api/media"
 REQUEST_TIMEOUT = 30
 TIME_FILTER_MIN = 0
-TIME_FILTER_MAX = 10800
+TIME_FILTER_MAX = 180  # 180 minutes = 3 hours
 ALLOWED_SORTS = {"time", "favorite", "pv"}
 ALLOWED_RANGES = {"daily", "weekly", "monthly", "all"}
 
@@ -55,7 +55,7 @@ DEFAULT_CONFIG: Dict[str, object] = {
     "range": "daily",
     "min_time": TIME_FILTER_MIN,
     "max_time": TIME_FILTER_MAX,
-    "tag_code": "",
+    "tag_codes": [],
 }
 
 app = FastAPI(title="twitter-ero-video-ranking-downloader")
@@ -124,16 +124,31 @@ def validate_config(raw: Dict[str, object]) -> Dict[str, object]:
     min_time = int(cfg.get("min_time", TIME_FILTER_MIN))
     max_time = int(cfg.get("max_time", TIME_FILTER_MAX))
     if min_time < TIME_FILTER_MIN or min_time > TIME_FILTER_MAX:
-        raise ValueError(f"最小时长必须在 {TIME_FILTER_MIN} 到 {TIME_FILTER_MAX} 秒之间")
+        raise ValueError(f"最小时长必须在 {TIME_FILTER_MIN} 到 {TIME_FILTER_MAX} 分钟之间")
     if max_time < TIME_FILTER_MIN or max_time > TIME_FILTER_MAX:
-        raise ValueError(f"最大时长必须在 {TIME_FILTER_MIN} 到 {TIME_FILTER_MAX} 秒之间")
+        raise ValueError(f"最大时长必须在 {TIME_FILTER_MIN} 到 {TIME_FILTER_MAX} 分钟之间")
     if min_time > max_time:
         raise ValueError("最小时长不能大于最大时长")
     cfg["min_time"] = min_time
     cfg["max_time"] = max_time
 
-    tag_code = str(cfg.get("tag_code", "")).strip()
-    cfg["tag_code"] = tag_code
+    tag_codes = cfg.get("tag_codes", [])
+    if isinstance(tag_codes, str):
+        try:
+            tag_codes = json.loads(tag_codes)
+        except (json.JSONDecodeError, TypeError):
+            tag_codes = []
+    if not isinstance(tag_codes, list):
+        tag_codes = []
+    tag_codes = [str(t).strip() for t in tag_codes if str(t).strip()]
+    # deduplicate while preserving order
+    seen = set()
+    deduped = []
+    for t in tag_codes:
+        if t not in seen:
+            seen.add(t)
+            deduped.append(t)
+    cfg["tag_codes"] = deduped
     return cfg
 
 
@@ -151,6 +166,16 @@ def load_config() -> Dict[str, object]:
     try:
         with CONFIG_PATH.open("r", encoding="utf-8") as f:
             raw = json.load(f)
+        # backward compatibility: convert old seconds-based duration to minutes
+        if "min_time" in raw and int(raw["min_time"]) > TIME_FILTER_MAX:
+            raw["min_time"] = int(raw["min_time"]) // 60
+        if "max_time" in raw and int(raw["max_time"]) > TIME_FILTER_MAX:
+            raw["max_time"] = int(raw["max_time"]) // 60
+        # backward compatibility: convert old tag_code string to tag_codes list
+        if "tag_code" in raw and "tag_codes" not in raw:
+            old_tag = str(raw["tag_code"]).strip()
+            raw["tag_codes"] = [old_tag] if old_tag else []
+            del raw["tag_code"]
         return validate_config(raw)
     except Exception as exc:
         append_log(f"读取配置失败，已回退默认配置：{exc}")
@@ -196,19 +221,19 @@ def build_proxies(proxy: str) -> Optional[Dict[str, str]]:
     return {"http": proxy, "https": proxy}
 
 
-def build_media_request_params(cfg: Dict[str, object]) -> Dict[str, object]:
+def build_media_request_params(cfg: Dict[str, object], tag_code: str = "") -> Dict[str, object]:
     params: Dict[str, object] = {
         "page": 1,
         "per_page": 30,
         "ids": "",
         "isAnimeOnly": 0,
         "sort": str(cfg["sort"]),
-        "min_time": int(cfg["min_time"]),
-        "max_time": int(cfg["max_time"]),
+        "min_time": int(cfg["min_time"]) * 60,
+        "max_time": int(cfg["max_time"]) * 60,
     }
-    tag_code = str(cfg.get("tag_code", "")).strip()
-    if tag_code:
-        params["category"] = tag_code
+    tc = str(tag_code).strip()
+    if tc:
+        params["category"] = tc
     range_value = str(cfg["range"])
     if range_value != "daily":
         params["range"] = range_value
@@ -261,12 +286,12 @@ def get_tag_name(tag_code: str) -> str:
     return code
 
 
-def resolve_target_dir(cfg: Dict[str, object], download_root: Path) -> Path:
+def resolve_target_dir(cfg: Dict[str, object], download_root: Path, tag_code: str = "") -> Path:
     """根据是否选中标签，决定视频落地的目标文件夹（根目录或标签子文件夹）。"""
-    tag_code = str(cfg.get("tag_code", "")).strip()
-    if not tag_code:
+    tc = str(tag_code).strip()
+    if not tc:
         return download_root
-    folder = sanitize_folder_name(get_tag_name(tag_code)) or sanitize_folder_name(tag_code)
+    folder = sanitize_folder_name(get_tag_name(tc)) or sanitize_folder_name(tc)
     if not folder:
         return download_root
     return download_root / folder
@@ -291,6 +316,81 @@ def download_binary(session: requests.Session, url: str, target_path: Path, prox
         return False
 
 
+def _fetch_media_items(session: requests.Session, cfg: Dict[str, object], tag_code: str, proxies) -> List[dict]:
+    """从 API 获取媒体列表，返回 items 数组。"""
+    resp = session.get(
+        MEDIA_API_URL,
+        params=build_media_request_params(cfg, tag_code=tag_code),
+        timeout=REQUEST_TIMEOUT,
+        proxies=proxies,
+    )
+    resp.raise_for_status()
+    raw_text = resp.text.strip()
+    if not raw_text:
+        raise ValueError(f"API 返回空响应（HTTP {resp.status_code}），请检查接口或代理设置")
+    try:
+        payload = resp.json()
+    except json.JSONDecodeError as exc:
+        preview = raw_text[:200]
+        raise ValueError(f"API 返回非 JSON 内容（{exc}）：{preview}") from exc
+    items = payload.get("items", [])
+    if not isinstance(items, list):
+        raise ValueError("API 返回的 items 不是数组")
+    return items
+
+
+def _download_items(session: requests.Session, items: list, target_dir: Path, max_count: int, proxies) -> tuple:
+    """下载指定列表中的视频，返回 (success_count, skip_count, fail_count)。"""
+    success_count = 0
+    skip_count = 0
+    fail_count = 0
+
+    for item in items:
+        if success_count >= max_count:
+            append_log(f"本次已下载 {success_count} 个，达到上限 {max_count}，停止继续下载")
+            break
+
+        if not isinstance(item, dict):
+            skip_count += 1
+            continue
+
+        video_id = str(item.get("id", "")).strip()
+        video_url = str(item.get("url", "")).strip()
+        thumbnail_url = str(item.get("thumbnail", "")).strip()
+        if not video_id:
+            skip_count += 1
+            append_log("条目缺少 id，已跳过")
+            continue
+        if not video_url:
+            skip_count += 1
+            append_log(f"条目 {video_id} 缺少 url，已跳过")
+            continue
+
+        # 以 id 命名，去重只检查目标文件夹内是否已存在同 id 的视频文件。
+        if any((target_dir / f"{video_id}{ext}").exists() for ext in VIDEO_EXTS):
+            skip_count += 1
+            append_log(f"id {video_id} 已存在，跳过")
+            continue
+
+        video_ext = get_file_ext_from_url(video_url, ".mp4")
+        thumb_ext = get_file_ext_from_url(thumbnail_url, ".jpg") if thumbnail_url else ".jpg"
+        video_path = target_dir / f"{video_id}{video_ext}"
+        thumb_path = target_dir / f"{video_id}{thumb_ext}"
+
+        ok_video = download_binary(session, video_url, video_path, proxies)
+        ok_thumb = True
+        if thumbnail_url:
+            ok_thumb = download_binary(session, thumbnail_url, thumb_path, proxies)
+
+        if ok_video and ok_thumb:
+            success_count += 1
+            append_log(f"下载完成：{video_path.name}")
+        else:
+            fail_count += 1
+
+    return success_count, skip_count, fail_count
+
+
 def run_download_job() -> None:
     with runtime_lock:
         if runtime_state["is_running"]:
@@ -306,88 +406,51 @@ def run_download_job() -> None:
         cfg = get_current_config()
         download_root = resolve_download_root(cfg["download_root"])
         download_root.mkdir(parents=True, exist_ok=True)
-        target_dir = resolve_target_dir(cfg, download_root)
-        target_dir.mkdir(parents=True, exist_ok=True)
 
         max_per_run = int(cfg["max_daily_downloads"])
+        tag_codes = list(cfg.get("tag_codes", []))
 
         proxy = str(cfg["proxy"]).strip()
         proxies = build_proxies(proxy)
         session = requests.Session()
 
-        append_log(
-            f"当前筛选：range={cfg['range']} sort={cfg['sort']} "
-            f"time={cfg['min_time']}s-{cfg['max_time']}s "
-            f"tag={cfg.get('tag_code') or 'default'} "
-            f"目录={target_dir.name if target_dir != download_root else '(根目录)'}"
-        )
-        resp = session.get(
-            MEDIA_API_URL,
-            params=build_media_request_params(cfg),
-            timeout=REQUEST_TIMEOUT,
-            proxies=proxies,
-        )
-        resp.raise_for_status()
-        raw_text = resp.text.strip()
-        if not raw_text:
-            raise ValueError(f"API 返回空响应（HTTP {resp.status_code}），请检查接口或代理设置")
-        try:
-            payload = resp.json()
-        except json.JSONDecodeError as exc:
-            preview = raw_text[:200]
-            raise ValueError(f"API 返回非 JSON 内容（{exc}）：{preview}") from exc
-        items = payload.get("items", [])
-        if not isinstance(items, list):
-            raise ValueError("API 返回的 items 不是数组")
+        total_success = 0
+        total_skip = 0
+        total_fail = 0
 
-        success_count = 0
-        skip_count = 0
-        fail_count = 0
+        if not tag_codes:
+            # 无标签：下载到根目录
+            target_dir = resolve_target_dir(cfg, download_root)
+            target_dir.mkdir(parents=True, exist_ok=True)
+            append_log(
+                f"当前筛选：range={cfg['range']} sort={cfg['sort']} "
+                f"time={cfg['min_time']}min-{cfg['max_time']}min "
+                f"tag=default 目录=(根目录)"
+            )
+            items = _fetch_media_items(session, cfg, "", proxies)
+            s, k, f = _download_items(session, items, target_dir, max_per_run, proxies)
+            total_success += s
+            total_skip += k
+            total_fail += f
+        else:
+            # 多标签：每个标签独立下载 max_per_run 个视频
+            for tag_code in tag_codes:
+                target_dir = resolve_target_dir(cfg, download_root, tag_code=tag_code)
+                target_dir.mkdir(parents=True, exist_ok=True)
+                tag_name = get_tag_name(tag_code) or tag_code
+                append_log(
+                    f"当前筛选：range={cfg['range']} sort={cfg['sort']} "
+                    f"time={cfg['min_time']}min-{cfg['max_time']}min "
+                    f"tag={tag_name}({tag_code}) 目录={target_dir.name}"
+                )
+                items = _fetch_media_items(session, cfg, tag_code, proxies)
+                s, k, f = _download_items(session, items, target_dir, max_per_run, proxies)
+                append_log(f"标签 [{tag_name}] 完成：成功 {s}，跳过 {k}，失败 {f}")
+                total_success += s
+                total_skip += k
+                total_fail += f
 
-        for item in items:
-            if success_count >= max_per_run:
-                append_log(f"本次已下载 {success_count} 个，达到上限 {max_per_run}，停止继续下载")
-                break
-
-            if not isinstance(item, dict):
-                skip_count += 1
-                continue
-
-            video_id = str(item.get("id", "")).strip()
-            video_url = str(item.get("url", "")).strip()
-            thumbnail_url = str(item.get("thumbnail", "")).strip()
-            if not video_id:
-                skip_count += 1
-                append_log("条目缺少 id，已跳过")
-                continue
-            if not video_url:
-                skip_count += 1
-                append_log(f"条目 {video_id} 缺少 url，已跳过")
-                continue
-
-            # 以 id 命名，去重只检查目标文件夹内是否已存在同 id 的视频文件。
-            if any((target_dir / f"{video_id}{ext}").exists() for ext in VIDEO_EXTS):
-                skip_count += 1
-                append_log(f"id {video_id} 已存在，跳过")
-                continue
-
-            video_ext = get_file_ext_from_url(video_url, ".mp4")
-            thumb_ext = get_file_ext_from_url(thumbnail_url, ".jpg") if thumbnail_url else ".jpg"
-            video_path = target_dir / f"{video_id}{video_ext}"
-            thumb_path = target_dir / f"{video_id}{thumb_ext}"
-
-            ok_video = download_binary(session, video_url, video_path, proxies)
-            ok_thumb = True
-            if thumbnail_url:
-                ok_thumb = download_binary(session, thumbnail_url, thumb_path, proxies)
-
-            if ok_video and ok_thumb:
-                success_count += 1
-                append_log(f"下载完成：{video_path.name}")
-            else:
-                fail_count += 1
-
-        result = f"任务完成：成功 {success_count}，跳过 {skip_count}，失败 {fail_count}"
+        result = f"任务完成：成功 {total_success}，跳过 {total_skip}，失败 {total_fail}"
         append_log(result)
         runtime_state["last_result"] = result
     except Exception as exc:
@@ -427,6 +490,7 @@ def index(request: Request):
             "logs": "\n".join(get_logs()),
             "time_filter_min": TIME_FILTER_MIN,
             "time_filter_max": TIME_FILTER_MAX,
+            "tag_codes_json": json.dumps(cfg.get("tag_codes", []), ensure_ascii=False),
             "sort_options": [
                 {"value": "time", "label": "按时长"},
                 {"value": "favorite", "label": "按点赞"},
@@ -443,33 +507,38 @@ def index(request: Request):
 
 
 @app.post("/save")
-def save(
-    download_root: str = Form(...),
-    proxy: str = Form(""),
-    schedule_time: str = Form(...),
-    max_daily_downloads: int = Form(...),
-    sort: str = Form(...),
-    range: str = Form(...),
-    min_time: int = Form(...),
-    max_time: int = Form(...),
-    tag_code: str = Form(""),
-):
+async def save(request: Request):
     try:
+        form = await request.form()
+        download_root = str(form.get("download_root", "")).strip()
+        proxy = str(form.get("proxy", "")).strip()
+        schedule_time = str(form.get("schedule_time", "")).strip()
+        max_daily_downloads = int(form.get("max_daily_downloads", 0))
+        sort = str(form.get("sort", "pv")).strip()
+        range_value = str(form.get("range", "daily")).strip()
+        min_time = int(form.get("min_time", TIME_FILTER_MIN))
+        max_time = int(form.get("max_time", TIME_FILTER_MAX))
+        tag_codes_raw = str(form.get("tag_codes", "[]")).strip()
+        try:
+            tag_codes = json.loads(tag_codes_raw)
+        except json.JSONDecodeError:
+            tag_codes = []
+
         cfg = {
             "download_root": download_root,
             "proxy": proxy,
             "schedule_time": schedule_time,
             "max_daily_downloads": max_daily_downloads,
             "sort": sort,
-            "range": range,
+            "range": range_value,
             "min_time": min_time,
             "max_time": max_time,
-            "tag_code": tag_code,
+            "tag_codes": tag_codes,
         }
         save_config(cfg)
         update_schedule(get_current_config())
         append_log("配置保存成功")
-        return RedirectResponse(url="/", status_code=303)
+        return JSONResponse({"ok": True})
     except Exception as exc:
         append_log(f"配置保存失败：{exc}")
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
