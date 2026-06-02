@@ -4,7 +4,10 @@ set -e
 cd "$(dirname "$0")"
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] 拉取最新代码..."
-git pull
+git fetch --all --prune
+UPSTREAM="$(git rev-parse --abbrev-ref --symbolic-full-name @{u})"
+git clean -fd
+git reset --hard "$UPSTREAM"
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] 重建并重启容器..."
 docker compose down
