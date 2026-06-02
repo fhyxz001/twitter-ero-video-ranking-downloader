@@ -16,11 +16,11 @@
 
 ```json
 {
-  "download_root": "/vol1/1000/AdultMedia/tw",
-  "proxy": "",
+  "download_root": "/data/downloads",
+  "proxy": "http://192.168.1.13:20171",
   "auto_download_enabled": true,
   "schedule_time": "03:00",
-  "max_daily_downloads": 30,
+  "max_daily_downloads": 10,
   "sort": "pv",
   "range": "daily",
   "min_time": 0,
@@ -37,11 +37,11 @@
 
 | 字段 | 说明 | 默认值 |
 |---|---|---|
-| `download_root` | 视频下载的根目录，绝对路径 | `/vol1/1000/AdultMedia/tw` |
-| `proxy` | HTTP 代理地址，为空则不使用代理 | 空 |
+| `download_root` | 视频下载的根目录，绝对路径 | `/data/downloads` |
+| `proxy` | HTTP 代理地址，为空则不使用代理 | `http://192.168.1.13:20171` |
 | `auto_download_enabled` | 是否开启每日自动下载，关闭后仅保留手动下载 | `true` |
 | `schedule_time` | 每日定时执行时间，格式 `HH:MM` | `03:00` |
-| `max_daily_downloads` | 每个分类每日最大下载数量 | `30` |
+| `max_daily_downloads` | 每个分类每日最大下载数量 | `10` |
 | `sort` | 排序方式：`pv` 播放量 / `favorite` 点赞 / `time` 时长 / `created` 最近添加 | `pv` |
 | `range` | 时间范围：`daily` 每日 / `weekly` 每周 / `monthly` 每月 / `all` 全部 | `daily` |
 | `min_time` | 最短时长（秒），`0` 表示不限制 | `0` |
@@ -301,7 +301,7 @@ docker load -i twitter-ero-video-ranking-downloader-latest-offline-arm64.tar
 ```json
 {
   "download_root": "/data/downloads",
-  "proxy": "",
+  "proxy": "http://192.168.1.13:20171",
   ...
 }
 ```

@@ -53,11 +53,11 @@ ALLOWED_WATERFALL_PAGE_SIZES = {10, 20, 30, 50, 100}
 UNTAGGED_FOLDER_NAME = "无标签"
 
 DEFAULT_CONFIG: Dict[str, object] = {
-    "download_root": "/vol1/1000/AdultMedia/tw",
-    "proxy": "",
+    "download_root": "/data/downloads",
+    "proxy": "http://192.168.1.13:20171",
     "auto_download_enabled": True,
     "schedule_time": "03:00",
-    "max_daily_downloads": 30,
+    "max_daily_downloads": 10,
     "sort": "pv",
     "range": "daily",
     "min_time": TIME_FILTER_MIN,

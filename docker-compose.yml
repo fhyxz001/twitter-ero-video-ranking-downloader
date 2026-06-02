@@ -7,9 +7,7 @@ services:
     ports:
       - "2617:2617"
     volumes:
-      # 配置文件持久化
       - ./config.json:/app/config.json
-      # NAS 下载目录挂载（按需改成你的真实NAS路径）
-      - ./nas_downloads:/data/downloads
+      - /vol1/1000/AdultMedia/tw:/data/downloads
     environment:
       - TZ=Asia/Shanghai
