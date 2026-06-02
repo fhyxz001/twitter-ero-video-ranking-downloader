@@ -360,6 +360,28 @@
     .settings-field.full {
       grid-column: 1 / -1;
     }
+    .settings-toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 36px;
+    }
+    .settings-toggle input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+    }
+    .settings-toggle span {
+      font-size: 14px;
+      color: #111827;
+      font-weight: 600;
+    }
+    .settings-help {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #6b7280;
+      line-height: 1.5;
+    }
     .settings-modal-footer {
       display: flex;
       justify-content: flex-end;
@@ -491,6 +513,7 @@
     </div>
 
     <div class="status">
+      <div>自动下载：<span id="auto_download_enabled">{{ "已开启" if config.auto_download_enabled else "已关闭" }}</span></div>
       <div>运行中：<span id="is_running">{{ "是" if state.is_running else "否" }}</span></div>
       <div>最近执行时间：<span id="last_run_time">{{ state.last_run_time or "暂无" }}</span></div>
       <div>最近结果：<span id="last_result">{{ state.last_result }}</span></div>
@@ -512,6 +535,15 @@
       </div>
       <div class="settings-modal-body">
         <div class="settings-grid">
+          <div class="settings-field full">
+            <label for="settings_auto_download_enabled">定时下载</label>
+            <label class="settings-toggle">
+              <input id="settings_auto_download_enabled" name="auto_download_enabled" type="checkbox" {% if config.auto_download_enabled %}checked{% endif %} onchange="syncAutoDownloadFields()" />
+              <span>开启自动下载</span>
+            </label>
+            <div class="settings-help">关闭后不会再按计划自动下载，但“立即执行任务”仍可手动下载。</div>
+          </div>
+
           <div class="settings-field">
             <label for="settings_proxy">HTTP/HTTPS 代理（可空）</label>
             <input id="settings_proxy" name="proxy" type="text" placeholder="例如：http://127.0.0.1:7890" value="{{ config.proxy }}" />
@@ -825,6 +857,11 @@
     // --- Settings Modal ---
     const settingsModal = document.getElementById('settings_modal');
 
+    function syncAutoDownloadFields() {
+      const enabled = document.getElementById('settings_auto_download_enabled').checked;
+      document.getElementById('settings_schedule_time').disabled = !enabled;
+    }
+
     function setTimeFilterValue(minTime, maxTime) {
       const select = document.getElementById('settings_time_filter');
       const value = `${parseInt(minTime || 0)}-${parseInt(maxTime || 0)}`;
@@ -847,11 +884,13 @@
       // Refresh values from current config
       const downloadRoot = document.getElementById('download_root').value;
       document.getElementById('settings_proxy').value = currentConfig.proxy || '';
+      document.getElementById('settings_auto_download_enabled').checked = currentConfig.auto_download_enabled !== false;
       document.getElementById('settings_schedule_time').value = currentConfig.schedule_time || '03:00';
       document.getElementById('settings_max_daily_downloads').value = currentConfig.max_daily_downloads || 30;
       document.getElementById('settings_sort').value = currentConfig.sort || 'pv';
       document.getElementById('settings_range').value = currentConfig.range || 'daily';
       setTimeFilterValue(currentConfig.min_time || 0, currentConfig.max_time || 86400);
+      syncAutoDownloadFields();
 
       settingsModal.classList.add('show');
       settingsModal.setAttribute('aria-hidden', 'false');
@@ -874,6 +913,7 @@
       const formData = new FormData();
       formData.append('download_root', document.getElementById('download_root').value);
       formData.append('proxy', document.getElementById('settings_proxy').value);
+      formData.append('auto_download_enabled', document.getElementById('settings_auto_download_enabled').checked ? '1' : '0');
       formData.append('schedule_time', document.getElementById('settings_schedule_time').value);
       formData.append('max_daily_downloads', document.getElementById('settings_max_daily_downloads').value);
       formData.append('sort', document.getElementById('settings_sort').value);
@@ -889,6 +929,7 @@
         if (data.ok) {
           // Update local config cache
           currentConfig.proxy = document.getElementById('settings_proxy').value;
+          currentConfig.auto_download_enabled = document.getElementById('settings_auto_download_enabled').checked;
           currentConfig.schedule_time = document.getElementById('settings_schedule_time').value;
           currentConfig.max_daily_downloads = parseInt(document.getElementById('settings_max_daily_downloads').value);
           currentConfig.sort = document.getElementById('settings_sort').value;
@@ -913,6 +954,7 @@
     let currentConfig = {
       download_root: "{{ config.download_root }}",
       proxy: "{{ config.proxy }}",
+      auto_download_enabled: {{ 'true' if config.auto_download_enabled else 'false' }},
       schedule_time: "{{ config.schedule_time }}",
       max_daily_downloads: {{ config.max_daily_downloads }},
       sort: "{{ config.sort }}",
@@ -1006,6 +1048,7 @@
         return;
       }
 
+      document.getElementById('auto_download_enabled').innerText = data.config?.auto_download_enabled === false ? '已关闭' : '已开启';
       document.getElementById('is_running').innerText = data.state.is_running ? '是' : '否';
       document.getElementById('last_run_time').innerText = data.state.last_run_time || '暂无';
       document.getElementById('last_result').innerText = data.state.last_result || '';

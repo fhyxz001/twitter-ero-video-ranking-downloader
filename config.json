@@ -1,14 +1,18 @@
 {
   "download_root": "D:\\videos",
   "proxy": "http://192.168.2.205:7897",
+  "auto_download_enabled": true,
   "schedule_time": "03:00",
-  "max_daily_downloads": 3,
+  "max_daily_downloads": 50,
   "sort": "pv",
   "range": "daily",
   "min_time": 0,
   "max_time": 300,
   "time_filter_unit": "seconds",
-  "tag_codes": [
-    "anime"
-  ]
+  "tag_codes": [],
+  "waterfall_per_page": 10,
+  "waterfall_sort": "pv",
+  "waterfall_range": "daily",
+  "waterfall_min_time": 0,
+  "waterfall_max_time": 86400
 }

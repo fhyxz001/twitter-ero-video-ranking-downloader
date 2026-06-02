@@ -134,6 +134,23 @@
     .status strong {
       color: var(--ink);
     }
+    .status-side {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .pager {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .page-info {
+      min-width: 96px;
+      text-align: center;
+      font-weight: 700;
+      color: var(--ink);
+    }
     .masonry {
       width: min(980px, 100%);
       margin: 0 auto;
@@ -245,6 +262,82 @@
       color: var(--muted);
       background: rgba(255, 255, 255, 0.58);
     }
+    .settings-modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(8, 10, 9, 0.58);
+      z-index: 90;
+    }
+    .settings-modal.open {
+      display: flex;
+    }
+    .settings-panel {
+      width: min(520px, 100%);
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .settings-head,
+    .settings-foot {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .settings-foot {
+      border-bottom: none;
+      border-top: 1px solid var(--line);
+      justify-content: flex-end;
+    }
+    .settings-title {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 800;
+    }
+    .settings-note {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .settings-body {
+      padding: 16px;
+    }
+    .settings-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .field.full {
+      grid-column: 1 / -1;
+    }
+    .field label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .field select {
+      height: 38px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      padding: 0 12px;
+      color: var(--ink);
+      font: inherit;
+    }
     .modal {
       position: fixed;
       inset: 0;
@@ -306,6 +399,9 @@
       .masonry { column-count: 1; }
       .actions .btn { flex: 1; min-width: 128px; }
       .status { align-items: flex-start; flex-direction: column; }
+      .status-side { width: 100%; justify-content: space-between; }
+      .pager { width: 100%; justify-content: space-between; }
+      .settings-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -318,6 +414,7 @@
         <div id="configLine" class="config-line"></div>
       </div>
       <div class="actions">
+        <button class="btn" type="button" onclick="openSettings()">设置</button>
         <button class="btn" type="button" onclick="reloadData()">刷新</button>
         <button class="btn" type="button" id="selectAllBtn" onclick="toggleSelectAll()">全选当前页</button>
         <button class="btn btn-primary" type="button" id="downloadBtn" onclick="downloadSelected()" disabled>下载选中</button>
@@ -328,13 +425,72 @@
       <nav id="tabs" class="tabs" aria-label="标签"></nav>
       <div class="status">
         <div id="statusText">正在加载...</div>
-        <div>已选 <strong id="selectedCount">0</strong> 个</div>
+        <div class="status-side">
+          <div>已选 <strong id="selectedCount">0</strong> 个</div>
+          <div class="pager">
+            <button class="btn" type="button" id="prevPageBtn" onclick="changePage(-1)">上一页</button>
+            <span id="pageInfo" class="page-info">第 1 页</span>
+            <button class="btn" type="button" id="nextPageBtn" onclick="changePage(1)">下一页</button>
+          </div>
+        </div>
       </div>
     </section>
 
     <section id="masonry" class="masonry"></section>
     <div id="empty" class="empty">当前配置下没有可预览的视频。</div>
   </main>
+
+  <div id="settingsModal" class="settings-modal" onclick="closeSettingsOnMask(event)">
+    <div class="settings-panel">
+      <div class="settings-head">
+        <div>
+          <h2 class="settings-title">瀑布流设置</h2>
+          <p class="settings-note">这里只影响瀑布流预览，不会改动下载页的定时下载筛选。</p>
+        </div>
+        <button class="btn" type="button" onclick="closeSettings()">&times;</button>
+      </div>
+      <div class="settings-body">
+        <div class="settings-grid">
+          <div class="field">
+            <label for="settingsPerPage">分页展示数量</label>
+            <select id="settingsPerPage">
+              {% for value in page_size_options %}
+              <option value="{{ value }}" {% if config.per_page == value %}selected{% endif %}>{{ value }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="settingsSort">排序方式</label>
+            <select id="settingsSort">
+              {% for option in sort_options %}
+              <option value="{{ option.value }}" {% if config.sort == option.value %}selected{% endif %}>{{ option.label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="settingsRange">时间范围</label>
+            <select id="settingsRange">
+              {% for option in range_options %}
+              <option value="{{ option.value }}" {% if config.range == option.value %}selected{% endif %}>{{ option.label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="settingsTimeFilter">时间筛选</label>
+            <select id="settingsTimeFilter">
+              {% for option in time_filter_options %}
+              <option value="{{ option.min }}-{{ option.max }}" data-min="{{ option.min }}" data-max="{{ option.max }}" {% if config.min_time == option.min and config.max_time == option.max %}selected{% endif %}>{{ option.label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="settings-foot">
+        <button class="btn" type="button" onclick="closeSettings()">取消</button>
+        <button class="btn btn-primary" type="button" onclick="saveSettings()">保存</button>
+      </div>
+    </div>
+  </div>
 
   <div id="previewModal" class="modal" onclick="closePreviewOnMask(event)">
     <div class="player">
@@ -351,18 +507,27 @@
   <script>
     const initialTabs = {{ tabs | tojson }};
     const initialConfig = {{ config | tojson }};
+    const settingsModal = document.getElementById('settingsModal');
+
     let tabs = initialTabs;
+    let currentConfig = { ...initialConfig };
     let currentTag = new URLSearchParams(location.search).get('tag') || '';
+    let currentPage = Math.max(1, parseInt(new URLSearchParams(location.search).get('page') || '1', 10) || 1);
+    let pagination = {
+      page: currentPage,
+      per_page: currentConfig.per_page || 10,
+      has_next: false,
+    };
     let items = [];
+    let loadError = '';
     let selectedIds = new Set();
     let loading = false;
 
     function renderConfigLine(cfg) {
       if (!cfg) return;
       document.getElementById('configLine').textContent =
-        `排序 ${cfg.sort || '-'} / 范围 ${cfg.range || '-'} / 时长 ${cfg.min_time || 0}-${cfg.max_time || 0} 秒 / 数量 ${cfg.max_daily_downloads || '-'}`;
+        `排序 ${cfg.sort || '-'} / 范围 ${cfg.range || '-'} / 时长 ${cfg.min_time || 0}-${cfg.max_time || 0} 秒 / 每页 ${cfg.per_page || 10}`;
     }
-    renderConfigLine(initialConfig);
 
     function escapeHtml(value) {
       return String(value || '')
@@ -390,6 +555,88 @@
       return tab ? tab.name : '全部';
     }
 
+    function setTimeFilterValue(minTime, maxTime) {
+      const select = document.getElementById('settingsTimeFilter');
+      const value = `${parseInt(minTime || 0, 10)}-${parseInt(maxTime || 0, 10)}`;
+      if ([...select.options].some(option => option.value === value)) {
+        select.value = value;
+      } else {
+        select.value = '0-86400';
+      }
+    }
+
+    function getSelectedTimeFilter() {
+      const option = document.getElementById('settingsTimeFilter').selectedOptions[0];
+      return {
+        min: parseInt(option.dataset.min || '0', 10),
+        max: parseInt(option.dataset.max || '86400', 10),
+      };
+    }
+
+    function openSettings() {
+      document.getElementById('settingsPerPage').value = String(currentConfig.per_page || 10);
+      document.getElementById('settingsSort').value = currentConfig.sort || 'pv';
+      document.getElementById('settingsRange').value = currentConfig.range || 'daily';
+      setTimeFilterValue(currentConfig.min_time || 0, currentConfig.max_time || 86400);
+      settingsModal.classList.add('open');
+    }
+
+    function closeSettings() {
+      settingsModal.classList.remove('open');
+    }
+
+    function closeSettingsOnMask(event) {
+      if (event.target === settingsModal) {
+        closeSettings();
+      }
+    }
+
+    async function saveSettings() {
+      const timeFilter = getSelectedTimeFilter();
+      const payload = {
+        per_page: parseInt(document.getElementById('settingsPerPage').value, 10),
+        sort: document.getElementById('settingsSort').value,
+        range: document.getElementById('settingsRange').value,
+        min_time: timeFilter.min,
+        max_time: timeFilter.max,
+      };
+
+      try {
+        const resp = await fetch('/api/waterfall/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await resp.json();
+        if (!data.ok) {
+          throw new Error(data.error || '保存失败');
+        }
+        currentConfig = data.config || payload;
+        currentPage = 1;
+        pagination.page = 1;
+        pagination.per_page = currentConfig.per_page || payload.per_page;
+        pagination.has_next = false;
+        closeSettings();
+        updateUrl();
+        renderConfigLine(currentConfig);
+        await loadData();
+      } catch (error) {
+        alert(error.message || '保存失败');
+      }
+    }
+
+    function updateUrl() {
+      const params = new URLSearchParams();
+      if (currentTag) {
+        params.set('tag', currentTag);
+      }
+      if (currentPage > 1) {
+        params.set('page', String(currentPage));
+      }
+      const query = params.toString();
+      history.replaceState(null, '', query ? `/waterfall?${query}` : '/waterfall');
+    }
+
     function renderTabs() {
       const box = document.getElementById('tabs');
       box.innerHTML = tabs.map(tab => `
@@ -406,15 +653,28 @@
       const selectedCount = document.getElementById('selectedCount');
       const selectAllBtn = document.getElementById('selectAllBtn');
       const downloadBtn = document.getElementById('downloadBtn');
+      const prevPageBtn = document.getElementById('prevPageBtn');
+      const nextPageBtn = document.getElementById('nextPageBtn');
+      const pageInfo = document.getElementById('pageInfo');
+
       selectedCount.textContent = String(selectedIds.size);
       downloadBtn.disabled = selectedIds.size === 0 || loading;
       selectAllBtn.disabled = items.length === 0 || loading;
       selectAllBtn.textContent = items.length && items.every(item => selectedIds.has(item.id))
         ? '取消全选'
         : '全选当前页';
-      status.innerHTML = loading
-        ? `正在加载 <strong>${escapeHtml(tabName(currentTag))}</strong> ...`
-        : `<strong>${escapeHtml(tabName(currentTag))}</strong> 共 ${items.length} 个视频`;
+      prevPageBtn.disabled = loading || pagination.page <= 1;
+      nextPageBtn.disabled = loading || !pagination.has_next;
+      pageInfo.textContent = `第 ${pagination.page} 页`;
+      if (loading) {
+        status.innerHTML = `正在加载 <strong>${escapeHtml(tabName(currentTag))}</strong> 第 ${pagination.page} 页...`;
+        return;
+      }
+      if (loadError) {
+        status.innerHTML = `<strong>${escapeHtml(loadError)}</strong>`;
+        return;
+      }
+      status.innerHTML = `<strong>${escapeHtml(tabName(currentTag))}</strong> 当前页共 ${items.length} 个视频`;
     }
 
     function renderCards() {
@@ -464,23 +724,54 @@
 
     async function loadData() {
       loading = true;
+      loadError = '';
       selectedIds.clear();
       renderTabs();
       renderCards();
       try {
-        const query = currentTag ? `?tag=${encodeURIComponent(currentTag)}` : '';
-        const resp = await fetch(`/api/waterfall${query}`);
+        const params = new URLSearchParams();
+        if (currentTag) {
+          params.set('tag', currentTag);
+        }
+        if (currentPage > 1) {
+          params.set('page', String(currentPage));
+        }
+        const query = params.toString();
+        const resp = await fetch(query ? `/api/waterfall?${query}` : '/api/waterfall');
         const data = await resp.json();
         if (!data.ok) {
           throw new Error(data.error || '加载失败');
         }
         tabs = Array.isArray(data.tabs) ? data.tabs : tabs;
         items = Array.isArray(data.items) ? data.items : [];
-        renderConfigLine(data.config || {});
+        if (data.config) {
+          currentConfig = data.config;
+        }
+        if (data.pagination) {
+          pagination = {
+            page: data.pagination.page || currentPage,
+            per_page: data.pagination.per_page || currentConfig.per_page || 10,
+            has_next: Boolean(data.pagination.has_next),
+          };
+          currentPage = pagination.page;
+        } else {
+          pagination = {
+            page: currentPage,
+            per_page: currentConfig.per_page || 10,
+            has_next: false,
+          };
+        }
+        renderConfigLine(currentConfig);
+        updateUrl();
       } catch (error) {
         items = [];
-        document.getElementById('statusText').textContent = error.message || '加载失败';
-        renderConfigLine(initialConfig);
+        loadError = error.message || '加载失败';
+        pagination = {
+          page: currentPage,
+          per_page: currentConfig.per_page || 10,
+          has_next: false,
+        };
+        renderConfigLine(currentConfig);
       } finally {
         loading = false;
         renderTabs();
@@ -491,8 +782,22 @@
     function switchTab(code) {
       if (code === currentTag || loading) return;
       currentTag = code;
-      const nextUrl = code ? `/waterfall?tag=${encodeURIComponent(code)}` : '/waterfall';
-      history.replaceState(null, '', nextUrl);
+      currentPage = 1;
+      pagination.page = 1;
+      pagination.has_next = false;
+      updateUrl();
+      loadData();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function changePage(delta) {
+      if (loading) return;
+      const nextPage = currentPage + delta;
+      if (nextPage < 1) return;
+      if (delta > 0 && !pagination.has_next) return;
+      currentPage = nextPage;
+      pagination.page = nextPage;
+      updateUrl();
       loadData();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -579,13 +884,16 @@
     document.addEventListener('keydown', event => {
       if (event.key === 'Escape') {
         closePreview();
+        closeSettings();
       }
     });
 
     if (!tabs.some(tab => tab.code === currentTag)) {
       currentTag = '';
     }
+    renderConfigLine(currentConfig);
     renderTabs();
+    updateUrl();
     loadData();
   </script>
 </body>

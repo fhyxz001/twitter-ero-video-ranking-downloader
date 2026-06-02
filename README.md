@@ -4,9 +4,9 @@
 
 ## 功能概览
 
-- **定时下载** — 按配置的排序/范围/时长/分类自动下载，支持每日定时执行
+- **定时下载** — 按配置的排序/范围/时长/分类自动下载，支持每日定时执行，也可一键关闭自动下载
 - **分类管理** — 可配置多个标签分类，每个分类独立下载到对应子文件夹
-- **瀑布流预览** — 在线浏览远端排行视频，选择后一键下载
+- **瀑布流预览** — 在线浏览远端排行视频，支持独立设置每页数量/排序/时间范围/时长筛选，选择后一键下载
 - **海报墙** — 浏览本地已下载的视频，支持预览播放、替换封面、批量删除
 - **Web 界面** — 所有操作通过浏览器完成，端口 `2617`
 
@@ -18,6 +18,7 @@
 {
   "download_root": "/vol1/1000/AdultMedia/tw",
   "proxy": "",
+  "auto_download_enabled": true,
   "schedule_time": "03:00",
   "max_daily_downloads": 30,
   "sort": "pv",
@@ -25,7 +26,12 @@
   "min_time": 0,
   "max_time": 86400,
   "time_filter_unit": "seconds",
-  "tag_codes": []
+  "tag_codes": [],
+  "waterfall_per_page": 10,
+  "waterfall_sort": "pv",
+  "waterfall_range": "daily",
+  "waterfall_min_time": 0,
+  "waterfall_max_time": 86400
 }
 ```
 
@@ -33,6 +39,7 @@
 |---|---|---|
 | `download_root` | 视频下载的根目录，绝对路径 | `/vol1/1000/AdultMedia/tw` |
 | `proxy` | HTTP 代理地址，为空则不使用代理 | 空 |
+| `auto_download_enabled` | 是否开启每日自动下载，关闭后仅保留手动下载 | `true` |
 | `schedule_time` | 每日定时执行时间，格式 `HH:MM` | `03:00` |
 | `max_daily_downloads` | 每个分类每日最大下载数量 | `30` |
 | `sort` | 排序方式：`pv` 播放量 / `favorite` 点赞 / `time` 时长 / `created` 最近添加 | `pv` |
@@ -40,6 +47,11 @@
 | `min_time` | 最短时长（秒），`0` 表示不限制 | `0` |
 | `max_time` | 最长时长（秒），`86400` 表示不限制 | `86400` |
 | `tag_codes` | 要下载的分类标签列表，为空则只下载无标签分类 | `[]` |
+| `waterfall_per_page` | 瀑布流每页展示数量，可选 `10/20/30/50/100` | `10` |
+| `waterfall_sort` | 瀑布流排序方式，独立于下载页设置 | `pv` |
+| `waterfall_range` | 瀑布流时间范围，独立于下载页设置 | `daily` |
+| `waterfall_min_time` | 瀑布流最短时长（秒） | `0` |
+| `waterfall_max_time` | 瀑布流最长时长（秒） | `86400` |
 
 ---
 

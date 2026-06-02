@@ -49,11 +49,13 @@ TIME_FILTER_MIN = 0
 TIME_FILTER_MAX = 24 * 60 * 60
 ALLOWED_SORTS = {"time", "favorite", "pv", "created"}
 ALLOWED_RANGES = {"daily", "weekly", "monthly", "all"}
+ALLOWED_WATERFALL_PAGE_SIZES = {10, 20, 30, 50, 100}
 UNTAGGED_FOLDER_NAME = "无标签"
 
 DEFAULT_CONFIG: Dict[str, object] = {
     "download_root": "/vol1/1000/AdultMedia/tw",
     "proxy": "",
+    "auto_download_enabled": True,
     "schedule_time": "03:00",
     "max_daily_downloads": 30,
     "sort": "pv",
@@ -62,7 +64,35 @@ DEFAULT_CONFIG: Dict[str, object] = {
     "max_time": TIME_FILTER_MAX,
     "time_filter_unit": "seconds",
     "tag_codes": [],
+    "waterfall_per_page": 10,
+    "waterfall_sort": "pv",
+    "waterfall_range": "daily",
+    "waterfall_min_time": TIME_FILTER_MIN,
+    "waterfall_max_time": TIME_FILTER_MAX,
 }
+
+TIME_FILTER_OPTIONS = [
+    {"label": "全部", "min": 0, "max": TIME_FILTER_MAX},
+    {"label": "0-5分钟", "min": 0, "max": 5 * 60},
+    {"label": "5-15分钟", "min": 5 * 60, "max": 15 * 60},
+    {"label": "15-30分钟", "min": 15 * 60, "max": 30 * 60},
+    {"label": "30分钟-1小时", "min": 30 * 60, "max": 60 * 60},
+    {"label": "一小时以上", "min": 60 * 60, "max": TIME_FILTER_MAX},
+]
+
+SORT_OPTIONS = [
+    {"value": "created", "label": "最近添加"},
+    {"value": "time", "label": "按时长"},
+    {"value": "favorite", "label": "按点赞"},
+    {"value": "pv", "label": "按观看数"},
+]
+
+RANGE_OPTIONS = [
+    {"value": "daily", "label": "每日"},
+    {"value": "weekly", "label": "每周"},
+    {"value": "monthly", "label": "每月"},
+    {"value": "all", "label": "全部"},
+]
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -96,6 +126,12 @@ runtime_state = {
 log_lines: List[str] = []
 
 
+def parse_bool(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
 def append_log(message: str) -> None:
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with log_lock:
@@ -109,6 +145,18 @@ def get_logs() -> List[str]:
         return list(log_lines)
 
 
+def validate_time_window(min_value: object, max_value: object, label: str) -> tuple[int, int]:
+    min_time = int(min_value)
+    max_time = int(max_value)
+    if min_time < TIME_FILTER_MIN or min_time > TIME_FILTER_MAX:
+        raise ValueError(f"{label}最小时长必须在 {TIME_FILTER_MIN} 到 {TIME_FILTER_MAX} 秒之间")
+    if max_time < TIME_FILTER_MIN or max_time > TIME_FILTER_MAX:
+        raise ValueError(f"{label}最大时长必须在 {TIME_FILTER_MIN} 到 {TIME_FILTER_MAX} 秒之间")
+    if min_time > max_time:
+        raise ValueError(f"{label}最小时长不能大于最大时长")
+    return min_time, max_time
+
+
 def validate_config(raw: Dict[str, object]) -> Dict[str, object]:
     cfg = dict(DEFAULT_CONFIG)
     cfg.update(raw or {})
@@ -120,6 +168,8 @@ def validate_config(raw: Dict[str, object]) -> Dict[str, object]:
 
     proxy = str(cfg.get("proxy", "")).strip()
     cfg["proxy"] = proxy
+
+    cfg["auto_download_enabled"] = parse_bool(cfg.get("auto_download_enabled", True))
 
     sort = str(cfg.get("sort", "pv")).strip()
     if sort not in ALLOWED_SORTS:
@@ -143,14 +193,11 @@ def validate_config(raw: Dict[str, object]) -> Dict[str, object]:
         raise ValueError("每类视频下载数必须大于0")
     cfg["max_daily_downloads"] = max_daily
 
-    min_time = int(cfg.get("min_time", TIME_FILTER_MIN))
-    max_time = int(cfg.get("max_time", TIME_FILTER_MAX))
-    if min_time < TIME_FILTER_MIN or min_time > TIME_FILTER_MAX:
-        raise ValueError(f"最小时长必须在 {TIME_FILTER_MIN} 到 {TIME_FILTER_MAX} 秒之间")
-    if max_time < TIME_FILTER_MIN or max_time > TIME_FILTER_MAX:
-        raise ValueError(f"最大时长必须在 {TIME_FILTER_MIN} 到 {TIME_FILTER_MAX} 秒之间")
-    if min_time > max_time:
-        raise ValueError("最小时长不能大于最大时长")
+    min_time, max_time = validate_time_window(
+        cfg.get("min_time", TIME_FILTER_MIN),
+        cfg.get("max_time", TIME_FILTER_MAX),
+        "",
+    )
     cfg["min_time"] = min_time
     cfg["max_time"] = max_time
     cfg["time_filter_unit"] = "seconds"
@@ -172,6 +219,29 @@ def validate_config(raw: Dict[str, object]) -> Dict[str, object]:
             seen.add(t)
             deduped.append(t)
     cfg["tag_codes"] = deduped
+
+    waterfall_per_page = int(cfg.get("waterfall_per_page", 10))
+    if waterfall_per_page not in ALLOWED_WATERFALL_PAGE_SIZES:
+        raise ValueError("瀑布流每页展示数量必须是 10、20、30、50 或 100")
+    cfg["waterfall_per_page"] = waterfall_per_page
+
+    waterfall_sort = str(cfg.get("waterfall_sort", "pv")).strip()
+    if waterfall_sort not in ALLOWED_SORTS:
+        raise ValueError("瀑布流排序方式必须是 time、favorite、pv 或 created")
+    cfg["waterfall_sort"] = waterfall_sort
+
+    waterfall_range = str(cfg.get("waterfall_range", "daily")).strip()
+    if waterfall_range not in ALLOWED_RANGES:
+        raise ValueError("瀑布流时间范围必须是 daily、weekly、monthly 或 all")
+    cfg["waterfall_range"] = waterfall_range
+
+    waterfall_min_time, waterfall_max_time = validate_time_window(
+        cfg.get("waterfall_min_time", TIME_FILTER_MIN),
+        cfg.get("waterfall_max_time", TIME_FILTER_MAX),
+        "瀑布流",
+    )
+    cfg["waterfall_min_time"] = waterfall_min_time
+    cfg["waterfall_max_time"] = waterfall_max_time
     return cfg
 
 
@@ -220,8 +290,12 @@ def get_current_config() -> Dict[str, object]:
 
 
 def update_schedule(cfg: Dict[str, object]) -> None:
-    hour, minute = cfg["schedule_time"].split(":")
     scheduler.remove_all_jobs()
+    if not bool(cfg.get("auto_download_enabled", True)):
+        append_log("定时下载已关闭")
+        return
+
+    hour, minute = cfg["schedule_time"].split(":")
     scheduler.add_job(
         run_download_job,
         trigger=CronTrigger(hour=int(hour), minute=int(minute)),
@@ -229,6 +303,16 @@ def update_schedule(cfg: Dict[str, object]) -> None:
         replace_existing=True,
     )
     append_log(f"定时任务已更新：每天 {cfg['schedule_time']} 执行")
+
+
+def get_waterfall_config(cfg: Dict[str, object]) -> Dict[str, object]:
+    return {
+        "per_page": int(cfg.get("waterfall_per_page", 10)),
+        "sort": str(cfg.get("waterfall_sort", "pv")),
+        "range": str(cfg.get("waterfall_range", "daily")),
+        "min_time": int(cfg.get("waterfall_min_time", TIME_FILTER_MIN)),
+        "max_time": int(cfg.get("waterfall_max_time", TIME_FILTER_MAX)),
+    }
 
 
 def get_file_ext_from_url(url: str, fallback: str) -> str:
@@ -245,9 +329,14 @@ def build_proxies(proxy: str) -> Optional[Dict[str, str]]:
     return {"http": proxy, "https": proxy}
 
 
-def build_media_request_params(cfg: Dict[str, object], tag_code: str = "", per_page: int = 30) -> Dict[str, object]:
+def build_media_request_params(
+    cfg: Dict[str, object],
+    tag_code: str = "",
+    per_page: int = 30,
+    page: int = 1,
+) -> Dict[str, object]:
     params: Dict[str, object] = {
-        "page": 1,
+        "page": max(1, int(page)),
         "per_page": per_page,
         "ids": "",
         "isAnimeOnly": 0,
@@ -552,27 +641,10 @@ def index(request: Request):
             "config": cfg,
             "state": state,
             "logs": "\n".join(get_logs()),
-            "time_filter_options": [
-                {"label": "全部", "min": 0, "max": TIME_FILTER_MAX},
-                {"label": "0-5分钟", "min": 0, "max": 5 * 60},
-                {"label": "5-15分钟", "min": 5 * 60, "max": 15 * 60},
-                {"label": "15-30分钟", "min": 15 * 60, "max": 30 * 60},
-                {"label": "30分钟-1小时", "min": 30 * 60, "max": 60 * 60},
-                {"label": "一小时以上", "min": 60 * 60, "max": TIME_FILTER_MAX},
-            ],
+            "time_filter_options": TIME_FILTER_OPTIONS,
             "tag_codes_json": json.dumps(cfg.get("tag_codes", []), ensure_ascii=False),
-            "sort_options": [
-                {"value": "created", "label": "最近添加"},
-                {"value": "time", "label": "按时长"},
-                {"value": "favorite", "label": "按点赞"},
-                {"value": "pv", "label": "按观看数"},
-            ],
-            "range_options": [
-                {"value": "daily", "label": "每日"},
-                {"value": "weekly", "label": "每周"},
-                {"value": "monthly", "label": "每月"},
-                {"value": "all", "label": "全部"},
-            ],
+            "sort_options": SORT_OPTIONS,
+            "range_options": RANGE_OPTIONS,
         },
     )
 
@@ -583,6 +655,7 @@ async def save(request: Request):
         form = await request.form()
         download_root = str(form.get("download_root", "")).strip()
         proxy = str(form.get("proxy", "")).strip()
+        auto_download_enabled = parse_bool(form.get("auto_download_enabled", "1"))
         schedule_time = str(form.get("schedule_time", "")).strip()
         max_daily_downloads = int(form.get("max_daily_downloads", 0))
         sort = str(form.get("sort", "pv")).strip()
@@ -595,18 +668,20 @@ async def save(request: Request):
         except json.JSONDecodeError:
             tag_codes = []
 
-        cfg = {
-            "download_root": download_root,
-            "proxy": proxy,
-            "schedule_time": schedule_time,
-            "max_daily_downloads": max_daily_downloads,
-            "sort": sort,
-            "range": range_value,
-            "min_time": min_time,
-            "max_time": max_time,
-            "tag_codes": tag_codes,
-        }
         with config_lock:
+            cfg = load_config()
+            cfg.update({
+                "download_root": download_root,
+                "proxy": proxy,
+                "auto_download_enabled": auto_download_enabled,
+                "schedule_time": schedule_time,
+                "max_daily_downloads": max_daily_downloads,
+                "sort": sort,
+                "range": range_value,
+                "min_time": min_time,
+                "max_time": max_time,
+                "tag_codes": tag_codes,
+            })
             save_config(cfg)
             updated = load_config()
         update_schedule(updated)
@@ -640,6 +715,26 @@ async def save_quick(request: Request):
         return JSONResponse({"ok": True, "config": updated})
     except Exception as exc:
         append_log(f"自动保存下载根目录/标签筛选失败：{exc}")
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+
+
+@app.post("/api/waterfall/settings")
+async def save_waterfall_settings(request: Request):
+    try:
+        body = await request.json()
+        with config_lock:
+            cfg = load_config()
+            cfg["waterfall_per_page"] = int(body.get("per_page", cfg.get("waterfall_per_page", 10)))
+            cfg["waterfall_sort"] = str(body.get("sort", cfg.get("waterfall_sort", "pv"))).strip()
+            cfg["waterfall_range"] = str(body.get("range", cfg.get("waterfall_range", "daily"))).strip()
+            cfg["waterfall_min_time"] = int(body.get("min_time", cfg.get("waterfall_min_time", TIME_FILTER_MIN)))
+            cfg["waterfall_max_time"] = int(body.get("max_time", cfg.get("waterfall_max_time", TIME_FILTER_MAX)))
+            save_config(cfg)
+            updated = load_config()
+        append_log("瀑布流配置已保存")
+        return JSONResponse({"ok": True, "config": get_waterfall_config(updated)})
+    except Exception as exc:
+        append_log(f"瀑布流配置保存失败：{exc}")
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
 
 
@@ -691,17 +786,19 @@ def api_tags(page: int = 1, per_page: int = 10):
 
 
 @app.get("/api/waterfall")
-def api_waterfall(tag: str = ""):
+def api_waterfall(tag: str = "", page: int = 1):
     cfg = get_current_config()
     tag_code = str(tag or "").strip()
     if not _validate_waterfall_tag(cfg, tag_code):
         return JSONResponse({"ok": False, "error": "无效标签"}, status_code=400)
 
-    per_page = max(1, min(int(cfg.get("max_daily_downloads", 30)), 100))
+    waterfall_cfg = get_waterfall_config(cfg)
+    per_page = int(waterfall_cfg["per_page"])
+    safe_page = max(1, int(page))
     proxies = build_proxies(str(cfg.get("proxy", "")).strip())
     session = requests.Session()
     try:
-        params = build_media_request_params(cfg, tag_code=tag_code, per_page=per_page)
+        params = build_media_request_params(waterfall_cfg, tag_code=tag_code, per_page=per_page, page=safe_page)
         resp = session.get(MEDIA_API_URL, params=params, timeout=REQUEST_TIMEOUT, proxies=proxies)
         resp.raise_for_status()
         payload = resp.json()
@@ -718,12 +815,11 @@ def api_waterfall(tag: str = ""):
             "tag": tag_code,
             "tabs": _waterfall_tabs(cfg),
             "items": items,
-            "config": {
-                "sort": cfg["sort"],
-                "range": cfg["range"],
-                "min_time": cfg["min_time"],
-                "max_time": cfg["max_time"],
-                "max_daily_downloads": cfg["max_daily_downloads"],
+            "config": waterfall_cfg,
+            "pagination": {
+                "page": safe_page,
+                "per_page": per_page,
+                "has_next": len(raw_items) >= per_page,
             },
         })
     except Exception as exc:
@@ -1032,13 +1128,11 @@ def waterfall_page(request: Request):
         {
             "request": request,
             "tabs": _waterfall_tabs(cfg),
-            "config": {
-                "sort": cfg["sort"],
-                "range": cfg["range"],
-                "min_time": cfg["min_time"],
-                "max_time": cfg["max_time"],
-                "max_daily_downloads": cfg["max_daily_downloads"],
-            },
+            "config": get_waterfall_config(cfg),
+            "time_filter_options": TIME_FILTER_OPTIONS,
+            "sort_options": SORT_OPTIONS,
+            "range_options": RANGE_OPTIONS,
+            "page_size_options": sorted(ALLOWED_WATERFALL_PAGE_SIZES),
         },
     )
 
