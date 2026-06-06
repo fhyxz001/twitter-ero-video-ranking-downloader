@@ -1,9 +1,9 @@
 {
   "download_root": "/data/downloads",
-  "proxy": "http://192.168.1.13:20171",
+  "proxy": "http://192.168.2.205:7890",
   "auto_download_enabled": true,
   "schedule_time": "03:00",
-  "max_daily_downloads": 10,
+  "max_daily_downloads": 2,
   "sort": "pv",
   "range": "daily",
   "min_time": 0,
