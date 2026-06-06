@@ -500,7 +500,7 @@
           <a href="/">&larr; 返回首页</a>
         </div>
         <h1 id="pageTitle">全部视频海报墙</h1>
-        <p>点击海报即可直接预览视频；顶部筛选栏可按日期快速过滤内容，卡片同时展示时长、大小和所属日期。</p>
+        <p>点击海报即可直接预览视频；顶部筛选栏可按文件夹快速过滤内容，卡片同时展示时长、大小和所属文件夹。</p>
       </div>
       <div class="hero-stats">
         <div class="stat-card">
@@ -512,17 +512,17 @@
           <div class="value" id="statTotal">0</div>
         </div>
         <div class="stat-card">
-          <div class="label">可筛选日期</div>
-          <div class="value" id="statDays">0</div>
+          <div class="label">文件夹数</div>
+          <div class="value" id="statFolders">0</div>
         </div>
       </div>
     </section>
 
     <section class="toolbar">
       <div class="control">
-        <label for="dateFilter">日期筛选</label>
-        <select id="dateFilter" onchange="applyFilters()">
-          <option value="">全部日期</option>
+        <label for="folderFilter">文件夹筛选</label>
+        <select id="folderFilter" onchange="applyFilters()">
+          <option value="">全部文件夹</option>
         </select>
       </div>
       <div class="control">
@@ -599,7 +599,7 @@
 
   <script>
     const params = new URLSearchParams(location.search);
-    const INITIAL_DATE = params.get('date') || '';
+    const INITIAL_FOLDER = params.get('folder') || '';
 
     let allItems = [];
     let visibleItems = [];
@@ -610,13 +610,8 @@
     let replaceTarget = null;
     let currentPage = 1;
 
-    function formatDateLabel(date) {
-      if (!date || date.length !== 8) return date || '未知日期';
-      return `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}`;
-    }
-
     function itemKey(item) {
-      return `${item.date}::${item.stem}`;
+      return `${item.folder}::${item.stem}`;
     }
 
     function escapeHtml(value) {
@@ -649,7 +644,7 @@
     }
 
     function buildSortValue(item) {
-      return Number(`${item.date}${item.stem}`) || 0;
+      return item.stem;
     }
 
     function getPageSize() {
@@ -672,8 +667,8 @@
 
     async function loadItems() {
       const query = new URLSearchParams();
-      const dateValue = document.getElementById('dateFilter').value;
-      if (dateValue) query.set('date', dateValue);
+      const folderValue = document.getElementById('folderFilter').value;
+      if (folderValue) query.set('folder', folderValue);
 
       const url = query.toString() ? `/api/poster?${query.toString()}` : '/api/poster';
       const resp = await fetch(url);
@@ -687,20 +682,21 @@
           durationCache.set(itemKey(item), item.duration);
         }
       });
-      renderDateOptions(data.days || []);
-      updateStats(data.days || []);
+      renderFolderOptions(data.folders || []);
+      updateStats(data.folders || []);
       applyFilters(false);
     }
 
-    function renderDateOptions(days) {
-      const select = document.getElementById('dateFilter');
-      const currentValue = select.value || INITIAL_DATE;
-      const options = ['<option value="">全部日期</option>'];
-      days.forEach(day => {
-        options.push(`<option value="${day.date}">${formatDateLabel(day.date)} (${day.count})</option>`);
+    function renderFolderOptions(folders) {
+      const select = document.getElementById('folderFilter');
+      const currentValue = select.value || INITIAL_FOLDER;
+      const options = ['<option value="">全部文件夹</option>'];
+      folders.forEach(f => {
+        const label = f.folder ? `${f.folder} (${f.count})` : `根目录 (${f.count})`;
+        options.push(`<option value="${f.folder}">${label}</option>`);
       });
       select.innerHTML = options.join('');
-      if (currentValue && days.some(day => day.date === currentValue)) {
+      if (currentValue && folders.some(f => f.folder === currentValue)) {
         select.value = currentValue;
       } else {
         select.value = '';
@@ -708,18 +704,18 @@
       syncPageTitle();
     }
 
-    function updateStats(days) {
+    function updateStats(folders) {
       document.getElementById('statTotal').textContent = String(allItems.length);
-      document.getElementById('statDays').textContent = String(days.length);
+      document.getElementById('statFolders').textContent = String(folders.length);
     }
 
     function syncPageTitle() {
-      const dateValue = document.getElementById('dateFilter').value;
-      document.getElementById('pageTitle').textContent = dateValue
-        ? `${formatDateLabel(dateValue)} 的视频海报墙`
+      const folderValue = document.getElementById('folderFilter').value;
+      document.getElementById('pageTitle').textContent = folderValue
+        ? `${folderValue} 的视频海报墙`
         : '全部视频海报墙';
 
-      const nextUrl = dateValue ? `/poster?date=${encodeURIComponent(dateValue)}` : '/poster';
+      const nextUrl = folderValue ? `/poster?folder=${encodeURIComponent(folderValue)}` : '/poster';
       history.replaceState(null, '', nextUrl);
     }
 
@@ -729,14 +725,14 @@
         return;
       }
 
-      const dateValue = document.getElementById('dateFilter').value;
+      const folderValue = document.getElementById('folderFilter').value;
       const sortValue = document.getElementById('sortSelect').value;
 
-      visibleItems = allItems.filter(item => !dateValue || item.date === dateValue);
+      visibleItems = allItems.filter(item => !folderValue || item.folder === folderValue);
 
       visibleItems.sort((a, b) => {
-        if (sortValue === 'time_asc') return buildSortValue(a) - buildSortValue(b);
-        if (sortValue === 'time_desc') return buildSortValue(b) - buildSortValue(a);
+        if (sortValue === 'time_asc') return buildSortValue(a).localeCompare(buildSortValue(b));
+        if (sortValue === 'time_desc') return buildSortValue(b).localeCompare(buildSortValue(a));
         if (sortValue === 'size_asc') return a.size - b.size;
         if (sortValue === 'size_desc') return b.size - a.size;
         if (sortValue === 'duration_asc') return durationSeconds(a) - durationSeconds(b);
@@ -755,8 +751,8 @@
     }
 
     function updateStatusText() {
-      const dateValue = document.getElementById('dateFilter').value;
-      const prefix = dateValue ? `${formatDateLabel(dateValue)} · ` : '全部日期 · ';
+      const folderValue = document.getElementById('folderFilter').value;
+      const prefix = folderValue ? `${folderValue} · ` : '全部文件夹 · ';
       document.getElementById('statusText').innerHTML =
         `${prefix}共 <strong>${visibleItems.length}</strong> 个视频，当前第 <strong>${currentPage}</strong> / <strong>${getTotalPages()}</strong> 页`;
       document.getElementById('selectedCount').textContent = String(selectedKeys.size);
@@ -811,6 +807,7 @@
         const thumbHtml = item.thumbnail_url
           ? `<img src="${item.thumbnail_url}" alt="${escapeHtml(item.video)}" loading="lazy" />`
           : `<div class="fallback">MV</div>`;
+        const folderLabel = item.folder || '根目录';
         return `
           <article class="card${selected ? ' selected' : ''}">
             <input
@@ -823,7 +820,7 @@
             />
             <div class="cover" onclick="openPreview('${key}')">
               ${thumbHtml}
-              <div class="date-badge">${formatDateLabel(item.date)}</div>
+              <div class="date-badge">${escapeHtml(folderLabel)}</div>
               <div class="play-badge">▶</div>
               <div class="duration-badge" data-duration-key="${key}">${durationLabel(item)}</div>
             </div>
@@ -831,7 +828,7 @@
               <div class="file-name" title="${escapeHtml(item.video)}">${escapeHtml(item.video)}</div>
               <div class="meta-row">
                 <span class="meta-chip">${fmtSize(item.size)}</span>
-                <span class="meta-chip">${formatDateLabel(item.date)}</span>
+                <span class="meta-chip">${escapeHtml(folderLabel)}</span>
                 <span class="meta-chip">时长 <span data-duration-key="${key}">${durationLabel(item)}</span></span>
               </div>
               <div class="card-actions">
@@ -891,9 +888,10 @@
     function openPreview(key) {
       const item = findItemByKey(key);
       if (!item) return;
+      const folderLabel = item.folder || '根目录';
       document.getElementById('previewTitle').textContent = item.video;
       document.getElementById('previewMeta').textContent =
-        `${formatDateLabel(item.date)} · ${fmtSize(item.size)} · 时长 ${durationLabel(item)}`;
+        `${folderLabel} · ${fmtSize(item.size)} · 时长 ${durationLabel(item)}`;
       const video = document.getElementById('previewVideo');
       video.poster = item.thumb_url || item.thumbnail_url || '';
       video.src = item.video_url;
@@ -919,7 +917,8 @@
       const item = findItemByKey(key);
       if (!item) return;
       replaceTarget = item;
-      document.getElementById('replaceMeta').textContent = `${formatDateLabel(item.date)} · ${item.video}`;
+      const folderLabel = item.folder || '根目录';
+      document.getElementById('replaceMeta').textContent = `${folderLabel} · ${item.video}`;
       document.getElementById('replaceFileInput').value = '';
       document.getElementById('replaceModal').classList.add('open');
     }
@@ -944,9 +943,11 @@
       }
 
       const formData = new FormData();
+      formData.append('folder', replaceTarget.folder);
+      formData.append('stem', replaceTarget.stem);
       formData.append('file', input.files[0]);
 
-      const resp = await fetch(`/api/poster/${replaceTarget.date}/${replaceTarget.stem}/replace-cover`, {
+      const resp = await fetch('/api/poster/replace-cover', {
         method: 'POST',
         body: formData,
       });
@@ -957,7 +958,8 @@
       }
 
       replaceTarget.thumb = data.thumb;
-      replaceTarget.thumbnail_url = `/api/poster/${replaceTarget.date}/thumb/${encodeURIComponent(data.thumb)}?t=${Date.now()}`;
+      const folderQ = encodeURIComponent(replaceTarget.folder);
+      replaceTarget.thumbnail_url = `/api/poster-thumb?folder=${folderQ}&name=${encodeURIComponent(data.thumb)}&t=${Date.now()}`;
       closeReplaceModal();
       renderGrid();
     }
@@ -967,7 +969,11 @@
       if (!item) return;
       if (!confirm(`确认删除 ${item.video} 及其封面吗？`)) return;
 
-      const resp = await fetch(`/api/poster/${item.date}/${item.stem}`, { method: 'DELETE' });
+      const resp = await fetch('/api/poster/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folder: item.folder, stems: [item.stem] }),
+      });
       const data = await resp.json();
       if (!data.ok) {
         alert(data.error || '删除失败');
@@ -987,21 +993,21 @@
       visibleItems
         .filter(item => selectedKeys.has(itemKey(item)))
         .forEach(item => {
-          if (!groups.has(item.date)) {
-            groups.set(item.date, []);
+          if (!groups.has(item.folder)) {
+            groups.set(item.folder, []);
           }
-          groups.get(item.date).push(item.stem);
+          groups.get(item.folder).push(item.stem);
         });
 
-      for (const [date, stems] of groups.entries()) {
-        const resp = await fetch(`/api/poster/${date}/batch-delete`, {
+      for (const [folder, stems] of groups.entries()) {
+        const resp = await fetch('/api/poster/delete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ stems }),
+          body: JSON.stringify({ folder, stems }),
         });
         const data = await resp.json();
         if (!data.ok) {
-          alert(data.error || `${formatDateLabel(date)} 删除失败`);
+          alert(data.error || `${folder || '根目录'} 删除失败`);
           return;
         }
       }
@@ -1079,7 +1085,7 @@
       }
     });
 
-    document.getElementById('dateFilter').value = INITIAL_DATE;
+    document.getElementById('folderFilter').value = INITIAL_FOLDER;
     reloadData();
   </script>
 </body>
