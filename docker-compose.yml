@@ -1,6 +1,8 @@
 services:
   twitter-ero-video-ranking-downloader:
-    build: .
+    build:
+      context: .
+      network: host
     image: twitter-ero-video-ranking-downloader:latest
     container_name: twitter-ero-video-ranking-downloader
     restart: unless-stopped
