@@ -486,12 +486,8 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 12px 14px;
-      cursor: pointer;
-      user-select: none;
-    }
-    .blogger-header:hover {
-      background: #f3f4f6;
+      padding: 10px 14px;
+      border-bottom: 1px solid #e5e7eb;
     }
     .blogger-header-left {
       display: flex;
@@ -500,8 +496,9 @@
     }
     .blogger-header-left h3 {
       margin: 0;
-      font-size: 16px;
-      color: #1f2937;
+      font-size: 15px;
+      color: #374151;
+      font-weight: 600;
     }
     .blogger-header-left .badge {
       background: #2563eb;
@@ -510,43 +507,41 @@
       border-radius: 10px;
       padding: 1px 7px;
     }
-    .blogger-toggle {
-      font-size: 18px;
-      color: #6b7280;
-      transition: transform 0.2s;
-    }
-    .blogger-toggle.open { transform: rotate(180deg); }
     .blogger-body {
-      display: none;
-      padding: 14px;
-      border-top: 1px solid #e5e7eb;
+      padding: 10px 14px 14px;
     }
-    .blogger-body.show { display: block; }
     .blogger-chip-list {
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
-      margin-top: 8px;
+      min-height: 28px;
+    }
+    .blogger-chip-empty {
+      font-size: 13px;
+      color: #9ca3af;
+      line-height: 28px;
     }
     .blogger-chip {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 4px;
       background: #dbeafe;
       border: 1px solid #3b82f6;
       color: #1e40af;
-      border-radius: 6px;
-      padding: 3px 9px;
+      border-radius: 20px;
+      padding: 3px 10px 3px 10px;
       font-size: 13px;
+      font-weight: 500;
     }
     .blogger-chip button {
       background: none;
       border: none;
-      color: #1e40af;
+      color: #93c5fd;
       cursor: pointer;
       font-size: 15px;
-      padding: 0 2px;
+      padding: 0 1px;
       line-height: 1;
+      margin-left: 2px;
     }
     .blogger-chip button:hover { color: #dc2626; }
     .blogger-add-row {
@@ -572,17 +567,23 @@
       cursor: pointer;
       font-size: 13px;
     }
+    .blogger-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
     .blogger-actions {
       display: flex;
       gap: 8px;
-      margin-top: 12px;
       flex-wrap: wrap;
     }
     .blogger-status {
-      margin-top: 10px;
-      font-size: 13px;
-      color: #374151;
-      line-height: 1.7;
+      font-size: 12px;
+      color: #6b7280;
+      line-height: 1.6;
     }
   </style>
 </head>
@@ -625,27 +626,28 @@
 
     <!-- Blogger Section -->
     <div class="blogger-section">
-      <div class="blogger-header" onclick="toggleBloggerPanel()">
+      <div class="blogger-header">
         <div class="blogger-header-left">
           <h3>收藏博主</h3>
           <span id="blogger_count_badge" class="badge">{{ config.twitter_blogger_list | length }}</span>
         </div>
-        <span id="blogger_toggle_icon" class="blogger-toggle">&#9660;</span>
-      </div>
-      <div id="blogger_body" class="blogger-body">
-        <div id="blogger_chip_list" class="blogger-chip-list"></div>
-        <div class="blogger-add-row">
-          <input id="blogger_add_input" type="text" placeholder="输入 Twitter 用户名（不含@）" onkeydown="if(event.key==='Enter')addBlogger()" />
+        <div class="blogger-add-row" style="margin:0;">
+          <input id="blogger_add_input" type="text" placeholder="输入用户名（不含@）" onkeydown="if(event.key==='Enter')addBlogger()" style="width:180px;" />
           <button type="button" onclick="addBlogger()">添加</button>
         </div>
-        <div class="blogger-actions">
-          <button type="button" class="secondary" onclick="crawlBloggerNow()">立即爬取博主</button>
-          <button type="button" class="secondary" onclick="refreshBloggerStatus()">刷新博主状态</button>
-        </div>
-        <div class="blogger-status">
-          <div>爬取中：<span id="blogger_is_running">{{ "是" if blogger_state.is_running else "否" }}</span></div>
-          <div>最近爬取时间：<span id="blogger_last_run_time">{{ blogger_state.last_run_time or "暂无" }}</span></div>
-          <div>最近结果：<span id="blogger_last_result">{{ blogger_state.last_result }}</span></div>
+      </div>
+      <div class="blogger-body">
+        <div id="blogger_chip_list" class="blogger-chip-list"></div>
+        <div class="blogger-footer">
+          <div class="blogger-status">
+            爬取中：<span id="blogger_is_running">{{ "是" if blogger_state.is_running else "否" }}</span>
+            &nbsp;·&nbsp;最近：<span id="blogger_last_run_time">{{ blogger_state.last_run_time or "暂无" }}</span>
+            &nbsp;·&nbsp;<span id="blogger_last_result">{{ blogger_state.last_result }}</span>
+          </div>
+          <div class="blogger-actions">
+            <button type="button" class="secondary" onclick="crawlBloggerNow()">立即爬取</button>
+            <button type="button" class="secondary" onclick="refreshBloggerStatus()">刷新状态</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1283,31 +1285,31 @@
     }
 
     // ─── Blogger Management ───────────────────────────────
-    const bloggerBody = document.getElementById('blogger_body');
-    const bloggerToggle = document.getElementById('blogger_toggle_icon');
     const bloggerChipList = document.getElementById('blogger_chip_list');
     const bloggerAddInput = document.getElementById('blogger_add_input');
     const bloggerCountBadge = document.getElementById('blogger_count_badge');
 
     let bloggerList = {{ config.twitter_blogger_list | tojson }};
 
-    function toggleBloggerPanel() {
-      bloggerBody.classList.toggle('show');
-      bloggerToggle.classList.toggle('open');
-      if (bloggerBody.classList.contains('show')) {
-        refreshBloggerStatus();
-      }
-    }
-
     function renderBloggerChips() {
       bloggerChipList.innerHTML = '';
       bloggerCountBadge.textContent = bloggerList.length;
+      if (bloggerList.length === 0) {
+        const empty = document.createElement('span');
+        empty.className = 'blogger-chip-empty';
+        empty.textContent = '\u6682\u65e0\u6536\u85cf\u535a\u4e3b\uff0c\u8bf7\u5728\u53f3\u4e0a\u89d2\u8f93\u5165\u7528\u6237\u540d\u6dfb\u52a0';
+        bloggerChipList.appendChild(empty);
+        return;
+      }
       bloggerList.forEach(name => {
         const chip = document.createElement('div');
         chip.className = 'blogger-chip';
-        chip.textContent = '@' + name;
+        const label = document.createElement('span');
+        label.textContent = '@' + name;
+        chip.appendChild(label);
         const rmBtn = document.createElement('button');
         rmBtn.textContent = '\u00d7';
+        rmBtn.title = '\u79fb\u9664 @' + name;
         rmBtn.onclick = () => removeBlogger(name);
         chip.appendChild(rmBtn);
         bloggerChipList.appendChild(chip);
