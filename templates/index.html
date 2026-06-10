@@ -5,37 +5,35 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>twitter-ero-video-ranking-downloader</title>
   <style>
+    * { box-sizing: border-box; }
     body {
-      font-family: Arial, sans-serif;
-      background: #f5f7fb;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      background: #f0f2f5;
       margin: 0;
-      padding: 24px;
+      padding: 20px;
       color: #1f2937;
     }
-    .container {
-      max-width: 860px;
-      margin: 0 auto;
-      background: #fff;
-      border-radius: 10px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-      padding: 24px;
-    }
-    .header {
+
+    /* ── Page Header ── */
+    .page-header {
+      max-width: 1200px;
+      margin: 0 auto 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
-    h1 {
+    .page-header h1 {
       margin: 0;
-      font-size: 24px;
+      font-size: 22px;
+      color: #111827;
     }
     .settings-btn {
       border: 1px solid #d1d5db;
       background: #fff;
       color: #374151;
       border-radius: 8px;
-      width: 40px;
-      height: 40px;
+      width: 38px;
+      height: 38px;
       font-size: 22px;
       cursor: pointer;
       display: flex;
@@ -43,24 +41,59 @@
       justify-content: center;
       transition: background 0.15s;
     }
-    .settings-btn:hover {
-      background: #f3f4f6;
-    }
+    .settings-btn:hover { background: #f3f4f6; }
     .settings-btn-icon {
-      width: 22px;
-      height: 22px;
+      width: 20px;
+      height: 20px;
       display: block;
       object-fit: contain;
       pointer-events: none;
     }
+
+    /* ── Two-column Layout ── */
+    .main-layout {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      overflow: hidden;
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 18px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .card-header h2 {
+      margin: 0;
+      font-size: 16px;
+      color: #111827;
+      font-weight: 600;
+    }
+    .card-body {
+      padding: 16px 18px;
+    }
+
+    /* ── Form Fields ── */
     .field {
       display: flex;
       flex-direction: column;
-      margin-top: 14px;
+      margin-bottom: 14px;
     }
+    .field:last-child { margin-bottom: 0; }
     label {
-      font-size: 14px;
-      margin-bottom: 6px;
+      font-size: 13px;
+      margin-bottom: 5px;
       color: #374151;
       font-weight: 600;
     }
@@ -75,19 +108,19 @@
       font-size: 14px;
       background: #fff;
     }
-    /* Tag picker */
+
+    /* ── Tag Picker ── */
     .tag-picker {
       border: 1px solid #e5e7eb;
       border-radius: 8px;
       background: #f9fafb;
-      padding: 14px;
-      margin-top: 14px;
+      padding: 12px;
     }
     .tag-toolbar {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       flex-wrap: wrap;
     }
     .tag-selection-text {
@@ -97,7 +130,7 @@
     }
     .tag-toolbar-actions {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       flex-wrap: wrap;
     }
     .tag-open-btn,
@@ -107,45 +140,225 @@
       color: #374151;
       border-radius: 6px;
       padding: 0 12px;
-      height: 34px;
+      height: 32px;
       cursor: pointer;
+      font-size: 13px;
     }
     .tag-chips {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 10px;
+      gap: 6px;
+      margin-top: 8px;
     }
     .tag-chip {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
       background: #eff6ff;
       border: 1px solid #2563eb;
       color: #1d4ed8;
       border-radius: 6px;
-      padding: 4px 10px;
-      font-size: 13px;
+      padding: 3px 9px;
+      font-size: 12px;
       font-weight: 600;
     }
     .tag-chip-remove {
       background: none;
       border: none;
       color: #1d4ed8;
-      font-size: 16px;
+      font-size: 15px;
       cursor: pointer;
       padding: 0 2px;
       line-height: 1;
     }
-    .tag-chip-remove:hover {
-      color: #dc2626;
-    }
+    .tag-chip-remove:hover { color: #dc2626; }
     .tag-summary {
-      margin-top: 10px;
+      margin-top: 8px;
       font-size: 12px;
       color: #6b7280;
+      line-height: 1.5;
     }
-    /* Tag modal */
+
+    /* ── Action Buttons ── */
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+    button {
+      border: none;
+      background: #2563eb;
+      color: #fff;
+      border-radius: 6px;
+      height: 34px;
+      padding: 0 14px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: opacity 0.15s;
+    }
+    button:hover { opacity: 0.88; }
+    button.secondary { background: #4b5563; }
+
+    /* ── Blogger Section ── */
+    .blogger-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .blogger-header-left .badge {
+      background: #2563eb;
+      color: #fff;
+      font-size: 11px;
+      border-radius: 10px;
+      padding: 1px 7px;
+    }
+    .blogger-add-row {
+      display: flex;
+      gap: 6px;
+    }
+    .blogger-add-row input {
+      flex: 1;
+      min-width: 0;
+      height: 32px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      padding: 0 8px;
+      font-size: 13px;
+    }
+    .blogger-add-row button {
+      height: 32px;
+      padding: 0 12px;
+      font-size: 13px;
+    }
+    .blogger-chip-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      min-height: 28px;
+    }
+    .blogger-chip-empty {
+      font-size: 13px;
+      color: #9ca3af;
+      line-height: 28px;
+    }
+    .blogger-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #dbeafe;
+      border: 1px solid #3b82f6;
+      color: #1e40af;
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .blogger-chip button {
+      background: none;
+      border: none;
+      color: #93c5fd;
+      cursor: pointer;
+      font-size: 15px;
+      padding: 0 1px;
+      line-height: 1;
+      margin-left: 2px;
+    }
+    .blogger-chip button:hover { color: #dc2626; }
+    .blogger-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    .blogger-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .blogger-status {
+      font-size: 12px;
+      color: #6b7280;
+      line-height: 1.6;
+    }
+
+    /* ── Status Section ── */
+    .status-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .status-item {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 10px 12px;
+    }
+    .status-item .status-label {
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 2px;
+    }
+    .status-item .status-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: #111827;
+    }
+    .status-item.full {
+      grid-column: 1 / -1;
+    }
+
+    /* ── Collapsible Logs ── */
+    .logs-toggle {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 18px;
+      border-top: 1px solid #e5e7eb;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s;
+    }
+    .logs-toggle:hover { background: #f9fafb; }
+    .logs-toggle-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #374151;
+    }
+    .logs-toggle-arrow {
+      font-size: 12px;
+      color: #6b7280;
+      transition: transform 0.2s;
+    }
+    .logs-toggle-arrow.open { transform: rotate(180deg); }
+    .logs-wrapper {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+    .logs-wrapper.open {
+      max-height: 400px;
+    }
+    .logs {
+      border-top: 1px solid #e5e7eb;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      height: 280px;
+      overflow: auto;
+      padding: 10px;
+      white-space: pre-wrap;
+    }
+    .note {
+      margin-top: 6px;
+      color: #6b7280;
+      font-size: 12px;
+    }
+
+    /* ── Tag Modal ── */
     .tag-modal {
       position: fixed;
       inset: 0;
@@ -156,9 +369,7 @@
       background: rgba(15, 23, 42, 0.46);
       z-index: 1000;
     }
-    .tag-modal.show {
-      display: flex;
-    }
+    .tag-modal.show { display: flex; }
     .tag-modal-dialog {
       width: min(760px, 100%);
       max-height: min(80vh, 720px);
@@ -198,6 +409,7 @@
       padding: 0;
       font-size: 18px;
       line-height: 1;
+      cursor: pointer;
     }
     .tag-modal-body {
       padding: 16px 20px 20px;
@@ -219,9 +431,7 @@
       font-size: 14px;
       cursor: pointer;
     }
-    .tag-confirm-btn:hover {
-      opacity: 0.9;
-    }
+    .tag-confirm-btn:hover { opacity: 0.9; }
     .tag-list {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -261,9 +471,7 @@
       color: #6b7280;
       word-break: break-all;
     }
-    .tag-item.active .tag-code {
-      color: #1d4ed8;
-    }
+    .tag-item.active .tag-code { color: #1d4ed8; }
     .tag-check {
       position: absolute;
       top: 6px;
@@ -288,7 +496,8 @@
       color: #dc2626;
       font-size: 12px;
     }
-    /* Settings modal */
+
+    /* ── Settings Modal ── */
     .settings-modal {
       position: fixed;
       inset: 0;
@@ -299,9 +508,7 @@
       background: rgba(15, 23, 42, 0.46);
       z-index: 1000;
     }
-    .settings-modal.show {
-      display: flex;
-    }
+    .settings-modal.show { display: flex; }
     .settings-modal-dialog {
       width: min(520px, 100%);
       max-height: min(85vh, 700px);
@@ -358,9 +565,7 @@
       display: flex;
       flex-direction: column;
     }
-    .settings-field.full {
-      grid-column: 1 / -1;
-    }
+    .settings-field.full { grid-column: 1 / -1; }
     .settings-toggle {
       display: flex;
       align-items: center;
@@ -400,9 +605,7 @@
       font-size: 14px;
       cursor: pointer;
     }
-    .settings-save-btn:hover {
-      opacity: 0.9;
-    }
+    .settings-save-btn:hover { opacity: 0.9; }
     .settings-cancel-btn {
       background: #fff;
       color: #374151;
@@ -413,254 +616,134 @@
       font-size: 14px;
       cursor: pointer;
     }
-    .settings-cancel-btn:hover {
-      background: #f3f4f6;
-      opacity: 1;
-    }
-    body.modal-open {
-      overflow: hidden;
-    }
-    /* Actions */
-    .actions {
-      margin-top: 16px;
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    button.secondary {
-      background: #4b5563;
-    }
-    button {
-      border: none;
-      background: #2563eb;
-      color: #fff;
-      border-radius: 6px;
-      height: 36px;
-      padding: 0 14px;
-      cursor: pointer;
-    }
-    button:hover {
-      opacity: 0.9;
-    }
-    .status {
-      margin-top: 18px;
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      padding: 12px;
-      font-size: 14px;
-      line-height: 1.7;
-    }
-    .logs {
-      margin-top: 12px;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      background: #0f172a;
-      color: #e2e8f0;
-      font-family: Consolas, monospace;
-      font-size: 12px;
-      height: 280px;
-      overflow: auto;
-      padding: 10px;
-      white-space: pre-wrap;
-    }
-    .note {
-      margin-top: 8px;
-      color: #6b7280;
-      font-size: 12px;
-    }
-    @media (max-width: 720px) {
+    .settings-cancel-btn:hover { background: #f3f4f6; }
+
+    body.modal-open { overflow: hidden; }
+
+    /* ── Responsive ── */
+    @media (max-width: 860px) {
+      .main-layout {
+        grid-template-columns: 1fr;
+      }
       .settings-grid {
         grid-template-columns: 1fr;
       }
     }
-    /* Blogger section */
-    .blogger-section {
-      margin-top: 16px;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      background: #f9fafb;
-      overflow: hidden;
-    }
-    .blogger-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 14px;
-      border-bottom: 1px solid #e5e7eb;
-    }
-    .blogger-header-left {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .blogger-header-left h3 {
-      margin: 0;
-      font-size: 15px;
-      color: #374151;
-      font-weight: 600;
-    }
-    .blogger-header-left .badge {
-      background: #2563eb;
-      color: #fff;
-      font-size: 11px;
-      border-radius: 10px;
-      padding: 1px 7px;
-    }
-    .blogger-body {
-      padding: 10px 14px 14px;
-    }
-    .blogger-chip-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      min-height: 28px;
-    }
-    .blogger-chip-empty {
-      font-size: 13px;
-      color: #9ca3af;
-      line-height: 28px;
-    }
-    .blogger-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      background: #dbeafe;
-      border: 1px solid #3b82f6;
-      color: #1e40af;
-      border-radius: 20px;
-      padding: 3px 10px 3px 10px;
-      font-size: 13px;
-      font-weight: 500;
-    }
-    .blogger-chip button {
-      background: none;
-      border: none;
-      color: #93c5fd;
-      cursor: pointer;
-      font-size: 15px;
-      padding: 0 1px;
-      line-height: 1;
-      margin-left: 2px;
-    }
-    .blogger-chip button:hover { color: #dc2626; }
-    .blogger-add-row {
-      display: flex;
-      gap: 8px;
-      margin-top: 10px;
-    }
-    .blogger-add-row input {
-      flex: 1;
-      height: 32px;
-      border: 1px solid #d1d5db;
-      border-radius: 6px;
-      padding: 0 8px;
-      font-size: 13px;
-    }
-    .blogger-add-row button {
-      height: 32px;
-      padding: 0 14px;
-      background: #2563eb;
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 13px;
-    }
-    .blogger-footer {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      margin-top: 10px;
-      flex-wrap: wrap;
-    }
-    .blogger-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .blogger-status {
-      font-size: 12px;
-      color: #6b7280;
-      line-height: 1.6;
-    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1>视频下载器</h1>
-      <button class="settings-btn" onclick="openSettingsModal()" title="设置">
-        <img class="settings-btn-icon" src="{{ url_for('static', path='set.png') }}" alt="" aria-hidden="true" />
-      </button>
-    </div>
+  <!-- Page Header -->
+  <div class="page-header">
+    <h1>视频下载器</h1>
+    <button class="settings-btn" onclick="openSettingsModal()" title="设置">
+      <img class="settings-btn-icon" src="{{ url_for('static', path='set.png') }}" alt="" aria-hidden="true" />
+    </button>
+  </div>
 
-    <div class="field">
-      <label for="download_root">视频下载根目录</label>
-      <input id="download_root" type="text" value="{{ config.download_root }}" />
-    </div>
-
-    <div class="field">
-      <label>标签筛选（多选，每个标签作为一个独立分类下载）</label>
-      <div class="tag-picker">
-        <input id="tag_codes_input" type="hidden" value='{{ tag_codes_json | safe }}' />
-        <div class="tag-toolbar">
-          <div id="tag_selection_text" class="tag-selection-text">当前：不筛选</div>
-          <div class="tag-toolbar-actions">
-            <button id="tag_open_btn" type="button" class="tag-open-btn" onclick="openTagModal()">选择标签</button>
-            <button id="tag_clear_btn" type="button" class="tag-clear-btn" onclick="clearAllTags()">清空标签</button>
-          </div>
-        </div>
-        <div id="tag_chips" class="tag-chips"></div>
-        <div class="tag-summary">无论是否选择标签，都会下载“无标签”分类；每个所选标签也会分别下载“每类视频下载数”指定数量的视频。</div>
+  <!-- Two-column Layout -->
+  <div class="main-layout">
+    <!-- Left Column: Config -->
+    <div class="card">
+      <div class="card-header">
+        <h2>下载配置</h2>
       </div>
-    </div>
-
-    <div class="actions">
-      <button type="button" class="secondary" onclick="runNow()">立即执行任务</button>
-      <button type="button" class="secondary" onclick="refreshStatus()">刷新状态</button>
-      <button type="button" class="secondary" onclick="goToPoster()">海报墙</button>
-      <button type="button" class="secondary" onclick="goToWaterfall()">瀑布流</button>
-    </div>
-
-    <!-- Blogger Section -->
-    <div class="blogger-section">
-      <div class="blogger-header">
-        <div class="blogger-header-left">
-          <h3>收藏博主</h3>
-          <span id="blogger_count_badge" class="badge">{{ config.twitter_blogger_list | length }}</span>
+      <div class="card-body">
+        <div class="field">
+          <label for="download_root">视频下载根目录</label>
+          <input id="download_root" type="text" value="{{ config.download_root }}" />
         </div>
-        <div class="blogger-add-row" style="margin:0;">
-          <input id="blogger_add_input" type="text" placeholder="输入用户名（不含@）" onkeydown="if(event.key==='Enter')addBlogger()" style="width:180px;" />
-          <button type="button" onclick="addBlogger()">添加</button>
+
+        <div class="field">
+          <label>标签筛选（多选，每个标签作为一个独立分类下载）</label>
+          <div class="tag-picker">
+            <input id="tag_codes_input" type="hidden" value='{{ tag_codes_json | safe }}' />
+            <div class="tag-toolbar">
+              <div id="tag_selection_text" class="tag-selection-text">当前：不筛选</div>
+              <div class="tag-toolbar-actions">
+                <button id="tag_open_btn" type="button" class="tag-open-btn" onclick="openTagModal()">选择标签</button>
+                <button id="tag_clear_btn" type="button" class="tag-clear-btn" onclick="clearAllTags()">清空标签</button>
+              </div>
+            </div>
+            <div id="tag_chips" class="tag-chips"></div>
+            <div class="tag-summary">无论是否选择标签，都会下载"无标签"分类；每个所选标签也会分别下载"每类视频下载数"指定数量的视频。</div>
+          </div>
         </div>
-      </div>
-      <div class="blogger-body">
-        <div id="blogger_chip_list" class="blogger-chip-list"></div>
-        <div class="blogger-footer">
-          <div class="blogger-status">
-            爬取中：<span id="blogger_is_running">{{ "是" if blogger_state.is_running else "否" }}</span>
-            &nbsp;·&nbsp;最近：<span id="blogger_last_run_time">{{ blogger_state.last_run_time or "暂无" }}</span>
-            &nbsp;·&nbsp;<span id="blogger_last_result">{{ blogger_state.last_result }}</span>
-          </div>
-          <div class="blogger-actions">
-            <button type="button" class="secondary" onclick="crawlBloggerNow()">立即爬取</button>
-            <button type="button" class="secondary" onclick="refreshBloggerStatus()">刷新状态</button>
-          </div>
+
+        <div class="actions">
+          <button type="button" onclick="runNow()">立即执行任务</button>
+          <button type="button" class="secondary" onclick="refreshStatus()">刷新状态</button>
+          <button type="button" class="secondary" onclick="goToPoster()">海报墙</button>
+          <button type="button" class="secondary" onclick="goToWaterfall()">瀑布流</button>
         </div>
       </div>
     </div>
 
-    <div class="status">
-      <div>自动下载：<span id="auto_download_enabled">{{ "已开启" if config.auto_download_enabled else "已关闭" }}</span></div>
-      <div>运行中：<span id="is_running">{{ "是" if state.is_running else "否" }}</span></div>
-      <div>最近执行时间：<span id="last_run_time">{{ state.last_run_time or "暂无" }}</span></div>
-      <div>最近结果：<span id="last_result">{{ state.last_result }}</span></div>
-      <div class="note">日志每 5 秒自动刷新一次。</div>
-    </div>
+    <!-- Right Column: Monitoring -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <!-- Blogger Card -->
+      <div class="card">
+        <div class="card-header">
+          <div class="blogger-header-left">
+            <h2>收藏博主</h2>
+            <span id="blogger_count_badge" class="badge">{{ config.twitter_blogger_list | length }}</span>
+          </div>
+          <div class="blogger-add-row">
+            <input id="blogger_add_input" type="text" placeholder="输入用户名（不含@）" onkeydown="if(event.key==='Enter')addBlogger()" style="width:160px;" />
+            <button type="button" onclick="addBlogger()">添加</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="blogger_chip_list" class="blogger-chip-list"></div>
+          <div class="blogger-footer">
+            <div class="blogger-status">
+              爬取中：<span id="blogger_is_running">{{ "是" if blogger_state.is_running else "否" }}</span>
+              &nbsp;·&nbsp;最近：<span id="blogger_last_run_time">{{ blogger_state.last_run_time or "暂无" }}</span>
+              &nbsp;·&nbsp;<span id="blogger_last_result">{{ blogger_state.last_result }}</span>
+            </div>
+            <div class="blogger-actions">
+              <button type="button" class="secondary" onclick="crawlBloggerNow()">立即爬取</button>
+              <button type="button" class="secondary" onclick="refreshBloggerStatus()">刷新</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
-    <div id="logs" class="logs">{{ logs }}</div>
+      <!-- Status + Logs Card -->
+      <div class="card">
+        <div class="card-header">
+          <h2>运行状态</h2>
+        </div>
+        <div class="card-body">
+          <div class="status-grid">
+            <div class="status-item">
+              <div class="status-label">自动下载</div>
+              <div class="status-value" id="auto_download_enabled">{{ "已开启" if config.auto_download_enabled else "已关闭" }}</div>
+            </div>
+            <div class="status-item">
+              <div class="status-label">运行中</div>
+              <div class="status-value" id="is_running">{{ "是" if state.is_running else "否" }}</div>
+            </div>
+            <div class="status-item">
+              <div class="status-label">最近执行时间</div>
+              <div class="status-value" id="last_run_time">{{ state.last_run_time or "暂无" }}</div>
+            </div>
+            <div class="status-item">
+              <div class="status-label">最近结果</div>
+              <div class="status-value" id="last_result">{{ state.last_result }}</div>
+            </div>
+          </div>
+          <div class="note">日志每 5 秒自动刷新一次。</div>
+        </div>
+        <!-- Collapsible Logs -->
+        <div class="logs-toggle" onclick="toggleLogs()">
+          <span class="logs-toggle-label">运行日志</span>
+          <span id="logs_arrow" class="logs-toggle-arrow">&#9660;</span>
+        </div>
+        <div id="logs_wrapper" class="logs-wrapper">
+          <div id="logs" class="logs">{{ logs }}</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Settings Modal -->
@@ -681,7 +764,7 @@
               <input id="settings_auto_download_enabled" name="auto_download_enabled" type="checkbox" {% if config.auto_download_enabled %}checked{% endif %} onchange="syncAutoDownloadFields()" />
               <span>开启自动下载</span>
             </label>
-            <div class="settings-help">关闭后不会再按计划自动下载，但“立即执行任务”仍可手动下载。</div>
+            <div class="settings-help">关闭后不会再按计划自动下载，但"立即执行任务"仍可手动下载。</div>
           </div>
 
           <div class="settings-field">
@@ -795,6 +878,14 @@
   </div>
 
   <script>
+    // --- Log toggle ---
+    function toggleLogs() {
+      const wrapper = document.getElementById('logs_wrapper');
+      const arrow = document.getElementById('logs_arrow');
+      wrapper.classList.toggle('open');
+      arrow.classList.toggle('open');
+    }
+
     // --- Tag multi-select ---
     const tagCodesInput = document.getElementById('tag_codes_input');
     const tagModal = document.getElementById('tag_modal');
@@ -813,8 +904,7 @@
     let downloadRootDirty = false;
     let quickSaveTimer = null;
     let quickSaveChain = Promise.resolve();
-    // Store tag metadata for display
-    const tagMetaMap = {};  // code -> {code, name}
+    const tagMetaMap = {};
 
     const tagState = {
       page: 1,
@@ -830,15 +920,10 @@
       if (selectedTagCodes.length === 0) {
         tagSelectionText.textContent = '当前：不筛选';
       } else {
-        const names = selectedTagCodes.map(code => {
-          const meta = tagMetaMap[code];
-          return meta ? `${meta.name} (${meta.code})` : code;
-        });
         tagSelectionText.textContent = `已选 ${selectedTagCodes.length} 个标签`;
       }
       tagClearBtn.disabled = selectedTagCodes.length === 0;
 
-      // Render chips
       tagChipsContainer.innerHTML = '';
       selectedTagCodes.forEach(code => {
         const meta = tagMetaMap[code];
@@ -918,7 +1003,6 @@
         button.className = `tag-item${isActive ? ' active' : ''}`;
         button.disabled = tagState.loading;
 
-        // Check mark
         const check = document.createElement('span');
         check.className = 'tag-check';
         check.textContent = isActive ? '✓' : '';
@@ -973,7 +1057,6 @@
         tagState.totalPages = data.pagination?.total_pages || 1;
         tagState.items = Array.isArray(data.items) ? data.items : [];
 
-        // Store metadata for all loaded tags
         tagState.items.forEach(tag => {
           tagMetaMap[tag.code] = tag;
         });
@@ -1002,7 +1085,6 @@
 
     updateTagDisplay();
 
-    // Pre-load all tag metadata for chip display
     async function preloadAllTagNames() {
       try {
         const resp = await fetch(`/api/tags?page=1&per_page=30`);
@@ -1010,7 +1092,6 @@
         if (data.ok && data.items) {
           data.items.forEach(tag => { tagMetaMap[tag.code] = tag; });
         }
-        // Load remaining pages if needed
         if (data.pagination && data.pagination.total_pages > 1) {
           for (let p = 2; p <= data.pagination.total_pages; p++) {
             const resp2 = await fetch(`/api/tags?page=${p}&per_page=30`);
@@ -1054,7 +1135,6 @@
     }
 
     function openSettingsModal() {
-      // Refresh values from current config
       const downloadRoot = document.getElementById('download_root').value;
       document.getElementById('settings_proxy').value = currentConfig.proxy || '';
       document.getElementById('settings_auto_download_enabled').checked = currentConfig.auto_download_enabled !== false;
@@ -1063,7 +1143,6 @@
       document.getElementById('settings_sort').value = currentConfig.sort || 'pv';
       document.getElementById('settings_range').value = currentConfig.range || 'daily';
       setTimeFilterValue(currentConfig.min_time || 0, currentConfig.max_time || 86400);
-      // Blogger settings
       document.getElementById('settings_twitter_cookie').value = currentConfig.twitter_cookie || '';
       document.getElementById('settings_blogger_enabled').checked = currentConfig.twitter_blogger_enabled !== false;
       document.getElementById('settings_blogger_schedule').value = currentConfig.twitter_blogger_schedule || '04:00';
@@ -1101,7 +1180,6 @@
       formData.append('min_time', timeFilter.min);
       formData.append('max_time', timeFilter.max);
       formData.append('tag_codes', JSON.stringify(selectedTagCodes));
-      // Blogger settings
       formData.append('twitter_cookie', document.getElementById('settings_twitter_cookie').value);
       formData.append('twitter_blogger_enabled', document.getElementById('settings_blogger_enabled').checked ? '1' : '0');
       formData.append('twitter_blogger_schedule', document.getElementById('settings_blogger_schedule').value);
@@ -1112,7 +1190,6 @@
         const resp = await fetch('/save', { method: 'POST', body: formData });
         const data = await resp.json();
         if (data.ok) {
-          // Update local config cache
           currentConfig.proxy = document.getElementById('settings_proxy').value;
           currentConfig.auto_download_enabled = document.getElementById('settings_auto_download_enabled').checked;
           currentConfig.schedule_time = document.getElementById('settings_schedule_time').value;
@@ -1123,7 +1200,6 @@
           currentConfig.max_time = timeFilter.max;
           currentConfig.download_root = downloadRootInput.value;
           currentConfig.tag_codes = [...selectedTagCodes];
-          // Blogger config cache
           currentConfig.twitter_cookie = document.getElementById('settings_twitter_cookie').value;
           currentConfig.twitter_blogger_enabled = document.getElementById('settings_blogger_enabled').checked;
           currentConfig.twitter_blogger_schedule = document.getElementById('settings_blogger_schedule').value;
@@ -1141,7 +1217,7 @@
       }
     }
 
-    // --- Current config (fetched on page load) ---
+    // --- Current config ---
     let currentConfig = {
       download_root: {{ config.download_root | tojson }},
       proxy: {{ config.proxy | tojson }},
@@ -1249,19 +1325,16 @@
       document.getElementById('last_run_time').innerText = data.state.last_run_time || '暂无';
       document.getElementById('last_result').innerText = data.state.last_result || '';
       document.getElementById('logs').innerText = (data.logs || []).join('\n');
-      // Update local config cache from server
       if (data.config) {
         currentConfig = data.config;
         if (!downloadRootDirty) {
           downloadRootInput.value = currentConfig.download_root || '';
         }
-        // Update tag selection if config changed
         if (!tagSelectionDirty && Array.isArray(currentConfig.tag_codes)) {
           selectedTagCodes = [...currentConfig.tag_codes];
           updateTagDisplay();
         }
       }
-      // Update blogger state display
       if (data.blogger_state) {
         document.getElementById('blogger_is_running').textContent = data.blogger_state.is_running ? '是' : '否';
         document.getElementById('blogger_last_run_time').textContent = data.blogger_state.last_run_time || '暂无';
@@ -1297,7 +1370,7 @@
       if (bloggerList.length === 0) {
         const empty = document.createElement('span');
         empty.className = 'blogger-chip-empty';
-        empty.textContent = '\u6682\u65e0\u6536\u85cf\u535a\u4e3b\uff0c\u8bf7\u5728\u53f3\u4e0a\u89d2\u8f93\u5165\u7528\u6237\u540d\u6dfb\u52a0';
+        empty.textContent = '暂无收藏博主，请在右上角输入用户名添加';
         bloggerChipList.appendChild(empty);
         return;
       }
@@ -1308,8 +1381,8 @@
         label.textContent = '@' + name;
         chip.appendChild(label);
         const rmBtn = document.createElement('button');
-        rmBtn.textContent = '\u00d7';
-        rmBtn.title = '\u79fb\u9664 @' + name;
+        rmBtn.textContent = '×';
+        rmBtn.title = '移除 @' + name;
         rmBtn.onclick = () => removeBlogger(name);
         chip.appendChild(rmBtn);
         bloggerChipList.appendChild(chip);
@@ -1380,11 +1453,9 @@
         const data = await resp.json();
         if (!data.ok) return;
 
-        // Update blogger list
         bloggerList = (data.bloggers || []).map(b => b.screen_name);
         renderBloggerChips();
 
-        // Update settings in currentConfig from server
         if (data.settings) {
           currentConfig.twitter_cookie = data.settings.twitter_cookie || '';
           currentConfig.twitter_blogger_enabled = data.settings.twitter_blogger_enabled !== false;
@@ -1393,7 +1464,6 @@
           currentConfig.twitter_blogger_has_retweet = data.settings.twitter_blogger_has_retweet === true;
         }
 
-        // Update state
         const st = data.state || {};
         document.getElementById('blogger_is_running').textContent = st.is_running ? '是' : '否';
         document.getElementById('blogger_last_run_time').textContent = st.last_run_time || '暂无';
@@ -1404,10 +1474,7 @@
     }
 
     renderBloggerChips();
-    // Initial load
     refreshBloggerStatus();
-
-    // Auto-refresh blogger status every 10s
     setInterval(refreshBloggerStatus, 10000);
   </script>
 </body>
