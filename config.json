@@ -1,5 +1,5 @@
 {
-  "download_root": "D:\\",
+  "download_root": "/data/downloads",
   "proxy": "http://192.168.2.205:7890",
   "auto_download_enabled": true,
   "schedule_time": "03:00",
@@ -21,6 +21,6 @@
   ],
   "twitter_blogger_enabled": true,
   "twitter_blogger_schedule": "04:00",
-  "twitter_blogger_max_media": 50,
+  "twitter_blogger_max_media": 1,
   "twitter_blogger_has_retweet": false
 }

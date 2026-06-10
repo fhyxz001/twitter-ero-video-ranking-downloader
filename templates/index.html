@@ -1141,19 +1141,19 @@
 
     // --- Current config (fetched on page load) ---
     let currentConfig = {
-      download_root: "{{ config.download_root }}",
-      proxy: "{{ config.proxy }}",
+      download_root: {{ config.download_root | tojson }},
+      proxy: {{ config.proxy | tojson }},
       auto_download_enabled: {{ 'true' if config.auto_download_enabled else 'false' }},
-      schedule_time: "{{ config.schedule_time }}",
+      schedule_time: {{ config.schedule_time | tojson }},
       max_daily_downloads: {{ config.max_daily_downloads }},
-      sort: "{{ config.sort }}",
-      range: "{{ config.range }}",
+      sort: {{ config.sort | tojson }},
+      range: {{ config.range | tojson }},
       min_time: {{ config.min_time }},
       max_time: {{ config.max_time }},
       tag_codes: selectedTagCodes,
       twitter_cookie: {{ config.twitter_cookie | tojson }},
       twitter_blogger_enabled: {{ 'true' if config.twitter_blogger_enabled else 'false' }},
-      twitter_blogger_schedule: "{{ config.twitter_blogger_schedule }}",
+      twitter_blogger_schedule: {{ config.twitter_blogger_schedule | tojson }},
       twitter_blogger_max_media: {{ config.twitter_blogger_max_media }},
       twitter_blogger_has_retweet: {{ 'true' if config.twitter_blogger_has_retweet else 'false' }},
     };

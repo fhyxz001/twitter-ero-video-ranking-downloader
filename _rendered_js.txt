@@ -1,0 +1,616 @@
+
+    // --- Tag multi-select ---
+    const tagCodesInput = document.getElementById('tag_codes_input');
+    const tagModal = document.getElementById('tag_modal');
+    const tagList = document.getElementById('tag_list');
+    const tagSelectionText = document.getElementById('tag_selection_text');
+    const tagChipsContainer = document.getElementById('tag_chips');
+    const tagPageInfo = document.getElementById('tag_page_info');
+    const tagPrevBtn = document.getElementById('tag_prev_btn');
+    const tagNextBtn = document.getElementById('tag_next_btn');
+    const tagError = document.getElementById('tag_error');
+    const tagClearBtn = document.getElementById('tag_clear_btn');
+    const downloadRootInput = document.getElementById('download_root');
+
+    let selectedTagCodes = JSON.parse(tagCodesInput.value || '[]');
+    let tagSelectionDirty = false;
+    let downloadRootDirty = false;
+    let quickSaveTimer = null;
+    let quickSaveChain = Promise.resolve();
+    // Store tag metadata for display
+    const tagMetaMap = {};  // code -> {code, name}
+
+    const tagState = {
+      page: 1,
+      perPage: 10,
+      total: 0,
+      totalPages: 1,
+      items: [],
+      loading: false,
+    };
+
+    function updateTagDisplay() {
+      tagCodesInput.value = JSON.stringify(selectedTagCodes);
+      if (selectedTagCodes.length === 0) {
+        tagSelectionText.textContent = '当前：不筛选';
+      } else {
+        const names = selectedTagCodes.map(code => {
+          const meta = tagMetaMap[code];
+          return meta ? `${meta.name} (${meta.code})` : code;
+        });
+        tagSelectionText.textContent = `已选 ${selectedTagCodes.length} 个标签`;
+      }
+      tagClearBtn.disabled = selectedTagCodes.length === 0;
+
+      // Render chips
+      tagChipsContainer.innerHTML = '';
+      selectedTagCodes.forEach(code => {
+        const meta = tagMetaMap[code];
+        const chip = document.createElement('div');
+        chip.className = 'tag-chip';
+        const label = document.createElement('span');
+        label.textContent = meta ? `${meta.name}` : code;
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'tag-chip-remove';
+        removeBtn.textContent = '×';
+        removeBtn.onclick = () => {
+          selectedTagCodes = selectedTagCodes.filter(c => c !== code);
+          tagSelectionDirty = true;
+          updateTagDisplay();
+          renderTags();
+          queueQuickConfigSave();
+        };
+        chip.appendChild(label);
+        chip.appendChild(removeBtn);
+        tagChipsContainer.appendChild(chip);
+      });
+    }
+
+    function openTagModal() {
+      tagModal.classList.add('show');
+      tagModal.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('modal-open');
+      if (!tagState.items.length && !tagState.loading) {
+        loadTags(tagState.page);
+      } else {
+        renderTags();
+      }
+    }
+
+    function closeTagModal() {
+      tagModal.classList.remove('show');
+      tagModal.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('modal-open');
+    }
+
+    function handleTagModalBackdrop(event) {
+      if (event.target === tagModal) {
+        closeTagModal();
+      }
+    }
+
+    function clearAllTags() {
+      selectedTagCodes = [];
+      tagSelectionDirty = true;
+      updateTagDisplay();
+      renderTags();
+      queueQuickConfigSave();
+    }
+
+    function renderTagPagination() {
+      tagPageInfo.textContent = `第 ${tagState.page} / ${tagState.totalPages} 页，共 ${tagState.total} 个标签`;
+      tagPrevBtn.disabled = tagState.loading || tagState.page <= 1;
+      tagNextBtn.disabled = tagState.loading || tagState.page >= tagState.totalPages;
+    }
+
+    function renderTags() {
+      tagList.innerHTML = '';
+
+      if (!tagState.items.length) {
+        const empty = document.createElement('div');
+        empty.className = 'note';
+        empty.textContent = tagState.loading ? '正在加载标签...' : '暂无可用标签';
+        tagList.appendChild(empty);
+        renderTagPagination();
+        return;
+      }
+
+      tagState.items.forEach((tag) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        const isActive = selectedTagCodes.includes(tag.code);
+        button.className = `tag-item${isActive ? ' active' : ''}`;
+        button.disabled = tagState.loading;
+
+        // Check mark
+        const check = document.createElement('span');
+        check.className = 'tag-check';
+        check.textContent = isActive ? '✓' : '';
+        button.appendChild(check);
+
+        const name = document.createElement('div');
+        name.className = 'tag-name';
+        name.textContent = tag.name || tag.code;
+
+        const code = document.createElement('div');
+        code.className = 'tag-code';
+        code.textContent = tag.code;
+
+        button.appendChild(name);
+        button.appendChild(code);
+
+        button.addEventListener('click', () => {
+          if (selectedTagCodes.includes(tag.code)) {
+            selectedTagCodes = selectedTagCodes.filter(c => c !== tag.code);
+          } else {
+            selectedTagCodes.push(tag.code);
+          }
+          tagSelectionDirty = true;
+          tagMetaMap[tag.code] = tag;
+          updateTagDisplay();
+          renderTags();
+          queueQuickConfigSave();
+        });
+
+        tagList.appendChild(button);
+      });
+
+      renderTagPagination();
+      updateTagDisplay();
+    }
+
+    async function loadTags(page = 1) {
+      const targetPage = Math.max(1, page);
+      tagState.loading = true;
+      tagError.textContent = '';
+      renderTags();
+
+      try {
+        const resp = await fetch(`/api/tags?page=${targetPage}&per_page=${tagState.perPage}`);
+        const data = await resp.json();
+        if (!data.ok) {
+          throw new Error(data.error || '标签加载失败');
+        }
+
+        tagState.page = data.pagination?.page || 1;
+        tagState.total = data.pagination?.total || 0;
+        tagState.totalPages = data.pagination?.total_pages || 1;
+        tagState.items = Array.isArray(data.items) ? data.items : [];
+
+        // Store metadata for all loaded tags
+        tagState.items.forEach(tag => {
+          tagMetaMap[tag.code] = tag;
+        });
+      } catch (error) {
+        tagState.items = [];
+        tagState.total = 0;
+        tagState.totalPages = 1;
+        tagState.page = 1;
+        tagError.textContent = error.message || '标签加载失败';
+      } finally {
+        tagState.loading = false;
+        renderTags();
+      }
+    }
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        if (tagModal.classList.contains('show')) {
+          closeTagModal();
+        }
+        if (document.getElementById('settings_modal').classList.contains('show')) {
+          closeSettingsModal();
+        }
+      }
+    });
+
+    updateTagDisplay();
+
+    // Pre-load all tag metadata for chip display
+    async function preloadAllTagNames() {
+      try {
+        const resp = await fetch(`/api/tags?page=1&per_page=30`);
+        const data = await resp.json();
+        if (data.ok && data.items) {
+          data.items.forEach(tag => { tagMetaMap[tag.code] = tag; });
+        }
+        // Load remaining pages if needed
+        if (data.pagination && data.pagination.total_pages > 1) {
+          for (let p = 2; p <= data.pagination.total_pages; p++) {
+            const resp2 = await fetch(`/api/tags?page=${p}&per_page=30`);
+            const data2 = await resp2.json();
+            if (data2.ok && data2.items) {
+              data2.items.forEach(tag => { tagMetaMap[tag.code] = tag; });
+            }
+          }
+        }
+        updateTagDisplay();
+      } catch (e) {
+        // ignore
+      }
+    }
+    preloadAllTagNames();
+
+    // --- Settings Modal ---
+    const settingsModal = document.getElementById('settings_modal');
+
+    function syncAutoDownloadFields() {
+      const enabled = document.getElementById('settings_auto_download_enabled').checked;
+      document.getElementById('settings_schedule_time').disabled = !enabled;
+    }
+
+    function setTimeFilterValue(minTime, maxTime) {
+      const select = document.getElementById('settings_time_filter');
+      const value = `${parseInt(minTime || 0)}-${parseInt(maxTime || 0)}`;
+      if ([...select.options].some(option => option.value === value)) {
+        select.value = value;
+      } else {
+        select.value = '0-86400';
+      }
+    }
+
+    function getSelectedTimeFilter() {
+      const option = document.getElementById('settings_time_filter').selectedOptions[0];
+      return {
+        min: parseInt(option.dataset.min || '0'),
+        max: parseInt(option.dataset.max || '86400'),
+      };
+    }
+
+    function openSettingsModal() {
+      // Refresh values from current config
+      const downloadRoot = document.getElementById('download_root').value;
+      document.getElementById('settings_proxy').value = currentConfig.proxy || '';
+      document.getElementById('settings_auto_download_enabled').checked = currentConfig.auto_download_enabled !== false;
+      document.getElementById('settings_schedule_time').value = currentConfig.schedule_time || '03:00';
+      document.getElementById('settings_max_daily_downloads').value = currentConfig.max_daily_downloads || 30;
+      document.getElementById('settings_sort').value = currentConfig.sort || 'pv';
+      document.getElementById('settings_range').value = currentConfig.range || 'daily';
+      setTimeFilterValue(currentConfig.min_time || 0, currentConfig.max_time || 86400);
+      // Blogger settings
+      document.getElementById('settings_twitter_cookie').value = currentConfig.twitter_cookie || '';
+      document.getElementById('settings_blogger_enabled').checked = currentConfig.twitter_blogger_enabled !== false;
+      document.getElementById('settings_blogger_schedule').value = currentConfig.twitter_blogger_schedule || '04:00';
+      document.getElementById('settings_blogger_max_media').value = currentConfig.twitter_blogger_max_media ?? -1;
+      document.getElementById('settings_blogger_has_retweet').checked = currentConfig.twitter_blogger_has_retweet === true;
+      syncAutoDownloadFields();
+
+      settingsModal.classList.add('show');
+      settingsModal.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('modal-open');
+    }
+
+    function closeSettingsModal() {
+      settingsModal.classList.remove('show');
+      settingsModal.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('modal-open');
+    }
+
+    function handleSettingsBackdrop(event) {
+      if (event.target === settingsModal) {
+        closeSettingsModal();
+      }
+    }
+
+    async function saveSettings() {
+      const formData = new FormData();
+      formData.append('download_root', document.getElementById('download_root').value);
+      formData.append('proxy', document.getElementById('settings_proxy').value);
+      formData.append('auto_download_enabled', document.getElementById('settings_auto_download_enabled').checked ? '1' : '0');
+      formData.append('schedule_time', document.getElementById('settings_schedule_time').value);
+      formData.append('max_daily_downloads', document.getElementById('settings_max_daily_downloads').value);
+      formData.append('sort', document.getElementById('settings_sort').value);
+      formData.append('range', document.getElementById('settings_range').value);
+      const timeFilter = getSelectedTimeFilter();
+      formData.append('min_time', timeFilter.min);
+      formData.append('max_time', timeFilter.max);
+      formData.append('tag_codes', JSON.stringify(selectedTagCodes));
+      // Blogger settings
+      formData.append('twitter_cookie', document.getElementById('settings_twitter_cookie').value);
+      formData.append('twitter_blogger_enabled', document.getElementById('settings_blogger_enabled').checked ? '1' : '0');
+      formData.append('twitter_blogger_schedule', document.getElementById('settings_blogger_schedule').value);
+      formData.append('twitter_blogger_max_media', document.getElementById('settings_blogger_max_media').value);
+      formData.append('twitter_blogger_has_retweet', document.getElementById('settings_blogger_has_retweet').checked ? '1' : '0');
+
+      try {
+        const resp = await fetch('/save', { method: 'POST', body: formData });
+        const data = await resp.json();
+        if (data.ok) {
+          // Update local config cache
+          currentConfig.proxy = document.getElementById('settings_proxy').value;
+          currentConfig.auto_download_enabled = document.getElementById('settings_auto_download_enabled').checked;
+          currentConfig.schedule_time = document.getElementById('settings_schedule_time').value;
+          currentConfig.max_daily_downloads = parseInt(document.getElementById('settings_max_daily_downloads').value);
+          currentConfig.sort = document.getElementById('settings_sort').value;
+          currentConfig.range = document.getElementById('settings_range').value;
+          currentConfig.min_time = timeFilter.min;
+          currentConfig.max_time = timeFilter.max;
+          currentConfig.download_root = downloadRootInput.value;
+          currentConfig.tag_codes = [...selectedTagCodes];
+          // Blogger config cache
+          currentConfig.twitter_cookie = document.getElementById('settings_twitter_cookie').value;
+          currentConfig.twitter_blogger_enabled = document.getElementById('settings_blogger_enabled').checked;
+          currentConfig.twitter_blogger_schedule = document.getElementById('settings_blogger_schedule').value;
+          currentConfig.twitter_blogger_max_media = parseInt(document.getElementById('settings_blogger_max_media').value);
+          currentConfig.twitter_blogger_has_retweet = document.getElementById('settings_blogger_has_retweet').checked;
+          downloadRootDirty = false;
+          tagSelectionDirty = false;
+          closeSettingsModal();
+          refreshStatus();
+        } else {
+          alert('保存失败：' + (data.error || '未知错误'));
+        }
+      } catch (e) {
+        alert('保存失败：网络错误');
+      }
+    }
+
+    // --- Current config (fetched on page load) ---
+    let currentConfig = {
+      download_root: "D:\",
+      proxy: "http://192.168.2.205:7890",
+      auto_download_enabled: true,
+      schedule_time: "03:00",
+      max_daily_downloads: 2,
+      sort: "pv",
+      range: "daily",
+      min_time: 0,
+      max_time: 300,
+      tag_codes: selectedTagCodes,
+      twitter_cookie: "guest_id=v1%3A177664740175199251; __cuid=b64922d335d94eaf8e92638ad2ee4633; guest_id_marketing=v1%3A177664740175199251; guest_id_ads=v1%3A177664740175199251; personalization_id=\"v1_wQJmZV8snAs+lRzqefD+Cw==\"; __cuid=b64922d335d94eaf8e92638ad2ee4633; g_state={\"i_l\":0,\"i_ll\":1780731599383,\"i_e\":{\"enable_itp_optimization\":0},\"i_et\":1776647408623}; twid=u%3D1056711439887433728; auth_token=bf85a0dc9f165bd34ea41298775b2271d59634c8; ct0=97777dbd6c37148941552261aeac1af9b3c496bd99ec41d7f4a935bfa603eca7ff42445fe6a3f8457eb054cb174469a82f350d18bbd7923ef3916d716268436d15966660c027e79eb3222eac4e51555d; ads_prefs=\"HBERAAA=\"; __cf_bm=2pr.Md2ZewSqh36vyU2ZUoNPXYLRnXEaj5nkzUGGFCU-1781075586.1381347-1.0.1.1-sts9Ecffdx9HBRgYqsbnm81tET9Mp5ElzHmo1lng5f9Uz2OgS2tkV.DVdA3bqr2h98KGebiNSCD5x5r3Uo5U8HLkajx8dvmc1zi1JfKH.OguUSd4ABD1PQY1Vi1x5nUZ; lang=zh-CN",
+      twitter_blogger_enabled: true,
+      twitter_blogger_schedule: "04:00",
+      twitter_blogger_max_media: 50,
+      twitter_blogger_has_retweet: false,
+    };
+
+    function sameTagCodes(left, right) {
+      return JSON.stringify(left || []) === JSON.stringify(right || []);
+    }
+
+    async function saveQuickConfigNow() {
+      if (!downloadRootDirty && !tagSelectionDirty) {
+        return true;
+      }
+
+      const downloadRootSnapshot = downloadRootInput.value;
+      const tagCodesSnapshot = [...selectedTagCodes];
+      const formData = new FormData();
+      formData.append('download_root', downloadRootSnapshot);
+      formData.append('tag_codes', JSON.stringify(tagCodesSnapshot));
+
+      try {
+        const resp = await fetch('/save-quick', { method: 'POST', body: formData });
+        const data = await resp.json();
+        if (!data.ok) {
+          throw new Error(data.error || '自动保存失败');
+        }
+
+        if (data.config) {
+          currentConfig = data.config;
+        }
+        if (downloadRootInput.value === downloadRootSnapshot) {
+          downloadRootDirty = false;
+        }
+        if (sameTagCodes(selectedTagCodes, tagCodesSnapshot)) {
+          tagSelectionDirty = false;
+        }
+        return true;
+      } catch (error) {
+        console.error(error);
+        return false;
+      }
+    }
+
+    function queueQuickConfigSave(delay = 0) {
+      window.clearTimeout(quickSaveTimer);
+      quickSaveTimer = window.setTimeout(() => {
+        quickSaveChain = quickSaveChain.then(saveQuickConfigNow);
+      }, delay);
+    }
+
+    async function flushQuickConfigSave() {
+      window.clearTimeout(quickSaveTimer);
+      quickSaveChain = quickSaveChain.then(saveQuickConfigNow);
+      return quickSaveChain;
+    }
+
+    downloadRootInput.addEventListener('input', () => {
+      downloadRootDirty = true;
+      currentConfig.download_root = downloadRootInput.value;
+      queueQuickConfigSave(500);
+    });
+    downloadRootInput.addEventListener('change', () => {
+      downloadRootDirty = true;
+      currentConfig.download_root = downloadRootInput.value;
+      queueQuickConfigSave();
+    });
+
+    // --- Status refresh ---
+    async function runNow() {
+      const quickSaved = await flushQuickConfigSave();
+      if (!quickSaved) {
+        alert('下载根目录或标签筛选自动保存失败，请检查后重试');
+        return;
+      }
+      const resp = await fetch('/run-now', { method: 'POST' });
+      const data = await resp.json();
+      if (!data.ok) {
+        alert(data.message || '启动失败');
+      }
+      refreshStatus();
+    }
+
+    async function refreshStatus() {
+      const resp = await fetch('/status');
+      const data = await resp.json();
+      if (!data.ok) {
+        return;
+      }
+
+      document.getElementById('auto_download_enabled').innerText = data.config?.auto_download_enabled === false ? '已关闭' : '已开启';
+      document.getElementById('is_running').innerText = data.state.is_running ? '是' : '否';
+      document.getElementById('last_run_time').innerText = data.state.last_run_time || '暂无';
+      document.getElementById('last_result').innerText = data.state.last_result || '';
+      document.getElementById('logs').innerText = (data.logs || []).join('\n');
+      // Update local config cache from server
+      if (data.config) {
+        currentConfig = data.config;
+        if (!downloadRootDirty) {
+          downloadRootInput.value = currentConfig.download_root || '';
+        }
+        // Update tag selection if config changed
+        if (!tagSelectionDirty && Array.isArray(currentConfig.tag_codes)) {
+          selectedTagCodes = [...currentConfig.tag_codes];
+          updateTagDisplay();
+        }
+      }
+      // Update blogger state display
+      if (data.blogger_state) {
+        document.getElementById('blogger_is_running').textContent = data.blogger_state.is_running ? '是' : '否';
+        document.getElementById('blogger_last_run_time').textContent = data.blogger_state.last_run_time || '暂无';
+        document.getElementById('blogger_last_result').textContent = data.blogger_state.last_result || '';
+      }
+    }
+
+    setInterval(refreshStatus, 5000);
+
+    function goToPoster() {
+      window.location.href = '/poster';
+    }
+
+    async function goToWaterfall() {
+      const quickSaved = await flushQuickConfigSave();
+      if (!quickSaved) {
+        alert('当前配置自动保存失败，请检查后重试');
+        return;
+      }
+      window.location.href = '/waterfall';
+    }
+
+    // ─── Blogger Management ───────────────────────────────
+    const bloggerBody = document.getElementById('blogger_body');
+    const bloggerToggle = document.getElementById('blogger_toggle_icon');
+    const bloggerChipList = document.getElementById('blogger_chip_list');
+    const bloggerAddInput = document.getElementById('blogger_add_input');
+    const bloggerCountBadge = document.getElementById('blogger_count_badge');
+
+    let bloggerList = ["tusiww"];
+
+    function toggleBloggerPanel() {
+      bloggerBody.classList.toggle('show');
+      bloggerToggle.classList.toggle('open');
+      if (bloggerBody.classList.contains('show')) {
+        refreshBloggerStatus();
+      }
+    }
+
+    function renderBloggerChips() {
+      bloggerChipList.innerHTML = '';
+      bloggerCountBadge.textContent = bloggerList.length;
+      bloggerList.forEach(name => {
+        const chip = document.createElement('div');
+        chip.className = 'blogger-chip';
+        chip.textContent = '@' + name;
+        const rmBtn = document.createElement('button');
+        rmBtn.textContent = '\u00d7';
+        rmBtn.onclick = () => removeBlogger(name);
+        chip.appendChild(rmBtn);
+        bloggerChipList.appendChild(chip);
+      });
+    }
+
+    async function addBlogger() {
+      const val = bloggerAddInput.value.trim().replace(/^@/, '').toLowerCase();
+      if (!val) return;
+      if (!/^[a-zA-Z0-9_]+$/.test(val)) {
+        alert('用户名只能包含字母、数字和下划线');
+        return;
+      }
+      try {
+        const resp = await fetch('/api/blogger/add', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({screen_name: val}),
+        });
+        const data = await resp.json();
+        if (!data.ok) {
+          alert('添加失败：' + (data.error || '未知错误'));
+          return;
+        }
+        bloggerAddInput.value = '';
+        await refreshBloggerStatus();
+      } catch (e) {
+        alert('网络错误');
+      }
+    }
+
+    async function removeBlogger(name) {
+      if (!confirm('确定移除 @' + name + ' 吗？\n（已下载的文件不会被删除）')) return;
+      try {
+        const resp = await fetch('/api/blogger/remove', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({screen_name: name}),
+        });
+        const data = await resp.json();
+        if (!data.ok) {
+          alert('移除失败：' + (data.error || '未知错误'));
+          return;
+        }
+        await refreshBloggerStatus();
+      } catch (e) {
+        alert('网络错误');
+      }
+    }
+
+    async function crawlBloggerNow() {
+      try {
+        const resp = await fetch('/api/blogger/crawl-now', {method: 'POST'});
+        const data = await resp.json();
+        if (!data.ok) {
+          alert(data.message || '启动失败');
+        }
+        refreshBloggerStatus();
+        refreshStatus();
+      } catch (e) {
+        alert('网络错误');
+      }
+    }
+
+    async function refreshBloggerStatus() {
+      try {
+        const resp = await fetch('/api/blogger/list');
+        const data = await resp.json();
+        if (!data.ok) return;
+
+        // Update blogger list
+        bloggerList = (data.bloggers || []).map(b => b.screen_name);
+        renderBloggerChips();
+
+        // Update settings in currentConfig from server
+        if (data.settings) {
+          currentConfig.twitter_cookie = data.settings.twitter_cookie || '';
+          currentConfig.twitter_blogger_enabled = data.settings.twitter_blogger_enabled !== false;
+          currentConfig.twitter_blogger_schedule = data.settings.twitter_blogger_schedule || '04:00';
+          currentConfig.twitter_blogger_max_media = data.settings.twitter_blogger_max_media ?? -1;
+          currentConfig.twitter_blogger_has_retweet = data.settings.twitter_blogger_has_retweet === true;
+        }
+
+        // Update state
+        const st = data.state || {};
+        document.getElementById('blogger_is_running').textContent = st.is_running ? '是' : '否';
+        document.getElementById('blogger_last_run_time').textContent = st.last_run_time || '暂无';
+        document.getElementById('blogger_last_result').textContent = st.last_result || '';
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    renderBloggerChips();
+    // Initial load
+    refreshBloggerStatus();
+
+    // Auto-refresh blogger status every 10s
+    setInterval(refreshBloggerStatus, 10000);
+  

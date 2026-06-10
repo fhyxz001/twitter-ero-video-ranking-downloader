@@ -1048,7 +1048,7 @@ def twitter_crawl_blogger(
 
     user_info = twitter_get_user_info(screen_name, headers, proxy_url)
     if not user_info:
-        return 0, 0, 0, cache
+        return 0, 0, 1, cache
 
     append_log(
         f"[博主] @{screen_name} ({user_info['name']}) "
