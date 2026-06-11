@@ -1,5 +1,7 @@
 # Twitter Ero Video Ranking Downloader
 
+[![Docker Pulls](https://img.shields.io/docker/pulls/hexbkyoma/twitter-ero-video-ranking-downloader)](https://hub.docker.com/r/hexbkyoma/twitter-ero-video-ranking-downloader)
+
 从 [truvaze.com](https://truvaze.com/api/media) 按排行自动下载视频，支持按分类、时长、排序方式筛选。提供 Web 界面管理配置、查看日志、浏览瀑布流预览和本地海报墙。
 
 ## 功能概览
@@ -179,9 +181,17 @@ journalctl -u twitter-downloader -f
 
 适用于所有 Docker 环境，包括 x86_64 和 ARM64（ARM NAS、树莓派等）。
 
+#### 0. 直接拉取镜像（推荐）
+
+已构建并发布到 Docker Hub，支持 `linux/amd64` 和 `linux/arm64` 多架构：
+
+```bash
+docker pull hexbkyoma/twitter-ero-video-ranking-downloader:latest
+```
+
 #### 1. 在线构建
 
-适合有网络的环境，直接从源码构建镜像：
+适合需要从源码自定义构建的场景（大多数用户可直接用上面的 `docker pull`）：
 
 ```bash
 # 克隆项目
@@ -192,8 +202,11 @@ cd twitter-ero-video-ranking-downloader
 # 编辑 config.json，将 download_root 改为容器内的挂载路径：
 #   "download_root": "/data/downloads"
 
-# 构建并启动
-docker compose up -d --build
+# 从源码构建镜像
+docker build -t hexbkyoma/twitter-ero-video-ranking-downloader:latest .
+
+# 启动
+docker compose up -d
 ```
 
 > Docker 镜像基于 `python:3.11-slim`，同时支持 `linux/amd64` 和 `linux/arm64` 架构。
@@ -217,12 +230,15 @@ docker compose up -d --build
 gunzip twitter-ero-video-ranking-downloader-latest-offline-arm64.tar.gz
 docker load -i twitter-ero-video-ranking-downloader-latest-offline-arm64.tar
 
+# 给镜像打上 Docker Hub 标签（docker-compose.yml 使用此镜像名）
+docker tag twitter-ero-video-ranking-downloader:latest-arm64 hexbkyoma/twitter-ero-video-ranking-downloader:latest
+
 # 准备配置文件和下载目录
 mkdir -p nas_downloads
 # 编辑 config.json，将 download_root 改为容器内路径：
 #   "download_root": "/data/downloads"
 
-# 启动（docker-compose.yml 中已配置镜像名，直接启动即可）
+# 启动
 docker compose up -d
 ```
 
@@ -257,13 +273,10 @@ docker compose down
 # 查看日志
 docker compose logs -f
 
-# 重建（更新代码后）
+# 更新镜像
 docker compose down
-docker compose build --no-cache
+docker compose pull
 docker compose up -d
-
-# 一键更新（使用项目提供的脚本）
-bash update.sh
 ```
 
 ---
@@ -272,7 +285,19 @@ bash update.sh
 
 适用于 Synology DSM 界面操作。
 
-#### 1. 导入镜像
+#### 1. 获取镜像
+
+**方式 A：从 Docker Hub 拉取（推荐，有网络时）**
+
+DSM → **容器管理器** → **注册表** → 搜索 `hexbkyoma/twitter-ero-video-ranking-downloader` → 下载 `latest` 标签。
+
+或通过 SSH：
+
+```bash
+docker pull hexbkyoma/twitter-ero-video-ranking-downloader:latest
+```
+
+**方式 B：离线镜像导入（无网络时）**
 
 1. 从 GitHub Releases 下载 **`arm64`** 架构的离线镜像包（大部分群晖为 ARM64；部分高端型号为 x86_64，请确认你的架构）
 2. DSM → **容器管理器** → **注册表** → **添加** → 从文件导入 `.tar` 镜像

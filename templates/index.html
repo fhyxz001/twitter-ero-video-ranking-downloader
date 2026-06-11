@@ -16,7 +16,7 @@
 
     /* ── Page Header ── */
     .page-header {
-      max-width: 1200px;
+      max-width: 1280px;
       margin: 0 auto 16px;
       display: flex;
       justify-content: space-between;
@@ -52,43 +52,57 @@
 
     /* ── Two-column Layout ── */
     .main-layout {
-      max-width: 1200px;
+      max-width: 1280px;
       margin: 0 auto;
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 380px;
       gap: 16px;
       align-items: start;
+    }
+    .left-column {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-width: 0;
+    }
+    .right-column {
+      position: sticky;
+      top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-width: 0;
     }
 
     /* ── Card ── */
     .card {
       background: #fff;
-      border-radius: 10px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.04);
       overflow: hidden;
     }
     .card-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 14px 18px;
-      border-bottom: 1px solid #e5e7eb;
+      padding: 16px 20px;
+      border-bottom: 1px solid #f0f0f0;
     }
     .card-header h2 {
       margin: 0;
-      font-size: 16px;
+      font-size: 15px;
       color: #111827;
       font-weight: 600;
     }
     .card-body {
-      padding: 16px 18px;
+      padding: 20px;
     }
 
     /* ── Form Fields ── */
     .field {
       display: flex;
       flex-direction: column;
-      margin-bottom: 14px;
+      margin-bottom: 16px;
     }
     .field:last-child { margin-bottom: 0; }
     label {
@@ -101,12 +115,19 @@
     input[type="time"],
     input[type="number"],
     select {
-      height: 36px;
+      height: 38px;
       border: 1px solid #d1d5db;
-      border-radius: 6px;
+      border-radius: 8px;
       padding: 0 10px;
       font-size: 14px;
       background: #fff;
+      color: #111827;
+      transition: border-color 0.15s;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
     }
 
     /* ── Tag Picker ── */
@@ -179,26 +200,55 @@
       line-height: 1.5;
     }
 
-    /* ── Action Buttons ── */
-    .actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-top: 14px;
+    /* ── Config Grid (Module 1 sub-grid) ── */
+    .config-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
     }
-    button {
+    .config-field {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Quick Action Buttons ── */
+    .quick-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .quick-action-btn {
+      flex: 1;
+      min-width: 140px;
+      max-width: 200px;
+      height: 52px;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: 10px;
       border: none;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .quick-action-btn.primary {
       background: #2563eb;
       color: #fff;
-      border-radius: 6px;
-      height: 34px;
-      padding: 0 14px;
-      cursor: pointer;
-      font-size: 13px;
-      transition: opacity 0.15s;
     }
-    button:hover { opacity: 0.88; }
-    button.secondary { background: #4b5563; }
+    .quick-action-btn.primary:hover {
+      background: #1d4ed8;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(37,99,235,0.3);
+    }
+    .quick-action-btn.secondary-action {
+      background: #fff;
+      color: #374151;
+      border: 1px solid #d1d5db;
+    }
+    .quick-action-btn.secondary-action:hover {
+      background: #f9fafb;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
 
     /* ── Blogger Section ── */
     .blogger-header-left {
@@ -284,78 +334,88 @@
       line-height: 1.6;
     }
 
-    /* ── Status Section ── */
-    .status-grid {
+    /* ── Stats Dashboard ── */
+    .stats-dashboard {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
     }
-    .status-item {
+    .stats-card {
       background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      border-radius: 6px;
-      padding: 10px 12px;
+      border-left: 3px solid #2563eb;
+      border-radius: 8px;
+      padding: 14px 16px;
     }
-    .status-item .status-label {
-      font-size: 12px;
+    .stats-card .stats-label {
+      font-size: 11px;
       color: #6b7280;
-      margin-bottom: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+      font-weight: 500;
     }
-    .status-item .status-value {
-      font-size: 14px;
-      font-weight: 600;
+    .stats-card .stats-value {
+      font-size: 16px;
+      font-weight: 700;
       color: #111827;
     }
-    .status-item.full {
-      grid-column: 1 / -1;
-    }
 
-    /* ── Collapsible Logs ── */
-    .logs-toggle {
+    /* ── Log Panel (persistent right side) ── */
+    .log-panel {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.04);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      max-height: calc(100vh - 100px);
+    }
+    .log-panel-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 10px 18px;
-      border-top: 1px solid #e5e7eb;
-      cursor: pointer;
-      user-select: none;
-      transition: background 0.15s;
+      padding: 14px 20px;
+      border-bottom: 1px solid #f0f0f0;
+      flex-shrink: 0;
     }
-    .logs-toggle:hover { background: #f9fafb; }
-    .logs-toggle-label {
-      font-size: 14px;
+    .log-panel-header h2 {
+      margin: 0;
+      font-size: 15px;
+      color: #111827;
       font-weight: 600;
-      color: #374151;
     }
-    .logs-toggle-arrow {
-      font-size: 12px;
-      color: #6b7280;
-      transition: transform 0.2s;
+    .log-panel-header .log-status {
+      font-size: 11px;
+      color: #9ca3af;
     }
-    .logs-toggle-arrow.open { transform: rotate(180deg); }
-    .logs-wrapper {
-      max-height: 0;
+    .log-panel-body {
+      flex: 1;
       overflow: hidden;
-      transition: max-height 0.3s ease;
-    }
-    .logs-wrapper.open {
-      max-height: 400px;
+      display: flex;
+      flex-direction: column;
+      min-height: 400px;
     }
     .logs {
-      border-top: 1px solid #e5e7eb;
+      flex: 1;
       background: #0f172a;
       color: #e2e8f0;
-      font-family: Consolas, monospace;
+      font-family: Consolas, "Cascadia Code", monospace;
       font-size: 12px;
-      height: 280px;
-      overflow: auto;
-      padding: 10px;
+      line-height: 1.6;
+      padding: 14px 16px;
       white-space: pre-wrap;
+      overflow-y: auto;
+      word-break: break-all;
     }
-    .note {
-      margin-top: 6px;
-      color: #6b7280;
-      font-size: 12px;
+    .logs::-webkit-scrollbar {
+      width: 6px;
+    }
+    .logs::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .logs::-webkit-scrollbar-thumb {
+      background: #374151;
+      border-radius: 3px;
     }
 
     /* ── Tag Modal ── */
@@ -497,34 +557,44 @@
       font-size: 12px;
     }
 
-    /* ── Settings Modal ── */
-    .settings-modal {
+    /* ── Settings Drawer ── */
+    .settings-backdrop {
       position: fixed;
       inset: 0;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      background: rgba(15, 23, 42, 0.46);
+      background: rgba(15, 23, 42, 0.4);
       z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.25s, visibility 0.25s;
     }
-    .settings-modal.show { display: flex; }
-    .settings-modal-dialog {
-      width: min(520px, 100%);
-      max-height: min(85vh, 700px);
+    .settings-backdrop.show {
+      opacity: 1;
+      visibility: visible;
+    }
+    .settings-drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: min(440px, 90vw);
+      height: 100vh;
+      background: #fff;
+      box-shadow: -4px 0 24px rgba(0,0,0,0.12);
+      z-index: 1001;
       display: flex;
       flex-direction: column;
-      background: #fff;
-      border-radius: 14px;
-      box-shadow: 0 18px 48px rgba(15, 23, 42, 0.22);
-      overflow: hidden;
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
     }
-    .settings-modal-header {
+    .settings-drawer.show {
+      transform: translateX(0);
+    }
+    .settings-drawer-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 18px 20px 14px;
+      padding: 18px 24px;
       border-bottom: 1px solid #e5e7eb;
+      flex-shrink: 0;
     }
     .settings-modal-title {
       margin: 0;
@@ -540,21 +610,18 @@
       display: block;
       object-fit: contain;
     }
-    .settings-close-btn {
-      border: 1px solid #d1d5db;
-      background: #fff;
-      color: #374151;
-      border-radius: 6px;
-      width: 36px;
-      min-width: 36px;
-      padding: 0;
-      font-size: 18px;
-      line-height: 1;
-      cursor: pointer;
+    .settings-drawer-body {
+      flex: 1;
+      padding: 20px 24px;
+      overflow-y: auto;
     }
-    .settings-modal-body {
-      padding: 16px 20px 20px;
-      overflow: auto;
+    .settings-drawer-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 14px 24px;
+      border-top: 1px solid #e5e7eb;
+      flex-shrink: 0;
     }
     .settings-grid {
       display: grid;
@@ -566,6 +633,12 @@
       flex-direction: column;
     }
     .settings-field.full { grid-column: 1 / -1; }
+    .settings-field label {
+      font-size: 13px;
+      margin-bottom: 5px;
+      color: #374151;
+      font-weight: 600;
+    }
     .settings-toggle {
       display: flex;
       align-items: center;
@@ -588,45 +661,104 @@
       color: #6b7280;
       line-height: 1.5;
     }
-    .settings-modal-footer {
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-      padding: 12px 20px;
-      border-top: 1px solid #e5e7eb;
+    .section-label {
+      font-size: 11px;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding-bottom: 8px;
+      margin-bottom: 4px;
+      border-bottom: 1px solid #e5e7eb;
+      font-weight: 600;
     }
     .settings-save-btn {
       background: #2563eb;
       color: #fff;
       border: none;
-      border-radius: 6px;
-      height: 36px;
-      padding: 0 16px;
+      border-radius: 8px;
+      height: 38px;
+      padding: 0 20px;
       font-size: 14px;
+      font-weight: 600;
       cursor: pointer;
     }
-    .settings-save-btn:hover { opacity: 0.9; }
+    .settings-save-btn:hover { background: #1d4ed8; }
     .settings-cancel-btn {
       background: #fff;
       color: #374151;
       border: 1px solid #d1d5db;
-      border-radius: 6px;
-      height: 36px;
-      padding: 0 16px;
+      border-radius: 8px;
+      height: 38px;
+      padding: 0 20px;
       font-size: 14px;
       cursor: pointer;
     }
     .settings-cancel-btn:hover { background: #f3f4f6; }
+    .settings-close-btn {
+      border: 1px solid #d1d5db;
+      background: #fff;
+      color: #374151;
+      border-radius: 6px;
+      width: 36px;
+      min-width: 36px;
+      padding: 0;
+      font-size: 20px;
+      line-height: 1;
+      cursor: pointer;
+    }
 
     body.modal-open { overflow: hidden; }
 
+    button {
+      border: none;
+      background: #2563eb;
+      color: #fff;
+      border-radius: 8px;
+      height: 36px;
+      padding: 0 16px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: background 0.15s;
+    }
+    button:hover { background: #1d4ed8; }
+    button.secondary { background: #4b5563; }
+    button.secondary:hover { background: #374151; }
+
+    .note {
+      margin-top: 10px;
+      color: #9ca3af;
+      font-size: 12px;
+    }
+
     /* ── Responsive ── */
-    @media (max-width: 860px) {
+    @media (max-width: 900px) {
       .main-layout {
+        grid-template-columns: 1fr;
+      }
+      .right-column {
+        position: static;
+      }
+      .log-panel {
+        max-height: 500px;
+      }
+      .log-panel-body {
+        min-height: 280px;
+      }
+    }
+    @media (max-width: 700px) {
+      .stats-dashboard {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .config-grid {
         grid-template-columns: 1fr;
       }
       .settings-grid {
         grid-template-columns: 1fr;
+      }
+      .quick-action-btn {
+        max-width: none;
+        flex: 1 1 100%;
       }
     }
   </style>
@@ -642,7 +774,11 @@
 
   <!-- Two-column Layout -->
   <div class="main-layout">
-    <!-- Left Column: Config -->
+
+    <!-- Left Column: Config + Actions + Status -->
+    <div class="left-column">
+
+    <!-- Module 1: Download Config -->
     <div class="card">
       <div class="card-header">
         <h2>下载配置</h2>
@@ -669,184 +805,200 @@
           </div>
         </div>
 
-        <div class="actions">
-          <button type="button" onclick="runNow()">立即执行任务</button>
-          <button type="button" class="secondary" onclick="refreshStatus()">刷新状态</button>
-          <button type="button" class="secondary" onclick="goToPoster()">海报墙</button>
-          <button type="button" class="secondary" onclick="goToWaterfall()">瀑布流</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Right Column: Monitoring -->
-    <div style="display:flex;flex-direction:column;gap:16px;">
-      <!-- Blogger Card -->
-      <div class="card">
-        <div class="card-header">
-          <div class="blogger-header-left">
-            <h2>收藏博主</h2>
-            <span id="blogger_count_badge" class="badge">{{ config.twitter_blogger_list | length }}</span>
+        <div class="config-grid" style="border-top:1px solid #f0f0f0;padding-top:16px;margin-top:4px;">
+          <div class="config-field">
+            <label for="max_daily_downloads">每类视频下载数</label>
+            <input id="max_daily_downloads" type="number" min="1" required value="{{ config.max_daily_downloads }}" />
           </div>
-          <div class="blogger-add-row">
-            <input id="blogger_add_input" type="text" placeholder="输入用户名（不含@）" onkeydown="if(event.key==='Enter')addBlogger()" style="width:160px;" />
-            <button type="button" onclick="addBlogger()">添加</button>
-          </div>
-        </div>
-        <div class="card-body">
-          <div id="blogger_chip_list" class="blogger-chip-list"></div>
-          <div class="blogger-footer">
-            <div class="blogger-status">
-              爬取中：<span id="blogger_is_running">{{ "是" if blogger_state.is_running else "否" }}</span>
-              &nbsp;·&nbsp;最近：<span id="blogger_last_run_time">{{ blogger_state.last_run_time or "暂无" }}</span>
-              &nbsp;·&nbsp;<span id="blogger_last_result">{{ blogger_state.last_result }}</span>
-            </div>
-            <div class="blogger-actions">
-              <button type="button" class="secondary" onclick="crawlBloggerNow()">立即爬取</button>
-              <button type="button" class="secondary" onclick="refreshBloggerStatus()">刷新</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Status + Logs Card -->
-      <div class="card">
-        <div class="card-header">
-          <h2>运行状态</h2>
-        </div>
-        <div class="card-body">
-          <div class="status-grid">
-            <div class="status-item">
-              <div class="status-label">自动下载</div>
-              <div class="status-value" id="auto_download_enabled">{{ "已开启" if config.auto_download_enabled else "已关闭" }}</div>
-            </div>
-            <div class="status-item">
-              <div class="status-label">运行中</div>
-              <div class="status-value" id="is_running">{{ "是" if state.is_running else "否" }}</div>
-            </div>
-            <div class="status-item">
-              <div class="status-label">最近执行时间</div>
-              <div class="status-value" id="last_run_time">{{ state.last_run_time or "暂无" }}</div>
-            </div>
-            <div class="status-item">
-              <div class="status-label">最近结果</div>
-              <div class="status-value" id="last_result">{{ state.last_result }}</div>
-            </div>
-          </div>
-          <div class="note">日志每 5 秒自动刷新一次。</div>
-        </div>
-        <!-- Collapsible Logs -->
-        <div class="logs-toggle" onclick="toggleLogs()">
-          <span class="logs-toggle-label">运行日志</span>
-          <span id="logs_arrow" class="logs-toggle-arrow">&#9660;</span>
-        </div>
-        <div id="logs_wrapper" class="logs-wrapper">
-          <div id="logs" class="logs">{{ logs }}</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Settings Modal -->
-  <div id="settings_modal" class="settings-modal" aria-hidden="true" onclick="handleSettingsBackdrop(event)">
-    <div class="settings-modal-dialog" role="dialog" aria-modal="true">
-      <div class="settings-modal-header">
-        <h2 class="settings-modal-title">
-          <img class="settings-title-icon" src="{{ url_for('static', path='set.png') }}" alt="" aria-hidden="true" />
-          <span>设置</span>
-        </h2>
-        <button type="button" class="settings-close-btn" aria-label="关闭设置弹窗" onclick="closeSettingsModal()">&times;</button>
-      </div>
-      <div class="settings-modal-body">
-        <div class="settings-grid">
-          <div class="settings-field full">
-            <label for="settings_auto_download_enabled">定时下载</label>
-            <label class="settings-toggle">
-              <input id="settings_auto_download_enabled" name="auto_download_enabled" type="checkbox" {% if config.auto_download_enabled %}checked{% endif %} onchange="syncAutoDownloadFields()" />
-              <span>开启自动下载</span>
-            </label>
-            <div class="settings-help">关闭后不会再按计划自动下载，但"立即执行任务"仍可手动下载。</div>
-          </div>
-
-          <div class="settings-field">
-            <label for="settings_proxy">HTTP/HTTPS 代理（可空）</label>
-            <input id="settings_proxy" name="proxy" type="text" placeholder="例如：http://127.0.0.1:7890" value="{{ config.proxy }}" />
-          </div>
-
-          <div class="settings-field">
-            <label for="settings_schedule_time">每日定时执行时间（HH:MM）</label>
-            <input id="settings_schedule_time" name="schedule_time" type="time" required value="{{ config.schedule_time }}" />
-          </div>
-
-          <div class="settings-field">
-            <label for="settings_max_daily_downloads">每类视频下载数</label>
-            <input id="settings_max_daily_downloads" name="max_daily_downloads" type="number" min="1" required value="{{ config.max_daily_downloads }}" />
-          </div>
-
-          <div class="settings-field">
-            <label for="settings_sort">排序方式</label>
-            <select id="settings_sort" name="sort" required>
+          <div class="config-field">
+            <label for="sort">排序方式</label>
+            <select id="sort" required>
               {% for option in sort_options %}
               <option value="{{ option.value }}" {% if config.sort == option.value %}selected{% endif %}>{{ option.label }}</option>
               {% endfor %}
             </select>
           </div>
-
-          <div class="settings-field">
-            <label for="settings_range">时间范围</label>
-            <select id="settings_range" name="range" required>
+          <div class="config-field">
+            <label for="range">时间范围</label>
+            <select id="range" required>
               {% for option in range_options %}
               <option value="{{ option.value }}" {% if config.range == option.value %}selected{% endif %}>{{ option.label }}</option>
               {% endfor %}
             </select>
           </div>
-
-          <div class="settings-field">
-            <label for="settings_time_filter">时间筛选</label>
-            <select id="settings_time_filter" name="time_filter" required>
+          <div class="config-field">
+            <label for="time_filter">时间筛选</label>
+            <select id="time_filter" required>
               {% for option in time_filter_options %}
               <option value="{{ option.min }}-{{ option.max }}" data-min="{{ option.min }}" data-max="{{ option.max }}" {% if config.min_time == option.min and config.max_time == option.max %}selected{% endif %}>{{ option.label }}</option>
               {% endfor %}
             </select>
           </div>
+        </div>
+      </div>
+    </div>
 
-          <!-- Blogger settings in main settings modal -->
-          <div class="settings-field full" style="margin-top:8px;padding-top:12px;border-top:1px solid #e5e7eb;">
-            <label style="font-size:15px;color:#111827;">收藏博主设置</label>
+    <!-- Module 2: Quick Actions -->
+    <div class="card">
+      <div class="card-body" style="padding: 24px 20px;">
+        <div class="quick-actions">
+          <button type="button" class="quick-action-btn primary" onclick="runNow()">立即执行任务</button>
+          <button type="button" class="quick-action-btn secondary-action" onclick="goToPoster()">海报墙</button>
+          <button type="button" class="quick-action-btn secondary-action" onclick="goToWaterfall()">瀑布流</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Module 3: Favorite Bloggers -->
+    <div class="card">
+      <div class="card-header">
+        <div class="blogger-header-left">
+          <h2>收藏博主</h2>
+          <span id="blogger_count_badge" class="badge">{{ config.twitter_blogger_list | length }}</span>
+        </div>
+        <div class="blogger-add-row">
+          <input id="blogger_add_input" type="text" placeholder="输入用户名（不含@）" onkeydown="if(event.key==='Enter')addBlogger()" style="width:160px;" />
+          <button type="button" onclick="addBlogger()">添加</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div id="blogger_chip_list" class="blogger-chip-list"></div>
+        <div class="blogger-footer">
+          <div class="blogger-status">
+            爬取中：<span id="blogger_is_running">{{ "是" if blogger_state.is_running else "否" }}</span>
+            &nbsp;·&nbsp;最近：<span id="blogger_last_run_time">{{ blogger_state.last_run_time or "暂无" }}</span>
+            &nbsp;·&nbsp;<span id="blogger_last_result">{{ blogger_state.last_result }}</span>
           </div>
-          <div class="settings-field full">
-            <label for="settings_twitter_cookie">Twitter Cookie（auth_token + ct0）</label>
-            <input id="settings_twitter_cookie" name="twitter_cookie" type="text" placeholder="auth_token=xxx; ct0=xxx;" value="{{ config.twitter_cookie }}" />
-            <div class="settings-help">用于博主爬取的认证信息，格式：auth_token=xxx; ct0=xxx;</div>
-          </div>
-          <div class="settings-field">
-            <label for="settings_blogger_enabled">博主定时爬取</label>
-            <label class="settings-toggle">
-              <input id="settings_blogger_enabled" name="twitter_blogger_enabled" type="checkbox" {% if config.twitter_blogger_enabled %}checked{% endif %} />
-              <span>开启自动爬取</span>
-            </label>
-          </div>
-          <div class="settings-field">
-            <label for="settings_blogger_schedule">每日爬取时间（HH:MM）</label>
-            <input id="settings_blogger_schedule" name="twitter_blogger_schedule" type="time" value="{{ config.twitter_blogger_schedule }}" />
-          </div>
-          <div class="settings-field">
-            <label for="settings_blogger_max_media">每人每次最多爬取数</label>
-            <input id="settings_blogger_max_media" name="twitter_blogger_max_media" type="number" min="-1" max="500" value="{{ config.twitter_blogger_max_media }}" />
-            <div class="settings-help">-1 表示不限制下载数量</div>
-          </div>
-          <div class="settings-field">
-            <label for="settings_blogger_has_retweet">包含转推</label>
-            <label class="settings-toggle">
-              <input id="settings_blogger_has_retweet" name="twitter_blogger_has_retweet" type="checkbox" {% if config.twitter_blogger_has_retweet %}checked{% endif %} />
-              <span>包含转推内容</span>
-            </label>
+          <div class="blogger-actions">
+            <button type="button" class="secondary" onclick="crawlBloggerNow()">立即爬取</button>
+            <button type="button" class="secondary" onclick="refreshBloggerStatus()">刷新</button>
           </div>
         </div>
       </div>
-      <div class="settings-modal-footer">
-        <button type="button" class="settings-cancel-btn" onclick="closeSettingsModal()">取消</button>
-        <button type="button" class="settings-save-btn" onclick="saveSettings()">保存设置</button>
+    </div>
+
+    <!-- Module 4: Status Dashboard -->
+    <div class="card">
+      <div class="card-header">
+        <h2>运行状态</h2>
       </div>
+      <div class="card-body">
+        <div class="stats-dashboard">
+          <div class="stats-card">
+            <div class="stats-label">自动下载</div>
+            <div class="stats-value" id="auto_download_enabled">{{ "已开启" if config.auto_download_enabled else "已关闭" }}</div>
+          </div>
+          <div class="stats-card">
+            <div class="stats-label">运行中</div>
+            <div class="stats-value" id="is_running">{{ "是" if state.is_running else "否" }}</div>
+          </div>
+          <div class="stats-card">
+            <div class="stats-label">最近执行时间</div>
+            <div class="stats-value" id="last_run_time">{{ state.last_run_time or "暂无" }}</div>
+          </div>
+          <div class="stats-card">
+            <div class="stats-label">最近结果</div>
+            <div class="stats-value" id="last_result">{{ state.last_result }}</div>
+          </div>
+        </div>
+        <div class="note">状态每 5 秒自动刷新，博客每 10 秒刷新</div>
+      </div>
+    </div>
+
+    </div><!-- /left-column -->
+
+    <!-- Right Column: Log Panel (persistent) -->
+    <div class="right-column">
+      <div class="log-panel">
+        <div class="log-panel-header">
+          <h2>运行日志</h2>
+          <span class="log-status" id="log_update_indicator">● 实时</span>
+        </div>
+        <div class="log-panel-body">
+          <div id="logs" class="logs">{{ logs }}</div>
+        </div>
+      </div>
+    </div><!-- /right-column -->
+
+  </div>
+
+  <!-- Settings Backdrop -->
+  <div id="settings_backdrop" class="settings-backdrop" aria-hidden="true" onclick="closeSettingsModal()"></div>
+
+  <!-- Settings Drawer -->
+  <div id="settings_modal" class="settings-drawer" aria-hidden="true">
+    <div class="settings-drawer-header">
+      <h2 class="settings-modal-title">
+        <img class="settings-title-icon" src="{{ url_for('static', path='set.png') }}" alt="" aria-hidden="true" />
+        <span>设置</span>
+      </h2>
+      <button type="button" class="settings-close-btn" aria-label="关闭设置" onclick="closeSettingsModal()">&times;</button>
+    </div>
+    <div class="settings-drawer-body">
+      <div class="settings-grid">
+        <!-- Section: 下载设置 -->
+        <div class="settings-field full">
+          <div class="section-label">下载设置</div>
+        </div>
+        <div class="settings-field full">
+          <label for="settings_auto_download_enabled">定时下载</label>
+          <label class="settings-toggle">
+            <input id="settings_auto_download_enabled" name="auto_download_enabled" type="checkbox" {% if config.auto_download_enabled %}checked{% endif %} onchange="syncAutoDownloadFields()" />
+            <span>开启自动下载</span>
+          </label>
+          <div class="settings-help">关闭后不会再按计划自动下载，但"立即执行任务"仍可手动下载。</div>
+        </div>
+        <div class="settings-field">
+          <label for="settings_proxy">HTTP/HTTPS 代理（可空）</label>
+          <input id="settings_proxy" name="proxy" type="text" placeholder="例如：http://127.0.0.1:7890" value="{{ config.proxy }}" />
+        </div>
+        <div class="settings-field">
+          <label for="settings_schedule_time">定时执行时间（HH:MM）</label>
+          <input id="settings_schedule_time" name="schedule_time" type="time" required value="{{ config.schedule_time }}" />
+        </div>
+
+        <!-- Section: Twitter 设置 -->
+        <div class="settings-field full" style="padding-top:8px;">
+          <div class="section-label">Twitter 设置</div>
+        </div>
+        <div class="settings-field full">
+          <label for="settings_twitter_cookie">Twitter Cookie（auth_token + ct0）</label>
+          <input id="settings_twitter_cookie" name="twitter_cookie" type="text" placeholder="auth_token=xxx; ct0=xxx;" value="{{ config.twitter_cookie }}" />
+          <div class="settings-help">用于博主爬取的认证信息，格式：auth_token=xxx; ct0=xxx;</div>
+        </div>
+
+        <!-- Section: 博主爬取设置 -->
+        <div class="settings-field full" style="padding-top:8px;">
+          <div class="section-label">博主爬取设置</div>
+        </div>
+        <div class="settings-field">
+          <label for="settings_blogger_enabled">博主定时爬取</label>
+          <label class="settings-toggle">
+            <input id="settings_blogger_enabled" name="twitter_blogger_enabled" type="checkbox" {% if config.twitter_blogger_enabled %}checked{% endif %} />
+            <span>开启自动爬取</span>
+          </label>
+        </div>
+        <div class="settings-field">
+          <label for="settings_blogger_schedule">每日爬取时间（HH:MM）</label>
+          <input id="settings_blogger_schedule" name="twitter_blogger_schedule" type="time" value="{{ config.twitter_blogger_schedule }}" />
+        </div>
+        <div class="settings-field">
+          <label for="settings_blogger_max_media">每人每次最多爬取数</label>
+          <input id="settings_blogger_max_media" name="twitter_blogger_max_media" type="number" min="-1" max="500" value="{{ config.twitter_blogger_max_media }}" />
+          <div class="settings-help">-1 表示不限制下载数量</div>
+        </div>
+        <div class="settings-field">
+          <label for="settings_blogger_has_retweet">包含转推</label>
+          <label class="settings-toggle">
+            <input id="settings_blogger_has_retweet" name="twitter_blogger_has_retweet" type="checkbox" {% if config.twitter_blogger_has_retweet %}checked{% endif %} />
+            <span>包含转推内容</span>
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="settings-drawer-footer">
+      <button type="button" class="settings-cancel-btn" onclick="closeSettingsModal()">取消</button>
+      <button type="button" class="settings-save-btn" onclick="saveSettings()">保存设置</button>
     </div>
   </div>
 
@@ -878,14 +1030,6 @@
   </div>
 
   <script>
-    // --- Log toggle ---
-    function toggleLogs() {
-      const wrapper = document.getElementById('logs_wrapper');
-      const arrow = document.getElementById('logs_arrow');
-      wrapper.classList.toggle('open');
-      arrow.classList.toggle('open');
-    }
-
     // --- Tag multi-select ---
     const tagCodesInput = document.getElementById('tag_codes_input');
     const tagModal = document.getElementById('tag_modal');
@@ -902,6 +1046,7 @@
     let selectedTagCodes = JSON.parse(tagCodesInput.value || '[]');
     let tagSelectionDirty = false;
     let downloadRootDirty = false;
+    let settingsDirty = false;
     let quickSaveTimer = null;
     let quickSaveChain = Promise.resolve();
     const tagMetaMap = {};
@@ -1108,7 +1253,7 @@
     }
     preloadAllTagNames();
 
-    // --- Settings Modal ---
+    // --- Settings Drawer ---
     const settingsModal = document.getElementById('settings_modal');
 
     function syncAutoDownloadFields() {
@@ -1117,7 +1262,7 @@
     }
 
     function setTimeFilterValue(minTime, maxTime) {
-      const select = document.getElementById('settings_time_filter');
+      const select = document.getElementById('time_filter');
       const value = `${parseInt(minTime || 0)}-${parseInt(maxTime || 0)}`;
       if ([...select.options].some(option => option.value === value)) {
         select.value = value;
@@ -1127,7 +1272,7 @@
     }
 
     function getSelectedTimeFilter() {
-      const option = document.getElementById('settings_time_filter').selectedOptions[0];
+      const option = document.getElementById('time_filter').selectedOptions[0];
       return {
         min: parseInt(option.dataset.min || '0'),
         max: parseInt(option.dataset.max || '86400'),
@@ -1135,14 +1280,9 @@
     }
 
     function openSettingsModal() {
-      const downloadRoot = document.getElementById('download_root').value;
       document.getElementById('settings_proxy').value = currentConfig.proxy || '';
       document.getElementById('settings_auto_download_enabled').checked = currentConfig.auto_download_enabled !== false;
       document.getElementById('settings_schedule_time').value = currentConfig.schedule_time || '03:00';
-      document.getElementById('settings_max_daily_downloads').value = currentConfig.max_daily_downloads || 30;
-      document.getElementById('settings_sort').value = currentConfig.sort || 'pv';
-      document.getElementById('settings_range').value = currentConfig.range || 'daily';
-      setTimeFilterValue(currentConfig.min_time || 0, currentConfig.max_time || 86400);
       document.getElementById('settings_twitter_cookie').value = currentConfig.twitter_cookie || '';
       document.getElementById('settings_blogger_enabled').checked = currentConfig.twitter_blogger_enabled !== false;
       document.getElementById('settings_blogger_schedule').value = currentConfig.twitter_blogger_schedule || '04:00';
@@ -1152,19 +1292,21 @@
 
       settingsModal.classList.add('show');
       settingsModal.setAttribute('aria-hidden', 'false');
+      document.getElementById('settings_backdrop').classList.add('show');
+      document.getElementById('settings_backdrop').setAttribute('aria-hidden', 'false');
       document.body.classList.add('modal-open');
     }
 
     function closeSettingsModal() {
       settingsModal.classList.remove('show');
       settingsModal.setAttribute('aria-hidden', 'true');
+      document.getElementById('settings_backdrop').classList.remove('show');
+      document.getElementById('settings_backdrop').setAttribute('aria-hidden', 'true');
       document.body.classList.remove('modal-open');
     }
 
     function handleSettingsBackdrop(event) {
-      if (event.target === settingsModal) {
-        closeSettingsModal();
-      }
+      closeSettingsModal();
     }
 
     async function saveSettings() {
@@ -1173,9 +1315,9 @@
       formData.append('proxy', document.getElementById('settings_proxy').value);
       formData.append('auto_download_enabled', document.getElementById('settings_auto_download_enabled').checked ? '1' : '0');
       formData.append('schedule_time', document.getElementById('settings_schedule_time').value);
-      formData.append('max_daily_downloads', document.getElementById('settings_max_daily_downloads').value);
-      formData.append('sort', document.getElementById('settings_sort').value);
-      formData.append('range', document.getElementById('settings_range').value);
+      formData.append('max_daily_downloads', document.getElementById('max_daily_downloads').value);
+      formData.append('sort', document.getElementById('sort').value);
+      formData.append('range', document.getElementById('range').value);
       const timeFilter = getSelectedTimeFilter();
       formData.append('min_time', timeFilter.min);
       formData.append('max_time', timeFilter.max);
@@ -1193,9 +1335,9 @@
           currentConfig.proxy = document.getElementById('settings_proxy').value;
           currentConfig.auto_download_enabled = document.getElementById('settings_auto_download_enabled').checked;
           currentConfig.schedule_time = document.getElementById('settings_schedule_time').value;
-          currentConfig.max_daily_downloads = parseInt(document.getElementById('settings_max_daily_downloads').value);
-          currentConfig.sort = document.getElementById('settings_sort').value;
-          currentConfig.range = document.getElementById('settings_range').value;
+          currentConfig.max_daily_downloads = parseInt(document.getElementById('max_daily_downloads').value);
+          currentConfig.sort = document.getElementById('sort').value;
+          currentConfig.range = document.getElementById('range').value;
           currentConfig.min_time = timeFilter.min;
           currentConfig.max_time = timeFilter.max;
           currentConfig.download_root = downloadRootInput.value;
@@ -1207,6 +1349,7 @@
           currentConfig.twitter_blogger_has_retweet = document.getElementById('settings_blogger_has_retweet').checked;
           downloadRootDirty = false;
           tagSelectionDirty = false;
+          settingsDirty = false;
           closeSettingsModal();
           refreshStatus();
         } else {
@@ -1298,6 +1441,15 @@
       queueQuickConfigSave();
     });
 
+    // Main-page config field change tracking
+    ['max_daily_downloads', 'sort', 'range', 'time_filter'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('change', () => { settingsDirty = true; });
+        el.addEventListener('input', () => { settingsDirty = true; });
+      }
+    });
+
     // --- Status refresh ---
     async function runNow() {
       const quickSaved = await flushQuickConfigSave();
@@ -1324,7 +1476,9 @@
       document.getElementById('is_running').innerText = data.state.is_running ? '是' : '否';
       document.getElementById('last_run_time').innerText = data.state.last_run_time || '暂无';
       document.getElementById('last_result').innerText = data.state.last_result || '';
-      document.getElementById('logs').innerText = (data.logs || []).join('\n');
+      const logEl = document.getElementById('logs');
+      logEl.innerText = (data.logs || []).join('\n');
+      logEl.scrollTop = logEl.scrollHeight;
       if (data.config) {
         currentConfig = data.config;
         if (!downloadRootDirty) {
@@ -1333,6 +1487,12 @@
         if (!tagSelectionDirty && Array.isArray(currentConfig.tag_codes)) {
           selectedTagCodes = [...currentConfig.tag_codes];
           updateTagDisplay();
+        }
+        if (!settingsDirty) {
+          document.getElementById('max_daily_downloads').value = currentConfig.max_daily_downloads || 30;
+          document.getElementById('sort').value = currentConfig.sort || 'pv';
+          document.getElementById('range').value = currentConfig.range || 'daily';
+          setTimeFilterValue(currentConfig.min_time || 0, currentConfig.max_time || 86400);
         }
       }
       if (data.blogger_state) {

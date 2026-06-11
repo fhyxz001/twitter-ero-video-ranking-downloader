@@ -1,9 +1,6 @@
 services:
   twitter-ero-video-ranking-downloader:
-    build:
-      context: .
-      network: host
-    image: twitter-ero-video-ranking-downloader:latest
+    image: hexbkyoma/twitter-ero-video-ranking-downloader:latest
     container_name: twitter-ero-video-ranking-downloader
     restart: unless-stopped
     ports:

@@ -309,6 +309,13 @@ def resolve_download_root(download_root: object) -> Path:
 
 
 def load_config() -> Dict[str, object]:
+    # Docker volume 映射时如果宿主机文件不存在，会创建一个同名目录，需处理
+    if CONFIG_PATH.is_dir():
+        import shutil
+        append_log(f"检测到 {CONFIG_PATH} 是目录而非文件，已自动移除并重建默认配置")
+        shutil.rmtree(CONFIG_PATH, ignore_errors=True)
+        save_config(DEFAULT_CONFIG)
+        return dict(DEFAULT_CONFIG)
     if not CONFIG_PATH.exists():
         save_config(DEFAULT_CONFIG)
         return dict(DEFAULT_CONFIG)
