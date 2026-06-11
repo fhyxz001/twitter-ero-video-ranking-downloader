@@ -8,6 +8,9 @@ on:
     branches: ["master"]
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build-and-export:
     runs-on: ubuntu-latest
