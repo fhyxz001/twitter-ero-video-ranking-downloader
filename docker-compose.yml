@@ -6,7 +6,6 @@ services:
     ports:
       - "2617:2617"
     volumes:
-      - ./config.json:/app/config.json
       - /vol1/1000/AdultMedia/tw:/data/downloads
     environment:
       - TZ=Asia/Shanghai
