@@ -7,8 +7,6 @@ WORKDIR /app
 
 COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir --default-timeout=120 --retries 10 \
-    -i http://mirrors.aliyun.com/pypi/simple/ \
-    --trusted-host mirrors.aliyun.com \
     -r /app/requirements.txt
 
 COPY main.py /app/main.py
