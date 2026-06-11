@@ -825,7 +825,7 @@
           <span class="stat-label">下次执行</span>
           <span class="stat-icon purple">&#9200;</span>
         </div>
-        <div class="stat-value small" id="stat_next_run">{{ config.schedule_time if config.auto_download_enabled else "未开启" }}</div>
+        <div class="stat-value small" id="stat_next_run">{{ config.schedule_cron if config.auto_download_enabled else "未开启" }}</div>
         <div class="stat-sub">定时计划</div>
       </div>
       <div class="stat-card">
@@ -1002,8 +1002,9 @@
           <input id="settings_proxy" name="proxy" type="text" placeholder="例如：http://127.0.0.1:7890" value="{{ config.proxy }}" />
         </div>
         <div class="settings-field">
-          <label for="settings_schedule_time">定时执行时间（HH:MM）</label>
-          <input id="settings_schedule_time" name="schedule_time" type="time" required value="{{ config.schedule_time }}" />
+          <label for="settings_schedule_cron">定时执行 Cron 表达式</label>
+          <input id="settings_schedule_cron" name="schedule_cron" type="text" placeholder="0 3 * * *" value="{{ config.schedule_cron }}" />
+          <div class="settings-help">标准 5 位 cron 表达式，例如 0 3 * * * 表示每天凌晨 3:00</div>
         </div>
         <div class="settings-field full" style="padding-top:8px;">
           <div class="section-label">Twitter 设置</div>
@@ -1024,8 +1025,9 @@
           </label>
         </div>
         <div class="settings-field">
-          <label for="settings_blogger_schedule">每日爬取时间（HH:MM）</label>
-          <input id="settings_blogger_schedule" name="twitter_blogger_schedule" type="time" value="{{ config.twitter_blogger_schedule }}" />
+          <label for="settings_blogger_cron">每日爬取 Cron 表达式</label>
+          <input id="settings_blogger_cron" name="twitter_blogger_cron" type="text" placeholder="0 4 * * *" value="{{ config.twitter_blogger_cron }}" />
+          <div class="settings-help">标准 5 位 cron 表达式，例如 0 4 * * * 表示每天凌晨 4:00</div>
         </div>
         <div class="settings-field">
           <label for="settings_blogger_max_media">每人每次最多爬取数</label>
@@ -1419,7 +1421,7 @@
 
     function syncAutoDownloadFields() {
       const enabled = document.getElementById('settings_auto_download_enabled').checked;
-      document.getElementById('settings_schedule_time').disabled = !enabled;
+      document.getElementById('settings_schedule_cron').disabled = !enabled;
     }
 
     function setTimeFilterValue(minTime, maxTime) {
@@ -1443,10 +1445,10 @@
     function openSettingsModal() {
       document.getElementById('settings_proxy').value = currentConfig.proxy || '';
       document.getElementById('settings_auto_download_enabled').checked = currentConfig.auto_download_enabled !== false;
-      document.getElementById('settings_schedule_time').value = currentConfig.schedule_time || '03:00';
+      document.getElementById('settings_schedule_cron').value = currentConfig.schedule_cron || '0 3 * * *';
       document.getElementById('settings_twitter_cookie').value = currentConfig.twitter_cookie || '';
       document.getElementById('settings_blogger_enabled').checked = currentConfig.twitter_blogger_enabled !== false;
-      document.getElementById('settings_blogger_schedule').value = currentConfig.twitter_blogger_schedule || '04:00';
+      document.getElementById('settings_blogger_cron').value = currentConfig.twitter_blogger_cron || '0 4 * * *';
       document.getElementById('settings_blogger_max_media').value = currentConfig.twitter_blogger_max_media ?? -1;
       document.getElementById('settings_blogger_has_retweet').checked = currentConfig.twitter_blogger_has_retweet === true;
       syncAutoDownloadFields();
@@ -1471,7 +1473,7 @@
       formData.append('download_root', document.getElementById('download_root').value);
       formData.append('proxy', document.getElementById('settings_proxy').value);
       formData.append('auto_download_enabled', document.getElementById('settings_auto_download_enabled').checked ? '1' : '0');
-      formData.append('schedule_time', document.getElementById('settings_schedule_time').value);
+      formData.append('schedule_cron', document.getElementById('settings_schedule_cron').value);
       formData.append('max_daily_downloads', document.getElementById('max_daily_downloads').value);
       formData.append('sort', document.getElementById('sort').value);
       formData.append('range', document.getElementById('range').value);
@@ -1481,7 +1483,7 @@
       formData.append('tag_codes', JSON.stringify(selectedTagCodes));
       formData.append('twitter_cookie', document.getElementById('settings_twitter_cookie').value);
       formData.append('twitter_blogger_enabled', document.getElementById('settings_blogger_enabled').checked ? '1' : '0');
-      formData.append('twitter_blogger_schedule', document.getElementById('settings_blogger_schedule').value);
+      formData.append('twitter_blogger_cron', document.getElementById('settings_blogger_cron').value);
       formData.append('twitter_blogger_max_media', document.getElementById('settings_blogger_max_media').value);
       formData.append('twitter_blogger_has_retweet', document.getElementById('settings_blogger_has_retweet').checked ? '1' : '0');
 
@@ -1491,7 +1493,7 @@
         if (data.ok) {
           currentConfig.proxy = document.getElementById('settings_proxy').value;
           currentConfig.auto_download_enabled = document.getElementById('settings_auto_download_enabled').checked;
-          currentConfig.schedule_time = document.getElementById('settings_schedule_time').value;
+          currentConfig.schedule_cron = document.getElementById('settings_schedule_cron').value;
           currentConfig.max_daily_downloads = parseInt(document.getElementById('max_daily_downloads').value);
           currentConfig.sort = document.getElementById('sort').value;
           currentConfig.range = document.getElementById('range').value;
@@ -1501,7 +1503,7 @@
           currentConfig.tag_codes = [...selectedTagCodes];
           currentConfig.twitter_cookie = document.getElementById('settings_twitter_cookie').value;
           currentConfig.twitter_blogger_enabled = document.getElementById('settings_blogger_enabled').checked;
-          currentConfig.twitter_blogger_schedule = document.getElementById('settings_blogger_schedule').value;
+          currentConfig.twitter_blogger_cron = document.getElementById('settings_blogger_cron').value;
           currentConfig.twitter_blogger_max_media = parseInt(document.getElementById('settings_blogger_max_media').value);
           currentConfig.twitter_blogger_has_retweet = document.getElementById('settings_blogger_has_retweet').checked;
           downloadRootDirty = false;
@@ -1525,7 +1527,7 @@
       download_root: {{ config.download_root | tojson }},
       proxy: {{ config.proxy | tojson }},
       auto_download_enabled: {{ 'true' if config.auto_download_enabled else 'false' }},
-      schedule_time: {{ config.schedule_time | tojson }},
+      schedule_cron: {{ config.schedule_cron | tojson }},
       max_daily_downloads: {{ config.max_daily_downloads }},
       sort: {{ config.sort | tojson }},
       range: {{ config.range | tojson }},
@@ -1534,7 +1536,7 @@
       tag_codes: selectedTagCodes,
       twitter_cookie: {{ config.twitter_cookie | tojson }},
       twitter_blogger_enabled: {{ 'true' if config.twitter_blogger_enabled else 'false' }},
-      twitter_blogger_schedule: {{ config.twitter_blogger_schedule | tojson }},
+      twitter_blogger_cron: {{ config.twitter_blogger_cron | tojson }},
       twitter_blogger_max_media: {{ config.twitter_blogger_max_media }},
       twitter_blogger_has_retweet: {{ 'true' if config.twitter_blogger_has_retweet else 'false' }},
     };
@@ -1654,7 +1656,7 @@
       document.getElementById('stat_blogger_count').textContent = bloggerCount;
 
       document.getElementById('stat_next_run').textContent = autoEnabled
-        ? (data.config?.schedule_time || '未知')
+        ? (data.config?.schedule_cron || '未知')
         : '未开启';
 
       // Log panel
@@ -1816,7 +1818,7 @@
         if (data.settings) {
           currentConfig.twitter_cookie = data.settings.twitter_cookie || '';
           currentConfig.twitter_blogger_enabled = data.settings.twitter_blogger_enabled !== false;
-          currentConfig.twitter_blogger_schedule = data.settings.twitter_blogger_schedule || '04:00';
+          currentConfig.twitter_blogger_cron = data.settings.twitter_blogger_cron || '0 4 * * *';
           currentConfig.twitter_blogger_max_media = data.settings.twitter_blogger_max_media ?? -1;
           currentConfig.twitter_blogger_has_retweet = data.settings.twitter_blogger_has_retweet === true;
         }

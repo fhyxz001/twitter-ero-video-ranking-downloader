@@ -59,7 +59,7 @@ DEFAULT_CONFIG: Dict[str, object] = {
     "download_root": "/data/downloads",
     "proxy": "http://192.168.1.13:20171",
     "auto_download_enabled": True,
-    "schedule_time": "03:00",
+    "schedule_cron": "0 3 * * *",
     "max_daily_downloads": 10,
     "sort": "pv",
     "range": "daily",
@@ -75,7 +75,7 @@ DEFAULT_CONFIG: Dict[str, object] = {
     "twitter_cookie": "",
     "twitter_blogger_list": [],
     "twitter_blogger_enabled": True,
-    "twitter_blogger_schedule": "04:00",
+    "twitter_blogger_cron": "0 4 * * *",
     "twitter_blogger_max_media": -1,
     "twitter_blogger_has_retweet": False,
 }
@@ -195,12 +195,12 @@ def validate_config(raw: Dict[str, object]) -> Dict[str, object]:
         raise ValueError("时间范围必须是 daily、weekly、monthly 或 all")
     cfg["range"] = range_value
 
-    schedule_time = str(cfg.get("schedule_time", "")).strip()
+    schedule_cron = str(cfg.get("schedule_cron", "")).strip()
     try:
-        time.strptime(schedule_time, "%H:%M")
-    except ValueError as exc:
-        raise ValueError("定时执行时间格式必须为 HH:MM") from exc
-    cfg["schedule_time"] = schedule_time
+        CronTrigger.from_crontab(schedule_cron)
+    except (ValueError, TypeError) as exc:
+        raise ValueError(f"定时执行 cron 表达式无效：{schedule_cron}") from exc
+    cfg["schedule_cron"] = schedule_cron
 
     max_daily = int(cfg.get("max_daily_downloads", 0))
     if max_daily <= 0:
@@ -282,12 +282,12 @@ def validate_config(raw: Dict[str, object]) -> Dict[str, object]:
 
     cfg["twitter_blogger_enabled"] = parse_bool(cfg.get("twitter_blogger_enabled", True))
 
-    blogger_schedule = str(cfg.get("twitter_blogger_schedule", "04:00")).strip()
+    blogger_cron = str(cfg.get("twitter_blogger_cron", "0 4 * * *")).strip()
     try:
-        time.strptime(blogger_schedule, "%H:%M")
-    except ValueError:
-        blogger_schedule = "04:00"
-    cfg["twitter_blogger_schedule"] = blogger_schedule
+        CronTrigger.from_crontab(blogger_cron)
+    except (ValueError, TypeError):
+        blogger_cron = "0 4 * * *"
+    cfg["twitter_blogger_cron"] = blogger_cron
 
     max_media = int(cfg.get("twitter_blogger_max_media", -1))
     if max_media < -1:
@@ -357,27 +357,27 @@ def update_schedule(cfg: Dict[str, object]) -> None:
     if not bool(cfg.get("auto_download_enabled", True)):
         append_log("定时下载已关闭")
     else:
-        hour, minute = cfg["schedule_time"].split(":")
+        cron_expr = str(cfg.get("schedule_cron", "0 3 * * *"))
         scheduler.add_job(
             run_download_job,
-            trigger=CronTrigger(hour=int(hour), minute=int(minute)),
+            trigger=CronTrigger.from_crontab(cron_expr),
             id="daily_download_job",
             replace_existing=True,
         )
-        append_log(f"定时任务已更新：每天 {cfg['schedule_time']} 执行")
+        append_log(f"定时任务已更新：cron={cron_expr}")
 
     # Blogger crawl job
     if not bool(cfg.get("twitter_blogger_enabled", True)):
         append_log("博主定时爬取已关闭")
     else:
-        b_hour, b_minute = str(cfg.get("twitter_blogger_schedule", "04:00")).split(":")
+        blogger_cron = str(cfg.get("twitter_blogger_cron", "0 4 * * *"))
         scheduler.add_job(
             run_blogger_crawl_job,
-            trigger=CronTrigger(hour=int(b_hour), minute=int(b_minute)),
+            trigger=CronTrigger.from_crontab(blogger_cron),
             id="blogger_crawl_job",
             replace_existing=True,
         )
-        append_log(f"博主定时爬取已更新：每天 {cfg.get('twitter_blogger_schedule', '04:00')} 执行")
+        append_log(f"博主定时爬取已更新：cron={blogger_cron}")
 
 
 def get_waterfall_config(cfg: Dict[str, object]) -> Dict[str, object]:
@@ -1208,7 +1208,7 @@ async def save(request: Request):
         download_root = str(form.get("download_root", "")).strip()
         proxy = str(form.get("proxy", "")).strip()
         auto_download_enabled = parse_bool(form.get("auto_download_enabled", "1"))
-        schedule_time = str(form.get("schedule_time", "")).strip()
+        schedule_cron = str(form.get("schedule_cron", "")).strip()
         max_daily_downloads = int(form.get("max_daily_downloads", 0))
         sort = str(form.get("sort", "pv")).strip()
         range_value = str(form.get("range", "daily")).strip()
@@ -1226,7 +1226,7 @@ async def save(request: Request):
                 "download_root": download_root,
                 "proxy": proxy,
                 "auto_download_enabled": auto_download_enabled,
-                "schedule_time": schedule_time,
+                "schedule_cron": schedule_cron,
                 "max_daily_downloads": max_daily_downloads,
                 "sort": sort,
                 "range": range_value,
@@ -1235,7 +1235,7 @@ async def save(request: Request):
                 "tag_codes": tag_codes,
                 "twitter_cookie": str(form.get("twitter_cookie", cfg.get("twitter_cookie", ""))).strip(),
                 "twitter_blogger_enabled": parse_bool(form.get("twitter_blogger_enabled", cfg.get("twitter_blogger_enabled", True))),
-                "twitter_blogger_schedule": str(form.get("twitter_blogger_schedule", cfg.get("twitter_blogger_schedule", "04:00"))).strip(),
+                "twitter_blogger_cron": str(form.get("twitter_blogger_cron", cfg.get("twitter_blogger_cron", "0 4 * * *"))).strip(),
                 "twitter_blogger_max_media": int(form.get("twitter_blogger_max_media", cfg.get("twitter_blogger_max_media", -1))),
                 "twitter_blogger_has_retweet": parse_bool(form.get("twitter_blogger_has_retweet", cfg.get("twitter_blogger_has_retweet", False))),
             })
@@ -1746,7 +1746,7 @@ def api_blogger_list():
         "state": dict(blogger_state),
         "settings": {
             "twitter_blogger_enabled": cfg.get("twitter_blogger_enabled", True),
-            "twitter_blogger_schedule": cfg.get("twitter_blogger_schedule", "04:00"),
+            "twitter_blogger_cron": cfg.get("twitter_blogger_cron", "0 4 * * *"),
             "twitter_blogger_max_media": cfg.get("twitter_blogger_max_media", -1),
             "twitter_blogger_has_retweet": cfg.get("twitter_blogger_has_retweet", False),
             "twitter_cookie": cfg.get("twitter_cookie", ""),
@@ -1810,8 +1810,8 @@ async def api_blogger_save_settings(request: Request):
                 cfg["twitter_cookie"] = str(body["twitter_cookie"]).strip()
             if "twitter_blogger_enabled" in body:
                 cfg["twitter_blogger_enabled"] = parse_bool(body["twitter_blogger_enabled"])
-            if "twitter_blogger_schedule" in body:
-                cfg["twitter_blogger_schedule"] = str(body["twitter_blogger_schedule"]).strip()
+            if "twitter_blogger_cron" in body:
+                cfg["twitter_blogger_cron"] = str(body["twitter_blogger_cron"]).strip()
             if "twitter_blogger_max_media" in body:
                 val = int(body["twitter_blogger_max_media"])
                 if val < -1:
