@@ -5,259 +5,585 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>twitter-ero-video-ranking-downloader</title>
   <style>
+    /* ══════════════════════════════════════════
+       Design System — Modern Admin Panel
+       ══════════════════════════════════════════ */
+    :root {
+      --color-primary: #2563eb;
+      --color-primary-hover: #1d4ed8;
+      --color-primary-light: #eff6ff;
+      --color-primary-border: #bfdbfe;
+      --color-success: #16a34a;
+      --color-success-bg: #f0fdf4;
+      --color-warning: #ea580c;
+      --color-warning-bg: #fff7ed;
+      --color-error: #dc2626;
+      --color-error-bg: #fef2f2;
+      --color-gray-50: #f9fafb;
+      --color-gray-100: #f3f4f6;
+      --color-gray-200: #e5e7eb;
+      --color-gray-300: #d1d5db;
+      --color-gray-400: #9ca3af;
+      --color-gray-500: #6b7280;
+      --color-gray-600: #4b5563;
+      --color-gray-700: #374151;
+      --color-gray-800: #1f2937;
+      --color-gray-900: #111827;
+      --color-white: #ffffff;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+      --shadow-md: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-lg: 0 4px 6px rgba(0,0,0,0.04), 0 2px 4px rgba(0,0,0,0.04);
+      --spacing-xs: 4px;
+      --spacing-sm: 8px;
+      --spacing-md: 16px;
+      --spacing-lg: 24px;
+      --spacing-xl: 32px;
+      --transition-fast: 0.15s ease;
+      --transition-normal: 0.2s ease;
+    }
+
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-    * { box-sizing: border-box; }
-    html, body { height: 100%; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
       font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-      background: #f3f4f6;
-      margin: 0;
-      padding: 16px 20px;
-      color: #1f2937;
+      background: #f1f5f9;
+      color: var(--color-gray-800);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* ── Container ── */
+    .app-container {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: var(--spacing-lg);
       display: flex;
       flex-direction: column;
-      overflow: hidden;
-      -webkit-font-smoothing: antialiased;
+      gap: var(--spacing-md);
     }
 
     /* ── Page Header ── */
     .page-header {
-      max-width: 1280px; width: 100%;
-      margin: 0 auto 12px;
-      display: flex; justify-content: space-between; align-items: center;
-      flex-shrink: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: var(--spacing-xs);
+    }
+    .page-header-left {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
     }
     .page-header h1 {
-      margin: 0; font-size: 20px; font-weight: 700; color: #111827; letter-spacing: -0.3px;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--color-gray-900);
+      letter-spacing: -0.3px;
     }
-    .settings-btn {
-      width: 36px; height: 36px;
-      border: 1px solid #e5e7eb; background: #fff; color: #6b7280;
-      border-radius: 10px; font-size: 18px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      transition: all 0.2s;
+    .page-header-actions {
+      display: flex;
+      gap: var(--spacing-sm);
     }
-    .settings-btn:hover { background: #f9fafb; border-color: #d1d5db; color: #374151; }
-    .settings-btn-icon {
-      width: 18px; height: 18px; display: block; object-fit: contain; pointer-events: none;
+    .icon-btn {
+      width: 38px; height: 38px;
+      border: 1px solid var(--color-gray-200);
+      background: var(--color-white);
+      color: var(--color-gray-500);
+      border-radius: var(--radius-sm);
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--transition-normal);
+      flex-shrink: 0;
+    }
+    .icon-btn:hover {
+      background: var(--color-gray-50);
+      border-color: var(--color-gray-300);
+      color: var(--color-gray-700);
+    }
+    .icon-btn img {
+      width: 18px; height: 18px;
+      display: block; object-fit: contain; pointer-events: none;
     }
 
-    /* ── Two-column Layout ── */
-    .main-layout {
-      max-width: 1280px;
-      width: 100%;
-      margin: 0 auto;
+    /* ── Tab Navigation ── */
+    .tab-nav {
+      display: flex;
+      gap: 4px;
+      background: var(--color-gray-100);
+      border-radius: var(--radius-sm);
+      padding: 4px;
+    }
+    .tab-nav-btn {
+      padding: 8px 18px;
+      border: none;
+      background: transparent;
+      color: var(--color-gray-600);
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      white-space: nowrap;
+      font-family: inherit;
+    }
+    .tab-nav-btn:hover { color: var(--color-gray-800); background: rgba(255,255,255,0.6); }
+    .tab-nav-btn.active {
+      background: var(--color-white);
+      color: var(--color-gray-900);
+      font-weight: 600;
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* ── Stats Row ── */
+    .stats-row {
       display: grid;
-      grid-template-columns: 1fr 380px;
-      gap: 16px;
-      align-items: stretch;
-      flex: 1;
-      min-height: 0;
+      grid-template-columns: repeat(6, 1fr);
+      gap: var(--spacing-md);
     }
-    .left-column {
+    .stat-card {
+      background: var(--color-white);
+      border: 1px solid var(--color-gray-200);
+      border-radius: var(--radius-md);
+      padding: 16px 18px;
+      box-shadow: var(--shadow-sm);
       display: flex;
       flex-direction: column;
-      gap: 16px;
-      min-width: 0;
-      overflow-y: auto;
-      height: 100%;
+      gap: 6px;
+      transition: box-shadow var(--transition-normal);
     }
-    .left-column > .card {
-      flex: 1;
+    .stat-card:hover { box-shadow: var(--shadow-md); }
+    .stat-card-header {
       display: flex;
-      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
     }
-    .left-column > .card > .card-body {
-      flex: 1;
-      overflow-y: auto;
+    .stat-label {
+      font-size: 12px;
+      color: var(--color-gray-500);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
     }
-    .right-column {
+    .stat-icon {
+      width: 32px; height: 32px;
+      border-radius: var(--radius-sm);
       display: flex;
-      flex-direction: column;
-      gap: 12px;
-      min-width: 0;
-      min-height: 0;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
     }
+    .stat-icon.blue   { background: #eff6ff; color: #2563eb; }
+    .stat-icon.green  { background: #f0fdf4; color: #16a34a; }
+    .stat-icon.orange { background: #fff7ed; color: #ea580c; }
+    .stat-icon.purple { background: #faf5ff; color: #9333ea; }
+    .stat-icon.gray   { background: #f9fafb; color: #6b7280; }
+    .stat-icon.indigo { background: #eef2ff; color: #4338ca; }
+    .stat-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--color-gray-900);
+      line-height: 1.2;
+    }
+    .stat-value.small { font-size: 14px; font-weight: 600; }
+    .stat-sub {
+      font-size: 11px;
+      color: var(--color-gray-400);
+    }
+    .stat-dot {
+      display: inline-block;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      margin-right: 5px;
+    }
+    .stat-dot.on  { background: #16a34a; }
+    .stat-dot.off { background: #d1d5db; }
 
     /* ── Card ── */
     .card {
-      background: #fff;
-      border: 1px solid #e5e7eb;
-      border-radius: 14px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      background: var(--color-white);
+      border: 1px solid var(--color-gray-200);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
       overflow: hidden;
     }
     .card-header {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 16px 22px;
-      border-bottom: 1px solid #f3f4f6;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--color-gray-100);
     }
     .card-header h2 {
-      margin: 0; font-size: 15px; color: #111827; font-weight: 600;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--color-gray-900);
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
-    .card-body { padding: 22px; }
+    .card-header-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .badge {
+      background: var(--color-primary);
+      color: var(--color-white);
+      font-size: 11px;
+      border-radius: 10px;
+      padding: 2px 8px;
+      font-weight: 600;
+      line-height: 18px;
+    }
+    .card-body {
+      padding: 20px 22px;
+    }
     .card-footer {
-      padding: 16px 22px;
-      border-top: 1px solid #f3f4f6;
-      flex-shrink: 0; background: #fafbfc;
+      padding: 14px 22px;
+      border-top: 1px solid var(--color-gray-100);
+      background: var(--color-gray-50);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
     }
 
     /* ── Form Fields ── */
-    .field { display: flex; flex-direction: column; margin-bottom: 16px; }
-    .field:last-child { margin-bottom: 0; }
-    label {
-      font-size: 13px; margin-bottom: 5px;
-      color: #374151; font-weight: 500;
+    .field { display: flex; flex-direction: column; }
+    .field label {
+      font-size: 13px;
+      margin-bottom: 5px;
+      color: var(--color-gray-700);
+      font-weight: 500;
     }
-    input[type="text"], input[type="time"], input[type="number"], select {
-      height: 40px;
-      border: 1px solid #e5e7eb; border-radius: 10px;
-      padding: 0 12px; font-size: 14px;
-      background: #f9fafb; color: #111827;
-      transition: border-color 0.2s, box-shadow 0.2s;
+    .field-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    input[type="text"],
+    input[type="number"],
+    input[type="time"],
+    select {
+      height: 38px;
+      border: 1px solid var(--color-gray-200);
+      border-radius: var(--radius-sm);
+      padding: 0 12px;
+      font-size: 13px;
+      background: var(--color-gray-50);
+      color: var(--color-gray-900);
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
       font-family: inherit;
     }
     input:focus, select:focus {
       outline: none;
-      border-color: #2563eb;
+      border-color: var(--color-primary);
       box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
-      background: #fff;
+      background: var(--color-white);
     }
     select {
-      cursor: pointer; appearance: none;
+      cursor: pointer;
+      appearance: none;
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-      background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 32px;
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      height: 36px;
+      padding: 0 16px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition-normal);
+      font-family: inherit;
+      white-space: nowrap;
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary {
+      background: var(--color-primary);
+      color: var(--color-white);
+      box-shadow: 0 1px 2px rgba(37,99,235,0.2);
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: var(--color-primary-hover);
+      box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+      transform: translateY(-1px);
+    }
+    .btn-secondary {
+      background: var(--color-white);
+      color: var(--color-gray-700);
+      border: 1px solid var(--color-gray-200);
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--color-gray-50);
+      border-color: var(--color-gray-300);
+    }
+    .btn-ghost {
+      background: transparent;
+      color: var(--color-gray-600);
+    }
+    .btn-ghost:hover:not(:disabled) {
+      background: var(--color-gray-100);
+      color: var(--color-gray-800);
+    }
+    .btn-sm {
+      height: 30px;
+      padding: 0 10px;
+      font-size: 12px;
+    }
+    .btn-lg {
+      height: 44px;
+      padding: 0 24px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: var(--radius-md);
+    }
+    .btn-danger {
+      background: var(--color-error);
+      color: var(--color-white);
+    }
+    .btn-danger:hover:not(:disabled) {
+      background: #b91c1c;
+    }
+
+    /* ── Blogger Chips ── */
+    .blogger-chip-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-height: 28px;
+      margin-bottom: 14px;
+      align-items: center;
+    }
+    .blogger-chip-empty {
+      font-size: 13px;
+      color: var(--color-gray-400);
+      line-height: 28px;
+    }
+    .blogger-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: var(--color-primary-light);
+      border: 1px solid var(--color-primary-border);
+      color: #4338ca;
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all var(--transition-fast);
+    }
+    .blogger-chip:hover { box-shadow: 0 1px 3px rgba(37,99,235,0.15); }
+    .blogger-chip button {
+      background: none;
+      border: none;
+      color: #818cf8;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 0 2px;
+      line-height: 1;
+      border-radius: 50%;
+      transition: color var(--transition-fast);
+    }
+    .blogger-chip button:hover { color: var(--color-error); }
+
+    .blogger-input-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .blogger-input-row input {
+      flex: 1;
+      min-width: 0;
+    }
+    .blogger-secondary-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .blogger-status-text {
+      font-size: 12px;
+      color: var(--color-gray-500);
+      line-height: 1.6;
+      margin-top: 8px;
     }
 
     /* ── Tag Picker ── */
     .tag-picker {
-      border: 1px solid #e5e7eb; border-radius: 10px;
-      background: #f9fafb; padding: 12px;
+      border: 1px solid var(--color-gray-200);
+      border-radius: var(--radius-sm);
+      background: var(--color-gray-50);
+      padding: 12px;
     }
     .tag-toolbar {
-      display: flex; justify-content: space-between; align-items: center;
-      gap: 10px; flex-wrap: wrap;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
     }
-    .tag-selection-text { font-size: 13px; color: #374151; font-weight: 500; }
-    .tag-toolbar-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-    .tag-open-btn, .tag-clear-btn {
-      border: 1px solid #d1d5db; background: #fff; color: #374151;
-      border-radius: 8px; padding: 0 12px; height: 32px;
-      cursor: pointer; font-size: 13px; font-weight: 500;
-      transition: all 0.2s;
+    .tag-selection-text {
+      font-size: 13px;
+      color: var(--color-gray-700);
+      font-weight: 500;
     }
-    .tag-open-btn:hover, .tag-clear-btn:hover { background: #f3f4f6; border-color: #9ca3af; }
-    .tag-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .tag-toolbar-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .tag-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
     .tag-chip {
-      display: inline-flex; align-items: center; gap: 5px;
-      background: #eff6ff; border: 1px solid #bfdbfe;
-      color: #2563eb; border-radius: 6px;
-      padding: 4px 10px; font-size: 12px; font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: var(--color-primary);
+      border-radius: 6px;
+      padding: 3px 10px;
+      font-size: 12px;
+      font-weight: 500;
     }
     .tag-chip-remove {
-      background: none; border: none; color: #60a5fa;
-      font-size: 15px; cursor: pointer; padding: 0 2px; line-height: 1;
+      background: none;
+      border: none;
+      color: #60a5fa;
+      font-size: 15px;
+      cursor: pointer;
+      padding: 0 2px;
+      line-height: 1;
+      border-radius: 50%;
     }
-    .tag-chip-remove:hover { color: #dc2626; }
+    .tag-chip-remove:hover { color: var(--color-error); }
 
-    /* ── Config Grid ── */
-    .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    .config-field { display: flex; flex-direction: column; }
+    /* ── Download Directory ── */
+    .dir-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .dir-row input {
+      flex: 1;
+      min-width: 0;
+    }
+    .dir-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      margin-top: 6px;
+    }
+    .dir-status-ok    { color: var(--color-success); }
+    .dir-status-error { color: var(--color-error); }
 
-    /* ── Quick Action Buttons ── */
-    .quick-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
-    .quick-action-btn {
-      flex: 1; min-width: 120px; max-width: 180px; height: 46px;
-      font-size: 14px; font-weight: 600; border-radius: 10px;
-      border: none; cursor: pointer; transition: all 0.2s;
+    /* ── Action Bar ── */
+    .action-bar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      padding: 16px 0 4px;
+      flex-wrap: wrap;
     }
-    .quick-action-btn.primary {
-      background: #2563eb; color: #fff;
-      box-shadow: 0 1px 3px rgba(37,99,235,0.2);
+    .action-bar .btn-lg { min-width: 140px; }
+    .action-bar-divider {
+      width: 1px;
+      height: 28px;
+      background: var(--color-gray-200);
+      margin: 0 4px;
     }
-    .quick-action-btn.primary:hover {
-      background: #1d4ed8; transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(37,99,235,0.3);
-    }
-    .quick-action-btn.secondary-action {
-      background: #fff; color: #374151; border: 1px solid #e5e7eb;
-    }
-    .quick-action-btn.secondary-action:hover {
-      background: #f9fafb; border-color: #d1d5db;
-      transform: translateY(-1px);
-    }
-
-    /* ── Blogger Section ── */
-    .badge {
-      background: #2563eb; color: #fff;
-      font-size: 11px; border-radius: 10px;
-      padding: 1px 7px; font-weight: 600;
-    }
-    .blogger-add-row input {
-      flex: 1; min-width: 0; height: 32px;
-      border: 1px solid #e5e7eb; border-radius: 8px;
-      padding: 0 8px; font-size: 13px;
-      background: #f9fafb; color: #111827;
-    }
-    .blogger-add-row input:focus { outline: none; border-color: #2563eb; background: #fff; }
-    .blogger-chip-list { display: flex; flex-wrap: wrap; gap: 6px; min-height: 28px; }
-    .blogger-chip-empty { font-size: 13px; color: #9ca3af; line-height: 28px; }
-    .blogger-chip {
-      display: inline-flex; align-items: center; gap: 4px;
-      background: #eef2ff; border: 1px solid #c7d2fe;
-      color: #4338ca; border-radius: 20px;
-      padding: 3px 10px; font-size: 12px; font-weight: 500;
-    }
-    .blogger-chip button {
-      background: none; border: none; color: #818cf8;
-      cursor: pointer; font-size: 15px; padding: 0 1px;
-      line-height: 1; margin-left: 2px;
-    }
-    .blogger-chip button:hover { color: #ef4444; }
-    .blogger-footer {
-      display: flex; justify-content: space-between; align-items: center;
-      gap: 8px; margin-top: 10px; flex-wrap: wrap;
-    }
-    .blogger-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-    .blogger-status { font-size: 12px; color: #6b7280; line-height: 1.6; }
-
-    /* ── Stats Cards ── */
-    .stats-dashboard { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-    .stats-card {
-      background: #f9fafb; border: 1px solid #e5e7eb;
-      border-radius: 10px; padding: 12px 14px;
-    }
-    .stats-card .stats-label {
-      font-size: 11px; color: #6b7280;
-      text-transform: uppercase; letter-spacing: 0.3px;
-      margin-bottom: 4px; font-weight: 500;
-    }
-    .stats-card .stats-value { font-size: 14px; font-weight: 600; color: #111827; }
 
     /* ── Log Panel ── */
     .log-panel {
-      background: #fff; border: 1px solid #e5e7eb;
-      border-radius: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-      overflow: hidden; display: flex; flex-direction: column;
-      flex: 1; min-height: 0;
+      background: var(--color-white);
+      border: 1px solid var(--color-gray-200);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+      transition: all var(--transition-normal);
     }
     .log-panel-header {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 14px 18px; border-bottom: 1px solid #f3f4f6; flex-shrink: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--color-gray-100);
+      cursor: pointer;
+      user-select: none;
     }
-    .log-panel-header h2 { margin: 0; font-size: 14px; color: #111827; font-weight: 600; }
-    .log-panel-header .log-status { font-size: 11px; color: #22c55e; font-weight: 500; }
+    .log-panel-header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .log-panel-header h2 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--color-gray-900);
+      margin: 0;
+    }
+    .log-status-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #22c55e;
+      flex-shrink: 0;
+    }
+    .log-status-dot.idle { background: var(--color-gray-300); }
+    .log-panel-header-right {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .log-toggle-icon {
+      font-size: 12px;
+      color: var(--color-gray-400);
+      transition: transform var(--transition-normal);
+      margin-left: 4px;
+    }
+    .log-panel.collapsed .log-toggle-icon {
+      transform: rotate(-90deg);
+    }
     .log-panel-body {
-      flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+    .log-panel.collapsed .log-panel-body {
+      max-height: 0 !important;
     }
     .logs {
-      flex: 1;
-      background: #1e293b; color: #e2e8f0;
-      font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
-      font-size: 12px; line-height: 1.7;
+      background: #1e293b;
+      color: #e2e8f0;
+      font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.7;
       padding: 14px 18px;
-      white-space: pre-wrap; overflow-y: auto; word-break: break-all;
+      white-space: pre-wrap;
+      overflow-y: auto;
+      word-break: break-all;
+      height: 300px;
     }
     .logs::-webkit-scrollbar { width: 5px; }
     .logs::-webkit-scrollbar-track { background: transparent; }
@@ -275,56 +601,60 @@
     .tag-modal-dialog {
       width: min(760px, 100%); max-height: min(80vh, 720px);
       display: flex; flex-direction: column;
-      background: #fff; border: 1px solid #e5e7eb;
-      border-radius: 16px; box-shadow: 0 24px 64px rgba(0,0,0,0.12);
+      background: var(--color-white);
+      border: 1px solid var(--color-gray-200);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 24px 64px rgba(0,0,0,0.12);
       overflow: hidden;
     }
     .tag-modal-header {
       display: flex; justify-content: space-between; align-items: flex-start;
-      gap: 12px; padding: 18px 22px 14px; border-bottom: 1px solid #f3f4f6;
+      gap: 12px; padding: 18px 22px 14px; border-bottom: 1px solid var(--color-gray-100);
     }
-    .tag-modal-title { margin: 0; font-size: 18px; color: #111827; font-weight: 700; }
-    .tag-modal-subtitle { margin-top: 4px; font-size: 13px; color: #6b7280; line-height: 1.5; }
+    .tag-modal-title { margin: 0; font-size: 18px; color: var(--color-gray-900); font-weight: 700; }
+    .tag-modal-subtitle { margin-top: 4px; font-size: 13px; color: var(--color-gray-500); line-height: 1.5; }
     .tag-close-btn {
-      border: 1px solid #e5e7eb; background: #fff; color: #6b7280;
-      border-radius: 8px; width: 36px; min-width: 36px; padding: 0;
-      font-size: 18px; line-height: 1; cursor: pointer; transition: all 0.2s;
+      border: 1px solid var(--color-gray-200); background: var(--color-white); color: var(--color-gray-500);
+      border-radius: var(--radius-sm); width: 36px; min-width: 36px; padding: 0;
+      font-size: 18px; line-height: 1; cursor: pointer; transition: all var(--transition-normal);
     }
-    .tag-close-btn:hover { background: #f3f4f6; color: #374151; }
+    .tag-close-btn:hover { background: var(--color-gray-100); color: var(--color-gray-700); }
     .tag-modal-body { padding: 16px 22px 22px; overflow: auto; }
-    .tag-modal-footer { display: flex; justify-content: flex-end; padding: 12px 22px; border-top: 1px solid #f3f4f6; }
+    .tag-modal-footer { display: flex; justify-content: flex-end; padding: 12px 22px; border-top: 1px solid var(--color-gray-100); }
     .tag-confirm-btn {
-      background: #2563eb; color: #fff; border: none; border-radius: 8px;
+      background: var(--color-primary); color: var(--color-white); border: none; border-radius: var(--radius-sm);
       height: 38px; padding: 0 18px; font-size: 14px; font-weight: 600;
-      cursor: pointer; transition: all 0.2s;
+      cursor: pointer; transition: all var(--transition-normal); font-family: inherit;
     }
-    .tag-confirm-btn:hover { background: #1d4ed8; }
+    .tag-confirm-btn:hover { background: var(--color-primary-hover); }
     .tag-list {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px;
     }
     .tag-item {
-      border: 1px solid #e5e7eb; border-radius: 10px;
-      background: #fff; color: #374151;
+      border: 1px solid var(--color-gray-200); border-radius: 10px;
+      background: var(--color-white); color: var(--color-gray-700);
       min-height: 58px; padding: 10px 12px;
       text-align: left; display: flex; flex-direction: column;
       justify-content: center; gap: 4px;
-      cursor: pointer; position: relative; transition: all 0.2s;
+      cursor: pointer; position: relative; transition: all var(--transition-normal);
+      font-family: inherit;
     }
     .tag-item:hover { border-color: #93c5fd; background: #f8faff; }
     .tag-item.active {
-      border-color: #2563eb; background: #eff6ff; color: #1d4ed8;
+      border-color: var(--color-primary); background: #eff6ff; color: #1d4ed8;
     }
     .tag-item:disabled { cursor: not-allowed; opacity: 0.5; }
     .tag-name { font-size: 14px; font-weight: 600; line-height: 1.4; }
-    .tag-code { font-size: 12px; color: #6b7280; word-break: break-all; }
-    .tag-item.active .tag-code { color: #2563eb; }
-    .tag-check { position: absolute; top: 6px; right: 8px; font-size: 16px; color: #2563eb; }
+    .tag-code { font-size: 12px; color: var(--color-gray-500); word-break: break-all; }
+    .tag-item.active .tag-code { color: var(--color-primary); }
+    .tag-check { position: absolute; top: 6px; right: 8px; font-size: 16px; color: var(--color-primary); }
     .tag-pager {
       margin-top: 12px; display: flex; justify-content: space-between;
       align-items: center; gap: 12px; flex-wrap: wrap;
     }
-    .tag-page-info { font-size: 13px; color: #6b7280; }
-    .tag-error { margin-top: 8px; color: #ef4444; font-size: 12px; }
+    .tag-page-info { font-size: 13px; color: var(--color-gray-500); }
+    .tag-error { margin-top: 8px; color: var(--color-error); font-size: 12px; }
+    .note { margin-top: 10px; color: var(--color-gray-400); font-size: 12px; }
 
     /* ── Settings Drawer ── */
     .settings-backdrop {
@@ -337,7 +667,7 @@
     .settings-drawer {
       position: fixed; top: 0; right: 0;
       width: min(440px, 90vw); height: 100vh;
-      background: #fff; border-left: 1px solid #e5e7eb;
+      background: var(--color-white); border-left: 1px solid var(--color-gray-200);
       box-shadow: -8px 0 32px rgba(0,0,0,0.08);
       z-index: 1001; display: flex; flex-direction: column;
       transform: translateX(100%);
@@ -346,168 +676,236 @@
     .settings-drawer.show { transform: translateX(0); }
     .settings-drawer-header {
       display: flex; justify-content: space-between; align-items: center;
-      padding: 20px 24px; border-bottom: 1px solid #f3f4f6; flex-shrink: 0;
+      padding: 20px 24px; border-bottom: 1px solid var(--color-gray-100); flex-shrink: 0;
     }
     .settings-modal-title {
-      margin: 0; font-size: 18px; color: #111827; font-weight: 700;
+      margin: 0; font-size: 18px; color: var(--color-gray-900); font-weight: 700;
       display: flex; align-items: center; gap: 8px;
     }
     .settings-title-icon { width: 20px; height: 20px; display: block; object-fit: contain; }
     .settings-drawer-body { flex: 1; padding: 22px 24px; overflow-y: auto; }
     .settings-drawer-footer {
       display: flex; justify-content: flex-end; gap: 10px;
-      padding: 16px 24px; border-top: 1px solid #f3f4f6; flex-shrink: 0;
+      padding: 16px 24px; border-top: 1px solid var(--color-gray-100); flex-shrink: 0;
     }
     .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     .settings-field { display: flex; flex-direction: column; }
     .settings-field.full { grid-column: 1 / -1; }
     .settings-field label {
-      font-size: 13px; margin-bottom: 5px; color: #374151; font-weight: 500;
+      font-size: 13px; margin-bottom: 5px; color: var(--color-gray-700); font-weight: 500;
     }
     .settings-toggle { display: flex; align-items: center; gap: 10px; min-height: 36px; }
     .settings-toggle input[type="checkbox"] {
-      width: 16px; height: 16px; margin: 0; accent-color: #2563eb;
+      width: 16px; height: 16px; margin: 0; accent-color: var(--color-primary);
     }
-    .settings-toggle span { font-size: 14px; color: #111827; font-weight: 500; }
-    .settings-help { margin-top: 6px; font-size: 12px; color: #6b7280; line-height: 1.5; }
+    .settings-toggle span { font-size: 14px; color: var(--color-gray-900); font-weight: 500; }
+    .settings-help { margin-top: 6px; font-size: 12px; color: var(--color-gray-500); line-height: 1.5; }
     .section-label {
-      font-size: 11px; color: #6b7280; text-transform: uppercase;
+      font-size: 11px; color: var(--color-gray-500); text-transform: uppercase;
       letter-spacing: 0.5px; padding-bottom: 8px; margin-bottom: 4px;
-      border-bottom: 1px solid #e5e7eb; font-weight: 600;
+      border-bottom: 1px solid var(--color-gray-200); font-weight: 600;
     }
     .settings-save-btn {
-      background: #2563eb; color: #fff; border: none; border-radius: 8px;
+      background: var(--color-primary); color: var(--color-white); border: none; border-radius: var(--radius-sm);
       height: 38px; padding: 0 20px; font-size: 14px; font-weight: 600;
-      cursor: pointer; transition: all 0.2s;
+      cursor: pointer; transition: all var(--transition-normal); font-family: inherit;
     }
-    .settings-save-btn:hover { background: #1d4ed8; }
+    .settings-save-btn:hover { background: var(--color-primary-hover); }
     .settings-cancel-btn {
-      background: #fff; color: #374151; border: 1px solid #e5e7eb;
-      border-radius: 8px; height: 38px; padding: 0 20px;
-      font-size: 14px; cursor: pointer; transition: all 0.2s;
+      background: var(--color-white); color: var(--color-gray-700); border: 1px solid var(--color-gray-200);
+      border-radius: var(--radius-sm); height: 38px; padding: 0 20px;
+      font-size: 14px; cursor: pointer; transition: all var(--transition-normal); font-family: inherit;
     }
-    .settings-cancel-btn:hover { background: #f3f4f6; }
+    .settings-cancel-btn:hover { background: var(--color-gray-100); }
     .settings-close-btn {
-      border: 1px solid #e5e7eb; background: #fff; color: #6b7280;
-      border-radius: 8px; width: 36px; min-width: 36px; padding: 0;
-      font-size: 20px; line-height: 1; cursor: pointer; transition: all 0.2s;
+      border: 1px solid var(--color-gray-200); background: var(--color-white); color: var(--color-gray-500);
+      border-radius: var(--radius-sm); width: 36px; min-width: 36px; padding: 0;
+      font-size: 20px; line-height: 1; cursor: pointer; transition: all var(--transition-normal);
     }
-    .settings-close-btn:hover { background: #f3f4f6; color: #374151; }
+    .settings-close-btn:hover { background: var(--color-gray-100); color: var(--color-gray-700); }
 
     body.modal-open { overflow: hidden; }
 
-    button {
-      border: none; background: #2563eb; color: #fff;
-      border-radius: 8px; height: 36px; padding: 0 14px;
-      cursor: pointer; font-size: 13px; font-weight: 500;
-      transition: all 0.2s; font-family: inherit;
-    }
-    button:hover { background: #1d4ed8; }
-    button.secondary { background: #4b5563; color: #fff; }
-    button.secondary:hover { background: #374151; }
-
-    .note { margin-top: 10px; color: #9ca3af; font-size: 12px; }
-
     /* ── Responsive ── */
-    @media (max-width: 900px) {
-      body { overflow: auto; }
-      .main-layout {
-        grid-template-columns: 1fr;
-        flex: none;
-      }
-      .left-column {
-        overflow-y: visible;
-      }
-      .log-panel {
-        flex: none;
-        height: 400px;
+    @media (max-width: 1400px) {
+      .stats-row {
+        grid-template-columns: repeat(3, 1fr);
       }
     }
-    @media (max-width: 700px) {
-      .stats-dashboard {
+    @media (max-width: 900px) {
+      .stats-row {
         grid-template-columns: repeat(2, 1fr);
       }
-      .config-grid {
+      .field-group {
         grid-template-columns: 1fr;
+      }
+      .app-container {
+        padding: 12px;
+      }
+      .action-bar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .action-bar-divider {
+        display: none;
+      }
+      .action-bar .btn-lg {
+        justify-content: center;
+      }
+    }
+    @media (max-width: 640px) {
+      .stats-row {
+        grid-template-columns: 1fr 1fr;
       }
       .settings-grid {
         grid-template-columns: 1fr;
       }
-      .quick-action-btn {
-        max-width: none;
-        flex: 1 1 100%;
+      .tab-nav {
+        flex-wrap: wrap;
       }
     }
   </style>
 </head>
 <body>
-  <!-- Page Header -->
-  <div class="page-header">
-    <h1>视频下载器</h1>
-    <button class="settings-btn" onclick="openSettingsModal()" title="设置">
-      <img class="settings-btn-icon" src="{{ url_for('static', path='set.png') }}" alt="" aria-hidden="true" />
-    </button>
-  </div>
-
-  <!-- Two-column Layout -->
-  <div class="main-layout">
-
-    <!-- Left Column: Config + Actions + Status -->
-    <div class="left-column">
-
-    <!-- Config Card (all-in-one) -->
-    <div class="card">
-      <div class="card-header">
-        <h2>下载配置</h2>
+  <div class="app-container">
+    <!-- ═══════════ Page Header ═══════════ -->
+    <div class="page-header">
+      <div class="page-header-left">
+        <h1>视频下载器</h1>
+        <!-- Tab Navigation -->
+        <div class="tab-nav">
+          <button class="tab-nav-btn active" onclick="switchTab('download')">下载任务</button>
+          <button class="tab-nav-btn" onclick="goToPoster()">海报墙</button>
+          <button class="tab-nav-btn" onclick="goToWaterfall()">瀑布流</button>
+        </div>
       </div>
-      <div class="card-body" style="display:flex;flex-direction:column;gap:14px;">
+      <div class="page-header-actions">
+        <button class="icon-btn" onclick="openSettingsModal()" title="设置">
+          <img src="{{ url_for('static', path='set.png') }}" alt="" aria-hidden="true" style="width:18px;height:18px;" />
+        </button>
+      </div>
+    </div>
 
-        <!-- 1. download_root -->
-        <div class="field" style="margin-bottom:0;">
-          <label for="download_root">视频下载根目录</label>
-          <input id="download_root" type="text" value="{{ config.download_root }}" />
+    <!-- ═══════════ Status Cards ═══════════ -->
+    <div class="stats-row" id="stats_row">
+      <div class="stat-card">
+        <div class="stat-card-header">
+          <span class="stat-label">服务状态</span>
+          <span class="stat-icon blue">&#9881;</span>
         </div>
+        <div class="stat-value small" id="stat_auto_enabled">加载中...</div>
+        <div class="stat-sub">定时下载服务</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-header">
+          <span class="stat-label">运行状态</span>
+          <span class="stat-icon green">&#9654;</span>
+        </div>
+        <div class="stat-value small" id="stat_is_running">加载中...</div>
+        <div class="stat-sub" id="stat_last_result"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-header">
+          <span class="stat-label">监控博主</span>
+          <span class="stat-icon indigo">&#64;</span>
+        </div>
+        <div class="stat-value" id="stat_blogger_count">{{ config.twitter_blogger_list | length }}</div>
+        <div class="stat-sub">已添加博主数量</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-header">
+          <span class="stat-label">上次执行</span>
+          <span class="stat-icon gray">&#8635;</span>
+        </div>
+        <div class="stat-value small" id="stat_last_run_time">{{ state.last_run_time or "暂无" }}</div>
+        <div class="stat-sub">最近一次下载</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-header">
+          <span class="stat-label">下次执行</span>
+          <span class="stat-icon purple">&#9200;</span>
+        </div>
+        <div class="stat-value small" id="stat_next_run">{{ config.schedule_time if config.auto_download_enabled else "未开启" }}</div>
+        <div class="stat-sub">定时计划</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-header">
+          <span class="stat-label">下载目录</span>
+          <span class="stat-icon orange">&#128193;</span>
+        </div>
+        <div class="stat-value small" id="stat_dir_status" title="{{ config.download_root }}">检测中...</div>
+        <div class="stat-sub" id="stat_dir_path">{{ config.download_root }}</div>
+      </div>
+    </div>
 
-        <!-- 2. tag filter (compact) -->
-        <div class="field" style="margin-bottom:0;">
-          <label>标签筛选</label>
-          <div class="tag-picker">
-            <input id="tag_codes_input" type="hidden" value='{{ tag_codes_json | safe }}' />
-            <div class="tag-toolbar">
-              <div id="tag_selection_text" class="tag-selection-text">当前：不筛选</div>
-              <div class="tag-toolbar-actions">
-                <button id="tag_open_btn" type="button" class="tag-open-btn" onclick="openTagModal()">选择</button>
-                <button id="tag_clear_btn" type="button" class="tag-clear-btn" onclick="clearAllTags()">清空</button>
+    <!-- ═══════════ Blogger Management ═══════════ -->
+    <div class="card" id="blogger_card">
+      <div class="card-header">
+        <h2>
+          博主管理
+          <span class="badge" id="blogger_count_badge">{{ config.twitter_blogger_list | length }}</span>
+        </h2>
+      </div>
+      <div class="card-body">
+        <div id="blogger_chip_list" class="blogger-chip-list"></div>
+        <div class="blogger-input-row">
+          <input id="blogger_add_input" type="text" placeholder="输入用户名（不含 @），回车添加" onkeydown="if(event.key==='Enter')addBlogger()" />
+          <button class="btn btn-primary" onclick="addBlogger()">添加博主</button>
+        </div>
+        <div class="blogger-secondary-actions">
+          <button class="btn btn-secondary btn-sm" onclick="crawlBloggerNow()">立即爬取</button>
+          <button class="btn btn-ghost btn-sm" onclick="refreshBloggerStatus()">刷新列表</button>
+        </div>
+        <div class="blogger-status-text">
+          爬取状态：<span id="blogger_is_running">{{ "运行中" if blogger_state.is_running else "空闲" }}</span>
+          &nbsp;·&nbsp;最近爬取：<span id="blogger_last_run_time">{{ blogger_state.last_run_time or "暂无" }}</span>
+          &nbsp;·&nbsp;<span id="blogger_last_result">{{ blogger_state.last_result }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ Content Filter ═══════════ -->
+    <div class="card" id="filter_card">
+      <div class="card-header">
+        <h2>内容筛选</h2>
+      </div>
+      <div class="card-body">
+        <div class="field-group">
+          <!-- Tag Filter -->
+          <div class="field">
+            <label>标签筛选</label>
+            <div class="tag-picker">
+              <input id="tag_codes_input" type="hidden" value='{{ tag_codes_json | safe }}' />
+              <div class="tag-toolbar">
+                <div id="tag_selection_text" class="tag-selection-text">当前：不筛选</div>
+                <div class="tag-toolbar-actions">
+                  <button id="tag_open_btn" type="button" class="btn btn-secondary btn-sm" onclick="openTagModal()">选择标签</button>
+                  <button id="tag_clear_btn" type="button" class="btn btn-ghost btn-sm" onclick="clearAllTags()">清空</button>
+                </div>
               </div>
+              <div id="tag_chips" class="tag-chips"></div>
             </div>
-            <div id="tag_chips" class="tag-chips"></div>
           </div>
-        </div>
-
-        <!-- 3. bloggers (compact) -->
-        <div class="field" style="margin-bottom:0;">
-          <label>博主 <span id="blogger_count_badge" class="badge" style="margin-left:6px;">{{ config.twitter_blogger_list | length }}</span></label>
-          <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
-            <input id="blogger_add_input" type="text" placeholder="用户名（不含@）" onkeydown="if(event.key==='Enter')addBlogger()" style="flex:1;min-width:0;height:32px;border:1px solid #e5e7eb;background:#f9fafb;color:#111827;border-radius:8px;padding:0 8px;font-size:13px;" />
-            <button type="button" onclick="addBlogger()" style="height:32px;padding:0 10px;font-size:12px;">添加</button>
-            <button type="button" class="secondary" onclick="crawlBloggerNow()" style="height:32px;padding:0 10px;font-size:12px;">爬取</button>
-            <button type="button" class="secondary" onclick="refreshBloggerStatus()" style="height:32px;padding:0 8px;font-size:12px;">刷新</button>
+          <!-- Time Range -->
+          <div class="field">
+            <label for="range">时间范围</label>
+            <select id="range" required>
+              {% for option in range_options %}
+              <option value="{{ option.value }}" {% if config.range == option.value %}selected{% endif %}>{{ option.label }}</option>
+              {% endfor %}
+            </select>
           </div>
-          <div id="blogger_chip_list" class="blogger-chip-list"></div>
-          <div class="blogger-status" style="margin-top:4px;">
-            爬取中：<span id="blogger_is_running">{{ "是" if blogger_state.is_running else "否" }}</span>
-            &nbsp;·&nbsp;最近：<span id="blogger_last_run_time">{{ blogger_state.last_run_time or "暂无" }}</span>
-            &nbsp;·&nbsp;<span id="blogger_last_result">{{ blogger_state.last_result }}</span>
+          <!-- Video Duration -->
+          <div class="field">
+            <label for="time_filter">时长筛选</label>
+            <select id="time_filter" required>
+              {% for option in time_filter_options %}
+              <option value="{{ option.min }}-{{ option.max }}" data-min="{{ option.min }}" data-max="{{ option.max }}" {% if config.min_time == option.min and config.max_time == option.max %}selected{% endif %}>{{ option.label }}</option>
+              {% endfor %}
+            </select>
           </div>
-        </div>
-
-        <!-- 4. download count + sort (2-col) -->
-        <div class="config-grid" style="border-top:1px solid #f3f4f6;padding-top:14px;margin-top:0;">
-          <div class="config-field">
-            <label for="max_daily_downloads">每类视频下载数</label>
-            <input id="max_daily_downloads" type="number" min="1" required value="{{ config.max_daily_downloads }}" />
-          </div>
-          <div class="config-field">
+          <!-- Sort -->
+          <div class="field">
             <label for="sort">排序方式</label>
             <select id="sort" required>
               {% for option in sort_options %}
@@ -516,75 +914,68 @@
             </select>
           </div>
         </div>
+      </div>
+    </div>
 
-        <!-- 5. range + time filter (2-col) -->
-        <div class="config-grid">
-          <div class="config-field">
-            <label for="range">时间范围</label>
-            <select id="range" required>
-              {% for option in range_options %}
-              <option value="{{ option.value }}" {% if config.range == option.value %}selected{% endif %}>{{ option.label }}</option>
-              {% endfor %}
-            </select>
+    <!-- ═══════════ Download Settings ═══════════ -->
+    <div class="card" id="download_card">
+      <div class="card-header">
+        <h2>下载设置</h2>
+      </div>
+      <div class="card-body">
+        <div class="field-group">
+          <div class="field">
+            <label for="max_daily_downloads">每类视频下载数</label>
+            <input id="max_daily_downloads" type="number" min="1" required value="{{ config.max_daily_downloads }}" />
           </div>
-          <div class="config-field">
-            <label for="time_filter">时长筛选</label>
-            <select id="time_filter" required>
-              {% for option in time_filter_options %}
-              <option value="{{ option.min }}-{{ option.max }}" data-min="{{ option.min }}" data-max="{{ option.max }}" {% if config.min_time == option.min and config.max_time == option.max %}selected{% endif %}>{{ option.label }}</option>
-              {% endfor %}
-            </select>
+          <div class="field">
+            <!-- spacer for 2-col alignment -->
           </div>
         </div>
-
-        <!-- 6. quick actions -->
-
+        <div class="field" style="margin-top:16px;">
+          <label for="download_root">视频下载根目录</label>
+          <div class="dir-row">
+            <input id="download_root" type="text" value="{{ config.download_root }}" />
+            <button class="btn btn-secondary btn-sm" onclick="browseDirectory()" title="浏览目录">浏览</button>
+          </div>
+          <div class="dir-status" id="dir_status">
+            <span id="dir_status_icon"></span>
+            <span id="dir_status_text"></span>
+          </div>
+        </div>
       </div>
-
-      <!-- Fixed bottom buttons -->
       <div class="card-footer">
-        <div class="quick-actions">
-          <button type="button" class="quick-action-btn primary" onclick="runNow()">立即执行</button>
-          <button type="button" class="quick-action-btn secondary-action" onclick="goToPoster()">海报墙</button>
-          <button type="button" class="quick-action-btn secondary-action" onclick="goToWaterfall()">瀑布流</button>
+        <div></div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-lg btn-secondary" onclick="goToPoster()">海报墙</button>
+          <button class="btn btn-lg btn-secondary" onclick="goToWaterfall()">瀑布流</button>
+          <button class="btn btn-lg btn-primary" onclick="runNow()">立即执行</button>
         </div>
       </div>
     </div>
 
-    </div><!-- /left-column -->
-
-    <!-- Right Column: Status + Logs -->
-    <div class="right-column">
-
-    <!-- Status (compact inline) -->
-    <div class="card" style="padding:10px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:12px;">
-      <span style="color:#64748b;">状态</span>
-      <span id="auto_download_enabled" style="font-weight:600;color:#e2e8f0;">{{ "已开启" if config.auto_download_enabled else "已关闭" }}</span>
-      <span style="color:#e5e7eb;">|</span>
-      <span style="color:#64748b;">运行</span>
-      <span id="is_running" style="font-weight:600;color:#e2e8f0;">{{ "是" if state.is_running else "否" }}</span>
-      <span id="last_result" style="color:#64748b;flex:1;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">{{ state.last_result }}</span>
-    </div>
-
-    <!-- Log Panel -->
-    <div class="log-panel">
-      <div class="log-panel-header">
-        <h2>运行日志</h2>
-        <span class="log-status" id="log_update_indicator">● 实时</span>
+    <!-- ═══════════ Log Panel ═══════════ -->
+    <div class="log-panel" id="log_panel">
+      <div class="log-panel-header" onclick="toggleLogPanel()">
+        <div class="log-panel-header-left">
+          <h2>运行日志</h2>
+          <span class="log-status-dot" id="log_status_dot" title="实时监控中"></span>
+        </div>
+        <div class="log-panel-header-right">
+          <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();copyLogs()" title="复制日志">复制</button>
+          <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();clearLogsDisplay()" title="清空显示">清空</button>
+          <span class="log-toggle-icon">&#9660;</span>
+        </div>
       </div>
       <div class="log-panel-body">
         <div id="logs" class="logs">{{ logs }}</div>
       </div>
     </div>
 
-    </div><!-- /right-column -->
+  </div><!-- /app-container -->
 
-  </div>
-
-  <!-- Settings Backdrop -->
+  <!-- ═══════════ Settings Drawer ═══════════ -->
   <div id="settings_backdrop" class="settings-backdrop" aria-hidden="true" onclick="closeSettingsModal()"></div>
-
-  <!-- Settings Drawer -->
   <div id="settings_modal" class="settings-drawer" aria-hidden="true">
     <div class="settings-drawer-header">
       <h2 class="settings-modal-title">
@@ -595,7 +986,6 @@
     </div>
     <div class="settings-drawer-body">
       <div class="settings-grid">
-        <!-- Section: 下载设置 -->
         <div class="settings-field full">
           <div class="section-label">下载设置</div>
         </div>
@@ -615,8 +1005,6 @@
           <label for="settings_schedule_time">定时执行时间（HH:MM）</label>
           <input id="settings_schedule_time" name="schedule_time" type="time" required value="{{ config.schedule_time }}" />
         </div>
-
-        <!-- Section: Twitter 设置 -->
         <div class="settings-field full" style="padding-top:8px;">
           <div class="section-label">Twitter 设置</div>
         </div>
@@ -625,8 +1013,6 @@
           <input id="settings_twitter_cookie" name="twitter_cookie" type="text" placeholder="auth_token=xxx; ct0=xxx;" value="{{ config.twitter_cookie }}" />
           <div class="settings-help">用于博主爬取的认证信息，格式：auth_token=xxx; ct0=xxx;</div>
         </div>
-
-        <!-- Section: 博主爬取设置 -->
         <div class="settings-field full" style="padding-top:8px;">
           <div class="section-label">博主爬取设置</div>
         </div>
@@ -661,7 +1047,7 @@
     </div>
   </div>
 
-  <!-- Tag Modal -->
+  <!-- ═══════════ Tag Modal ═══════════ -->
   <div id="tag_modal" class="tag-modal" aria-hidden="true" onclick="handleTagModalBackdrop(event)">
     <div class="tag-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="tag_modal_title">
       <div class="tag-modal-header">
@@ -676,9 +1062,9 @@
           <div class="note">正在加载标签...</div>
         </div>
         <div class="tag-pager">
-          <button id="tag_prev_btn" type="button" class="secondary" onclick="loadTags(tagState.page - 1)">上一页</button>
+          <button id="tag_prev_btn" type="button" class="btn btn-secondary btn-sm" onclick="loadTags(tagState.page - 1)">上一页</button>
           <span id="tag_page_info" class="tag-page-info">加载中...</span>
-          <button id="tag_next_btn" type="button" class="secondary" onclick="loadTags(tagState.page + 1)">下一页</button>
+          <button id="tag_next_btn" type="button" class="btn btn-secondary btn-sm" onclick="loadTags(tagState.page + 1)">下一页</button>
         </div>
         <div id="tag_error" class="tag-error"></div>
       </div>
@@ -689,7 +1075,121 @@
   </div>
 
   <script>
-    // --- Tag multi-select ---
+    // ══════════════════════════════════════════
+    //  Tab Navigation
+    // ══════════════════════════════════════════
+    function switchTab(tab) {
+      if (tab === 'download') {
+        // Already on download page, do nothing
+        return;
+      }
+    }
+
+    // ══════════════════════════════════════════
+    //  Log Panel Toggle
+    // ══════════════════════════════════════════
+    function toggleLogPanel() {
+      const panel = document.getElementById('log_panel');
+      panel.classList.toggle('collapsed');
+    }
+
+    function copyLogs() {
+      const logs = document.getElementById('logs');
+      navigator.clipboard.writeText(logs.textContent || '').then(() => {
+        // Brief feedback — could add a toast
+      }).catch(() => {
+        // Fallback
+        const textarea = document.createElement('textarea');
+        textarea.value = logs.textContent || '';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      });
+    }
+
+    function clearLogsDisplay() {
+      document.getElementById('logs').textContent = '';
+    }
+
+    // ══════════════════════════════════════════
+    //  Directory Validation
+    // ══════════════════════════════════════════
+    async function validateDirectory() {
+      const dir = document.getElementById('download_root').value.trim();
+      const statusIcon = document.getElementById('dir_status_icon');
+      const statusText = document.getElementById('dir_status_text');
+      if (!dir) {
+        statusIcon.textContent = '⚠';
+        statusText.textContent = '目录路径不能为空';
+        statusText.className = 'dir-status-error';
+        document.getElementById('stat_dir_status').textContent = '未设置';
+        return;
+      }
+      try {
+        const resp = await fetch('/api/check-dir?path=' + encodeURIComponent(dir));
+        const data = await resp.json();
+        if (data.ok) {
+          statusIcon.textContent = '✓';
+          statusText.textContent = '目录有效';
+          statusText.className = 'dir-status-ok';
+          document.getElementById('stat_dir_status').textContent = '有效';
+          document.getElementById('stat_dir_status').style.color = '#16a34a';
+        } else {
+          statusIcon.textContent = '✗';
+          statusText.textContent = data.error || '目录无效';
+          statusText.className = 'dir-status-error';
+          document.getElementById('stat_dir_status').textContent = '无效';
+          document.getElementById('stat_dir_status').style.color = '#dc2626';
+        }
+      } catch {
+        statusIcon.textContent = '⚠';
+        statusText.textContent = '无法验证目录';
+        statusText.className = 'dir-status-error';
+        document.getElementById('stat_dir_status').textContent = '未知';
+        document.getElementById('stat_dir_status').style.color = '#6b7280';
+      }
+    }
+
+    function browseDirectory() {
+      // Create a hidden file input to trigger directory selection
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.webkitdirectory = true;
+      input.directory = true;
+      input.onchange = (e) => {
+        const files = e.target.files;
+        if (files && files.length > 0) {
+          // Get the directory path from the first file's webkitRelativePath or full path
+          const fullPath = files[0].webkitRelativePath || files[0].name;
+          const dirName = fullPath.split('/')[0] || fullPath.split('\\')[0];
+          // Try to get absolute path from the file object
+          if (files[0].path) {
+            // Electron or similar environments expose .path
+            const dirPath = files[0].path.replace(/[\\/][^\\/]+$/, '');
+            document.getElementById('download_root').value = dirPath;
+          } else {
+            // Fallback: use relative name as hint
+            document.getElementById('download_root').value = fullPath;
+          }
+          downloadRootDirty = true;
+          currentConfig.download_root = document.getElementById('download_root').value;
+          queueQuickConfigSave();
+          validateDirectory();
+        }
+      };
+      input.click();
+    }
+
+    // Run validation on page load
+    setTimeout(validateDirectory, 300);
+
+    document.getElementById('download_root').addEventListener('change', validateDirectory);
+    document.getElementById('download_root').addEventListener('blur', validateDirectory);
+
+    // ══════════════════════════════════════════
+    //  Tag multi-select (preserved)
+    // ══════════════════════════════════════════
     const tagCodesInput = document.getElementById('tag_codes_input');
     const tagModal = document.getElementById('tag_modal');
     const tagList = document.getElementById('tag_list');
@@ -912,7 +1412,9 @@
     }
     preloadAllTagNames();
 
-    // --- Settings Drawer ---
+    // ══════════════════════════════════════════
+    //  Settings Drawer (preserved)
+    // ══════════════════════════════════════════
     const settingsModal = document.getElementById('settings_modal');
 
     function syncAutoDownloadFields() {
@@ -964,10 +1466,6 @@
       document.body.classList.remove('modal-open');
     }
 
-    function handleSettingsBackdrop(event) {
-      closeSettingsModal();
-    }
-
     async function saveSettings() {
       const formData = new FormData();
       formData.append('download_root', document.getElementById('download_root').value);
@@ -1011,6 +1509,7 @@
           settingsDirty = false;
           closeSettingsModal();
           refreshStatus();
+          validateDirectory();
         } else {
           alert('保存失败：' + (data.error || '未知错误'));
         }
@@ -1019,7 +1518,9 @@
       }
     }
 
-    // --- Current config ---
+    // ══════════════════════════════════════════
+    //  Current Config
+    // ══════════════════════════════════════════
     let currentConfig = {
       download_root: {{ config.download_root | tojson }},
       proxy: {{ config.proxy | tojson }},
@@ -1093,11 +1594,13 @@
       downloadRootDirty = true;
       currentConfig.download_root = downloadRootInput.value;
       queueQuickConfigSave(500);
+      validateDirectory();
     });
     downloadRootInput.addEventListener('change', () => {
       downloadRootDirty = true;
       currentConfig.download_root = downloadRootInput.value;
       queueQuickConfigSave();
+      validateDirectory();
     });
 
     // Main-page config field change tracking
@@ -1109,7 +1612,9 @@
       }
     });
 
-    // --- Status refresh ---
+    // ══════════════════════════════════════════
+    //  Status Refresh (enhanced)
+    // ══════════════════════════════════════════
     async function runNow() {
       const quickSaved = await flushQuickConfigSave();
       if (!quickSaved) {
@@ -1131,18 +1636,47 @@
         return;
       }
 
-      document.getElementById('auto_download_enabled').innerText = data.config?.auto_download_enabled === false ? '已关闭' : '已开启';
-      document.getElementById('is_running').innerText = data.state.is_running ? '是' : '否';
-      const lastRunEl = document.getElementById('last_run_time');
-      if (lastRunEl) lastRunEl.innerText = data.state.last_run_time || '暂无';
-      document.getElementById('last_result').innerText = data.state.last_result || '';
+      // Update stat cards
+      const autoEnabled = data.config?.auto_download_enabled !== false;
+      const autoEnabledEl = document.getElementById('stat_auto_enabled');
+      autoEnabledEl.textContent = autoEnabled ? '已开启' : '已关闭';
+      autoEnabledEl.style.color = autoEnabled ? '#16a34a' : '#6b7280';
+
+      const isRunning = data.state.is_running;
+      const isRunningEl = document.getElementById('stat_is_running');
+      isRunningEl.textContent = isRunning ? '运行中' : '空闲';
+      isRunningEl.style.color = isRunning ? '#16a34a' : '#6b7280';
+
+      document.getElementById('stat_last_result').textContent = data.state.last_result || '';
+      document.getElementById('stat_last_run_time').textContent = data.state.last_run_time || '暂无';
+
+      const bloggerCount = data.config?.twitter_blogger_list ? data.config.twitter_blogger_list.length : 0;
+      document.getElementById('stat_blogger_count').textContent = bloggerCount;
+
+      document.getElementById('stat_next_run').textContent = autoEnabled
+        ? (data.config?.schedule_time || '未知')
+        : '未开启';
+
+      // Log panel
       const logEl = document.getElementById('logs');
-      logEl.innerText = (data.logs || []).join('\n');
+      logEl.textContent = (data.logs || []).join('\n');
       logEl.scrollTop = logEl.scrollHeight;
+
+      // Update log status dot
+      const dot = document.getElementById('log_status_dot');
+      if (isRunning) {
+        dot.classList.remove('idle');
+        dot.title = '正在运行';
+      } else {
+        dot.classList.add('idle');
+        dot.title = '空闲中';
+      }
+
       if (data.config) {
         currentConfig = data.config;
         if (!downloadRootDirty) {
           downloadRootInput.value = currentConfig.download_root || '';
+          validateDirectory();
         }
         if (!tagSelectionDirty && Array.isArray(currentConfig.tag_codes)) {
           selectedTagCodes = [...currentConfig.tag_codes];
@@ -1156,7 +1690,7 @@
         }
       }
       if (data.blogger_state) {
-        document.getElementById('blogger_is_running').textContent = data.blogger_state.is_running ? '是' : '否';
+        document.getElementById('blogger_is_running').textContent = data.blogger_state.is_running ? '运行中' : '空闲';
         document.getElementById('blogger_last_run_time').textContent = data.blogger_state.last_run_time || '暂无';
         document.getElementById('blogger_last_result').textContent = data.blogger_state.last_result || '';
       }
@@ -1177,7 +1711,9 @@
       window.location.href = '/waterfall';
     }
 
-    // ─── Blogger Management ───────────────────────────────
+    // ══════════════════════════════════════════
+    //  Blogger Management (preserved)
+    // ══════════════════════════════════════════
     const bloggerChipList = document.getElementById('blogger_chip_list');
     const bloggerAddInput = document.getElementById('blogger_add_input');
     const bloggerCountBadge = document.getElementById('blogger_count_badge');
@@ -1187,10 +1723,11 @@
     function renderBloggerChips() {
       bloggerChipList.innerHTML = '';
       bloggerCountBadge.textContent = bloggerList.length;
+      document.getElementById('stat_blogger_count').textContent = bloggerList.length;
       if (bloggerList.length === 0) {
         const empty = document.createElement('span');
         empty.className = 'blogger-chip-empty';
-        empty.textContent = '暂无收藏博主，请在右上角输入用户名添加';
+        empty.textContent = '暂无收藏博主，请在下方输入用户名添加';
         bloggerChipList.appendChild(empty);
         return;
       }
@@ -1285,7 +1822,7 @@
         }
 
         const st = data.state || {};
-        document.getElementById('blogger_is_running').textContent = st.is_running ? '是' : '否';
+        document.getElementById('blogger_is_running').textContent = st.is_running ? '运行中' : '空闲';
         document.getElementById('blogger_last_run_time').textContent = st.last_run_time || '暂无';
         document.getElementById('blogger_last_result').textContent = st.last_result || '';
       } catch (e) {

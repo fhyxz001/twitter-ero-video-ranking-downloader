@@ -1713,6 +1713,18 @@ def waterfall_page(request: Request):
 # 博主管理 API
 # ──────────────────────────────────────────────────
 
+@app.get("/api/check-dir")
+def api_check_dir(path: str = ""):
+    """校验下载目录是否存在"""
+    import os
+    p = Path(path.strip()) if path else None
+    if not p:
+        return JSONResponse({"ok": False, "error": "路径不能为空"})
+    if p.exists() and p.is_dir():
+        return JSONResponse({"ok": True})
+    return JSONResponse({"ok": False, "error": "目录不存在"})
+
+
 @app.get("/api/blogger/list")
 def api_blogger_list():
     cfg = get_current_config()
