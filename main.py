@@ -1454,6 +1454,55 @@ def health():
 VIDEO_EXTS = {".mp4", ".mkv", ".avi", ".mov", ".flv", ".wmv"}
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 
+# ── 扫描缓存 ──
+# 目的：避免每次 /api/poster 都重新 iterdir + ffprobe 整个下载根。
+# 行为：按 (root, folder) 缓存 60s，写操作（delete / replace-cover）会清空。
+POSTER_SCAN_TTL = 60.0  # 秒
+_poster_scan_cache: Dict[str, Tuple[float, dict]] = {}
+_poster_folders_cache: Dict[str, Tuple[float, List[dict]]] = {}
+_duration_cache: Dict[str, Tuple[float, Optional[str]]] = {}
+DURATION_CACHE_TTL = 3600.0  # 秒，ffprobe 结果几乎不变
+
+
+def _scan_key(root: Path, folder: Optional[str]) -> str:
+    return f"{root}::{'' if folder is None else folder}"
+
+
+def _scan_cache_get(key: str):
+    entry = _poster_scan_cache.get(key)
+    if not entry:
+        return None
+    expires_at, payload = entry
+    if expires_at < time.monotonic():
+        _poster_scan_cache.pop(key, None)
+        return None
+    return payload
+
+
+def _scan_cache_set(key: str, payload: dict) -> None:
+    _poster_scan_cache[key] = (time.monotonic() + POSTER_SCAN_TTL, payload)
+
+
+def _folders_cache_get(key: str):
+    entry = _poster_folders_cache.get(key)
+    if not entry:
+        return None
+    expires_at, payload = entry
+    if expires_at < time.monotonic():
+        _poster_folders_cache.pop(key, None)
+        return None
+    return payload
+
+
+def _folders_cache_set(key: str, payload: List[dict]) -> None:
+    _poster_folders_cache[key] = (time.monotonic() + POSTER_SCAN_TTL, payload)
+
+
+def _invalidate_poster_cache() -> None:
+    _poster_scan_cache.clear()
+    _poster_folders_cache.clear()
+    _duration_cache.clear()
+
 
 def resolve_media_folder(root: Path, folder: str) -> Optional[Path]:
     """把 folder 参数（空=根目录 / 一级子文件夹名）解析为安全的目录路径。
@@ -1486,6 +1535,10 @@ def _count_videos(directory: Path) -> int:
 
 def _media_folders(download_root: Path) -> List[dict]:
     """返回含视频的文件夹列表：根目录（folder=""）+ 各一级子文件夹。"""
+    key = str(download_root)
+    cached = _folders_cache_get(key)
+    if cached is not None:
+        return cached
     folders: List[dict] = []
     if not download_root.exists():
         return folders
@@ -1496,6 +1549,7 @@ def _media_folders(download_root: Path) -> List[dict]:
         count = _count_videos(d)
         if count > 0:
             folders.append({"folder": d.name, "count": count})
+    _folders_cache_set(key, folders)
     return folders
 
 
@@ -1527,6 +1581,14 @@ def _format_duration(seconds: float) -> str:
 
 
 def _probe_video_duration(video_path: Path) -> Optional[str]:
+    key = f"{video_path.stat().st_mtime_ns}::{video_path}"
+    cached = _duration_cache.get(key)
+    if cached is not None:
+        expires_at, value = cached
+        if expires_at >= time.monotonic():
+            return value
+        _duration_cache.pop(key, None)
+
     ffprobe_cmd = [
         "ffprobe",
         "-v",
@@ -1556,9 +1618,12 @@ def _probe_video_duration(video_path: Path) -> Optional[str]:
         return None
 
     try:
-        return _format_duration(float(output))
+        label = _format_duration(float(output))
     except ValueError:
         return None
+
+    _duration_cache[key] = (time.monotonic() + DURATION_CACHE_TTL, label)
+    return label
 
 
 def _build_poster_item(folder: str, item: dict) -> dict:
@@ -1579,6 +1644,11 @@ def _build_poster_item(folder: str, item: dict) -> dict:
 
 
 def _collect_poster_items(download_root: Path, folder: Optional[str] = None) -> List[dict]:
+    cache_key = _scan_key(download_root, folder)
+    cached = _scan_cache_get(cache_key)
+    if cached is not None:
+        return list(cached.get("items", []))
+
     if folder is None:
         folder_names = [f["folder"] for f in _media_folders(download_root)]
     else:
@@ -1594,6 +1664,7 @@ def _collect_poster_items(download_root: Path, folder: Optional[str] = None) -> 
             items.append(built)
 
     items.sort(key=lambda x: (x["folder"], x["stem"]), reverse=True)
+    _scan_cache_set(cache_key, {"items": items})
     return items
 
 
@@ -1664,6 +1735,7 @@ async def api_delete(request: Request):
             if p.suffix.lower() in VIDEO_EXTS | IMAGE_EXTS:
                 p.unlink(missing_ok=True)
                 deleted.append(p.name)
+    _invalidate_poster_cache()
     return JSONResponse({"ok": True, "deleted": deleted})
 
 
@@ -1684,6 +1756,7 @@ async def api_replace_cover(folder: str = Form(""), stem: str = Form(...), file:
     new_path = directory / f"{stem}{suffix}"
     content = await file.read()
     new_path.write_bytes(content)
+    _invalidate_poster_cache()
     return JSONResponse({"ok": True, "thumb": new_path.name})
 
 
