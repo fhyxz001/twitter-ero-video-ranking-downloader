@@ -8,7 +8,7 @@ import threading
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from urllib.parse import quote, urlparse
 
 from contextlib import asynccontextmanager
