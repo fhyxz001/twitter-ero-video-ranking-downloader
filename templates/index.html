@@ -60,70 +60,96 @@
 
     /* ── Container ── */
     .app-container {
-      max-width: 1600px;
+      max-width: 1440px;
       margin: 0 auto;
-      padding: var(--spacing-lg);
+      padding: 20px 24px 0;
       display: flex;
       flex-direction: column;
-      gap: var(--spacing-md);
+      gap: 14px;
     }
 
-    /* ── Page Header ── */
-    .page-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-bottom: var(--spacing-xs);
-    }
-    .page-header-left {
+    /* ── Top Bar ── */
+    .topbar {
       display: flex;
       align-items: center;
-      gap: var(--spacing-md);
+      gap: 16px;
+      padding-bottom: 4px;
     }
-    .page-header h1 {
-      font-size: 22px;
-      font-weight: 700;
-      color: var(--color-gray-900);
-      letter-spacing: -0.3px;
-    }
-    .page-header-actions {
+    .topbar-brand {
       display: flex;
-      gap: var(--spacing-sm);
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
     }
-    .icon-btn {
-      width: 38px; height: 38px;
-      border: 1px solid var(--color-gray-200);
-      background: var(--color-white);
-      color: var(--color-gray-500);
-      border-radius: var(--radius-sm);
-      font-size: 18px;
-      cursor: pointer;
+    .topbar-logo {
+      width: 30px; height: 30px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+      color: #fff;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all var(--transition-normal);
+      font-size: 14px;
+      font-weight: 700;
+      box-shadow: 0 2px 6px rgba(37,99,235,0.25);
+    }
+    .topbar h1 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--color-gray-900);
+      letter-spacing: -0.2px;
+    }
+    .topbar-spacer { flex: 1; }
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
       flex-shrink: 0;
     }
-    .icon-btn:hover {
-      background: var(--color-gray-50);
-      border-color: var(--color-gray-300);
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 34px;
+      padding: 0 12px;
+      border-radius: 999px;
+      background: var(--color-gray-100);
       color: var(--color-gray-700);
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid var(--color-gray-200);
     }
-    .icon-btn img {
-      width: 18px; height: 18px;
-      display: block; object-fit: contain; pointer-events: none;
+    .status-pill .stat-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--color-gray-400);
+    }
+    .status-pill.is-running {
+      background: #f0fdf4;
+      color: #15803d;
+      border-color: #bbf7d0;
+    }
+    .status-pill.is-running .stat-dot {
+      background: #16a34a;
+      box-shadow: 0 0 0 3px rgba(22,163,74,0.18);
+      animation: statusPulse 1.6s infinite;
+    }
+    .status-pill.is-idle { color: var(--color-gray-500); }
+    @keyframes statusPulse {
+      0%, 100% { box-shadow: 0 0 0 3px rgba(22,163,74,0.18); }
+      50% { box-shadow: 0 0 0 6px rgba(22,163,74,0.06); }
     }
 
     /* ── Tab Navigation ── */
     .tab-nav {
       display: flex;
-      gap: 4px;
+      gap: 2px;
       background: var(--color-gray-100);
       border-radius: var(--radius-sm);
-      padding: 4px;
+      padding: 3px;
     }
     .tab-nav-btn {
-      padding: 8px 18px;
+      padding: 6px 14px;
       border: none;
       background: transparent;
       color: var(--color-gray-600);
@@ -143,75 +169,58 @@
       box-shadow: var(--shadow-sm);
     }
 
-    /* ── Stats Row ── */
-    .stats-row {
-      display: grid;
-      grid-template-columns: repeat(6, 1fr);
-      gap: var(--spacing-md);
-    }
-    .stat-card {
+    /* ── Status Strip (1-line metrics) ── */
+    .status-strip {
+      display: flex;
+      align-items: center;
+      gap: 0;
       background: var(--color-white);
       border: 1px solid var(--color-gray-200);
       border-radius: var(--radius-md);
-      padding: 16px 18px;
+      padding: 0;
+      overflow: hidden;
       box-shadow: var(--shadow-sm);
+    }
+    .status-strip-item {
+      flex: 1;
+      min-width: 0;
+      padding: 10px 16px;
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      transition: box-shadow var(--transition-normal);
+      gap: 2px;
+      border-right: 1px solid var(--color-gray-100);
     }
-    .stat-card:hover { box-shadow: var(--shadow-md); }
-    .stat-card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .stat-label {
-      font-size: 12px;
+    .status-strip-item:last-child { border-right: none; }
+    .status-strip-label {
+      font-size: 11px;
       color: var(--color-gray-500);
       font-weight: 500;
       text-transform: uppercase;
-      letter-spacing: 0.3px;
+      letter-spacing: 0.4px;
     }
-    .stat-icon {
-      width: 32px; height: 32px;
-      border-radius: var(--radius-sm);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 15px;
-    }
-    .stat-icon.blue   { background: #eff6ff; color: #2563eb; }
-    .stat-icon.green  { background: #f0fdf4; color: #16a34a; }
-    .stat-icon.orange { background: #fff7ed; color: #ea580c; }
-    .stat-icon.purple { background: #faf5ff; color: #9333ea; }
-    .stat-icon.gray   { background: #f9fafb; color: #6b7280; }
-    .stat-icon.indigo { background: #eef2ff; color: #4338ca; }
-    .stat-value {
-      font-size: 22px;
-      font-weight: 700;
+    .status-strip-value {
+      font-size: 13px;
       color: var(--color-gray-900);
-      line-height: 1.2;
+      font-weight: 600;
+      line-height: 1.3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-    .stat-value.small { font-size: 14px; font-weight: 600; }
-    .stat-sub {
-      font-size: 11px;
-      color: var(--color-gray-400);
-    }
-    .stat-dot {
-      display: inline-block;
-      width: 7px; height: 7px;
-      border-radius: 50%;
-      margin-right: 5px;
-    }
-    .stat-dot.on  { background: #16a34a; }
-    .stat-dot.off { background: #d1d5db; }
+    .status-strip-value.muted { color: var(--color-gray-500); font-weight: 500; }
+    .status-strip-value.ok    { color: #15803d; }
+    .status-strip-value.warn  { color: #b45309; }
+    .status-strip-value.err   { color: var(--color-error); }
+
+    /* Legacy stat-card classes (kept for backward-compat; values populate from JS) */
+    .stats-row { display: none; }
+    .stat-card, .stat-card-header, .stat-label, .stat-icon, .stat-value, .stat-sub, .stat-dot { display: none; }
 
     /* ── Card ── */
     .card {
       background: var(--color-white);
       border: 1px solid var(--color-gray-200);
-      border-radius: var(--radius-lg);
+      border-radius: var(--radius-md);
       box-shadow: var(--shadow-sm);
       overflow: hidden;
     }
@@ -219,35 +228,46 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 18px 22px;
+      padding: 12px 16px;
       border-bottom: 1px solid var(--color-gray-100);
     }
     .card-header h2 {
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 600;
       color: var(--color-gray-900);
       display: flex;
       align-items: center;
       gap: 8px;
+      letter-spacing: 0.1px;
+    }
+    .card-header h2 .h2-sub {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--color-gray-500);
     }
     .card-header-actions {
       display: flex;
       gap: 8px;
+      align-items: center;
     }
     .badge {
       background: var(--color-primary);
       color: var(--color-white);
       font-size: 11px;
       border-radius: 10px;
-      padding: 2px 8px;
+      padding: 1px 7px;
       font-weight: 600;
       line-height: 18px;
+      min-width: 20px;
+      text-align: center;
     }
+    .badge.gray { background: var(--color-gray-200); color: var(--color-gray-700); }
     .card-body {
-      padding: 20px 22px;
+      padding: 14px 16px;
     }
+    .card-body.tight { padding: 8px 16px 12px; }
     .card-footer {
-      padding: 14px 22px;
+      padding: 10px 16px;
       border-top: 1px solid var(--color-gray-100);
       background: var(--color-gray-50);
       display: flex;
@@ -256,6 +276,16 @@
       flex-wrap: wrap;
       gap: 10px;
     }
+
+    /* ── Main 2-column grid ── */
+    .main-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+    }
+    .main-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+    .side-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 
     /* ── Form Fields ── */
     .field { display: flex; flex-direction: column; }
@@ -305,8 +335,8 @@
       align-items: center;
       justify-content: center;
       gap: 6px;
-      height: 36px;
-      padding: 0 16px;
+      height: 34px;
+      padding: 0 14px;
       border: none;
       border-radius: var(--radius-sm);
       font-size: 13px;
@@ -325,7 +355,6 @@
     .btn-primary:hover:not(:disabled) {
       background: var(--color-primary-hover);
       box-shadow: 0 2px 8px rgba(37,99,235,0.3);
-      transform: translateY(-1px);
     }
     .btn-secondary {
       background: var(--color-white);
@@ -345,16 +374,17 @@
       color: var(--color-gray-800);
     }
     .btn-sm {
-      height: 30px;
+      height: 28px;
       padding: 0 10px;
       font-size: 12px;
+      border-radius: 6px;
     }
     .btn-lg {
-      height: 44px;
-      padding: 0 24px;
-      font-size: 14px;
+      height: 38px;
+      padding: 0 18px;
+      font-size: 13px;
       font-weight: 600;
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-sm);
     }
     .btn-danger {
       background: var(--color-error);
@@ -362,6 +392,34 @@
     }
     .btn-danger:hover:not(:disabled) {
       background: #b91c1c;
+    }
+    .btn-icon {
+      width: 34px; min-width: 34px; padding: 0;
+    }
+
+    /* ── Icon Button ── */
+    .icon-btn {
+      width: 34px; height: 34px;
+      border: 1px solid var(--color-gray-200);
+      background: var(--color-white);
+      color: var(--color-gray-500);
+      border-radius: var(--radius-sm);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--transition-normal);
+      flex-shrink: 0;
+    }
+    .icon-btn:hover {
+      background: var(--color-gray-50);
+      border-color: var(--color-gray-300);
+      color: var(--color-gray-700);
+    }
+    .icon-btn img {
+      width: 16px; height: 16px;
+      display: block; object-fit: contain; pointer-events: none;
     }
 
     /* ── Blogger Chips ── */
@@ -481,22 +539,29 @@
     }
     .blogger-secondary-actions {
       display: flex;
-      gap: 8px;
-      margin-top: 12px;
+      gap: 6px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--color-gray-200);
     }
     .blogger-status-text {
       font-size: 12px;
       color: var(--color-gray-500);
       line-height: 1.6;
       margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
     }
+    .blogger-status-text .sep { color: var(--color-gray-300); }
 
     /* ── Tag Picker ── */
     .tag-picker {
       border: 1px solid var(--color-gray-200);
       border-radius: var(--radius-sm);
       background: var(--color-gray-50);
-      padding: 12px;
+      padding: 10px 12px;
     }
     .tag-toolbar {
       display: flex;
@@ -506,7 +571,7 @@
       flex-wrap: wrap;
     }
     .tag-selection-text {
-      font-size: 13px;
+      font-size: 12px;
       color: var(--color-gray-700);
       font-weight: 500;
     }
@@ -518,7 +583,7 @@
     .tag-chips {
       display: flex;
       flex-wrap: wrap;
-      gap: 6px;
+      gap: 5px;
       margin-top: 8px;
     }
     .tag-chip {
@@ -580,21 +645,25 @@
       background: var(--color-gray-200);
       margin: 0 4px;
     }
+    .action-bar { display: none; }
 
     /* ── Log Panel ── */
     .log-panel {
       background: var(--color-white);
       border: 1px solid var(--color-gray-200);
-      border-radius: var(--radius-lg);
+      border-radius: var(--radius-md);
       box-shadow: var(--shadow-sm);
       overflow: hidden;
       transition: all var(--transition-normal);
+      position: sticky;
+      bottom: 12px;
+      z-index: 5;
     }
     .log-panel-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 14px 18px;
+      padding: 10px 14px;
       border-bottom: 1px solid var(--color-gray-100);
       cursor: pointer;
       user-select: none;
@@ -605,7 +674,7 @@
       gap: 10px;
     }
     .log-panel-header h2 {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 600;
       color: var(--color-gray-900);
       margin: 0;
@@ -623,7 +692,7 @@
       align-items: center;
     }
     .log-toggle-icon {
-      font-size: 12px;
+      font-size: 11px;
       color: var(--color-gray-400);
       transition: transform var(--transition-normal);
       margin-left: 4px;
@@ -639,16 +708,16 @@
       max-height: 0 !important;
     }
     .logs {
-      background: #1e293b;
+      background: #0f172a;
       color: #e2e8f0;
       font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
       font-size: 12px;
       line-height: 1.7;
-      padding: 14px 18px;
+      padding: 12px 14px;
       white-space: pre-wrap;
       overflow-y: auto;
       word-break: break-all;
-      height: 300px;
+      height: 220px;
     }
     .logs::-webkit-scrollbar { width: 5px; }
     .logs::-webkit-scrollbar-track { background: transparent; }
@@ -792,234 +861,193 @@
     body.modal-open { overflow: hidden; }
 
     /* ── Responsive ── */
-    @media (max-width: 1400px) {
-      .stats-row {
-        grid-template-columns: repeat(3, 1fr);
-      }
+    @media (max-width: 1100px) {
+      .main-grid { grid-template-columns: 1fr; }
     }
     @media (max-width: 900px) {
-      .stats-row {
-        grid-template-columns: repeat(2, 1fr);
-      }
-      .field-group {
-        grid-template-columns: 1fr;
-      }
-      .app-container {
-        padding: 12px;
-      }
-      .action-bar {
-        flex-direction: column;
-        align-items: stretch;
-      }
-      .action-bar-divider {
-        display: none;
-      }
-      .action-bar .btn-lg {
-        justify-content: center;
-      }
+      .field-group { grid-template-columns: 1fr; }
+      .app-container { padding: 14px 14px 0; }
+      .status-strip { flex-wrap: wrap; }
+      .status-strip-item { flex: 1 1 33%; border-bottom: 1px solid var(--color-gray-100); }
+      .status-strip-item:nth-child(3n) { border-right: none; }
+      .topbar { flex-wrap: wrap; gap: 10px; }
+      .topbar-spacer { display: none; }
     }
     @media (max-width: 640px) {
-      .stats-row {
-        grid-template-columns: 1fr 1fr;
-      }
-      .settings-grid {
-        grid-template-columns: 1fr;
-      }
-      .tab-nav {
-        flex-wrap: wrap;
-      }
+      .status-strip-item { flex: 1 1 50%; }
+      .status-strip-item:nth-child(3n) { border-right: 1px solid var(--color-gray-100); }
+      .status-strip-item:nth-child(2n) { border-right: none; }
+      .settings-grid { grid-template-columns: 1fr; }
+      .tab-nav { flex-wrap: wrap; }
+      .status-pill { display: none; }
     }
   </style>
 </head>
 <body>
   <div class="app-container">
-    <!-- ═══════════ Page Header ═══════════ -->
-    <div class="page-header">
-      <div class="page-header-left">
+    <!-- ═══════════ Top Bar ═══════════ -->
+    <div class="topbar">
+      <div class="topbar-brand">
+        <div class="topbar-logo">▶</div>
         <h1>视频下载器</h1>
-        <!-- Tab Navigation -->
-        <div class="tab-nav">
-          <button class="tab-nav-btn active" onclick="switchTab('download')">下载任务</button>
-          <button class="tab-nav-btn" onclick="goToPoster()">海报墙</button>
-          <button class="tab-nav-btn" onclick="goToWaterfall()">瀑布流</button>
-        </div>
       </div>
-      <div class="page-header-actions">
+      <div class="tab-nav">
+        <button class="tab-nav-btn active" onclick="switchTab('download')">下载任务</button>
+        <button class="tab-nav-btn" onclick="goToPoster()">海报墙</button>
+        <button class="tab-nav-btn" onclick="goToWaterfall()">瀑布流</button>
+      </div>
+      <div class="topbar-spacer"></div>
+      <div class="topbar-actions">
+        <span class="status-pill" id="topbar_status_pill" title="整体状态">
+          <span class="stat-dot"></span>
+          <span id="topbar_status_text">空闲</span>
+        </span>
         <button class="icon-btn" onclick="openSettingsModal()" title="设置">
-          <img src="{{ url_for('static', path='set.png') }}" alt="" aria-hidden="true" style="width:18px;height:18px;" />
+          <img src="{{ url_for('static', path='set.png') }}" alt="" aria-hidden="true" />
+        </button>
+        <button class="btn btn-primary" onclick="runNow()" title="立即执行下载任务">
+          <span style="font-size:14px;line-height:1;">▶</span>
+          <span>立即执行</span>
         </button>
       </div>
     </div>
 
-    <!-- ═══════════ Status Cards ═══════════ -->
-    <div class="stats-row" id="stats_row">
-      <div class="stat-card">
-        <div class="stat-card-header">
-          <span class="stat-label">服务状态</span>
-          <span class="stat-icon blue">&#9881;</span>
-        </div>
-        <div class="stat-value small" id="stat_auto_enabled">加载中...</div>
-        <div class="stat-sub">定时下载服务</div>
+    <!-- ═══════════ Status Strip ═══════════ -->
+    <div class="status-strip" id="status_strip">
+      <div class="status-strip-item">
+        <div class="status-strip-label">定时服务</div>
+        <div class="status-strip-value" id="stat_auto_enabled">—</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-card-header">
-          <span class="stat-label">运行状态</span>
-          <span class="stat-icon green">&#9654;</span>
-        </div>
-        <div class="stat-value small" id="stat_is_running">加载中...</div>
-        <div class="stat-sub" id="stat_last_result"></div>
+      <div class="status-strip-item">
+        <div class="status-strip-label">运行状态</div>
+        <div class="status-strip-value" id="stat_is_running">—</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-card-header">
-          <span class="stat-label">监控博主</span>
-          <span class="stat-icon indigo">&#64;</span>
-        </div>
-        <div class="stat-value" id="stat_blogger_count">{{ config.twitter_blogger_list | length }}</div>
-        <div class="stat-sub">已添加博主数量</div>
+      <div class="status-strip-item">
+        <div class="status-strip-label">监控博主</div>
+        <div class="status-strip-value" id="stat_blogger_count">{{ config.twitter_blogger_list | length }}</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-card-header">
-          <span class="stat-label">上次执行</span>
-          <span class="stat-icon gray">&#8635;</span>
-        </div>
-        <div class="stat-value small" id="stat_last_run_time">{{ state.last_run_time or "暂无" }}</div>
-        <div class="stat-sub">最近一次下载</div>
+      <div class="status-strip-item">
+        <div class="status-strip-label">上次执行</div>
+        <div class="status-strip-value" id="stat_last_run_time">{{ state.last_run_time or "暂无" }}</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-card-header">
-          <span class="stat-label">下次执行</span>
-          <span class="stat-icon purple">&#9200;</span>
-        </div>
-        <div class="stat-value small" id="stat_next_run">{{ config.schedule_cron if config.auto_download_enabled else "未开启" }}</div>
-        <div class="stat-sub">定时计划</div>
+      <div class="status-strip-item">
+        <div class="status-strip-label">下次计划</div>
+        <div class="status-strip-value muted" id="stat_next_run">{{ config.schedule_cron if config.auto_download_enabled else "未开启" }}</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-card-header">
-          <span class="stat-label">下载目录</span>
-          <span class="stat-icon orange">&#128193;</span>
-        </div>
-        <div class="stat-value small" id="stat_dir_status" title="{{ config.download_root }}">检测中...</div>
-        <div class="stat-sub" id="stat_dir_path">{{ config.download_root }}</div>
+      <div class="status-strip-item">
+        <div class="status-strip-label">下载目录</div>
+        <div class="status-strip-value" id="stat_dir_status" title="{{ config.download_root }}">检测中…</div>
       </div>
     </div>
+    <!-- Hidden target for legacy JS (last_result is not surfaced in the new strip) -->
+    <span id="stat_last_result" hidden></span>
 
-    <!-- ═══════════ Blogger Management ═══════════ -->
-    <div class="card" id="blogger_card">
-      <div class="card-header">
-        <h2>
-          博主管理
-          <span class="badge" id="blogger_count_badge">{{ config.twitter_blogger_list | length }}</span>
-        </h2>
-      </div>
-      <div class="card-body">
-        <div id="blogger_chip_list" class="blogger-chip-list"></div>
-        <div class="blogger-input-row">
-          <input id="blogger_add_input" type="text" placeholder="输入用户名（不含 @），回车添加" onkeydown="if(event.key==='Enter')addBlogger()" />
-          <button class="btn btn-primary" onclick="addBlogger()">添加博主</button>
-        </div>
-        <div class="blogger-secondary-actions">
-          <button class="btn btn-secondary btn-sm" onclick="crawlBloggerNow()">立即爬取</button>
-          <button class="btn btn-ghost btn-sm" onclick="refreshBloggerStatus()">刷新列表</button>
-        </div>
-        <div class="blogger-status-text">
-          爬取状态：<span id="blogger_is_running">{{ "运行中" if blogger_state.is_running else "空闲" }}</span>
-          &nbsp;·&nbsp;最近爬取：<span id="blogger_last_run_time">{{ blogger_state.last_run_time or "暂无" }}</span>
-          &nbsp;·&nbsp;<span id="blogger_last_result">{{ blogger_state.last_result }}</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- ═══════════ Content Filter ═══════════ -->
-    <div class="card" id="filter_card">
-      <div class="card-header">
-        <h2>内容筛选</h2>
-      </div>
-      <div class="card-body">
-        <div class="field-group">
-          <!-- Tag Filter -->
-          <div class="field">
-            <label>标签筛选</label>
-            <div class="tag-picker">
-              <input id="tag_codes_input" type="hidden" value='{{ tag_codes_json | safe }}' />
-              <div class="tag-toolbar">
-                <div id="tag_selection_text" class="tag-selection-text">当前：不筛选</div>
-                <div class="tag-toolbar-actions">
-                  <button id="tag_open_btn" type="button" class="btn btn-secondary btn-sm" onclick="openTagModal()">选择标签</button>
-                  <button id="tag_clear_btn" type="button" class="btn btn-ghost btn-sm" onclick="clearAllTags()">清空</button>
-                </div>
-              </div>
-              <div id="tag_chips" class="tag-chips"></div>
+    <!-- ═══════════ Main Grid (2 columns) ═══════════ -->
+    <div class="main-grid">
+      <!-- ─── Left: Blogger Management ─── -->
+      <div class="main-col">
+        <div class="card" id="blogger_card">
+          <div class="card-header">
+            <h2>
+              博主管理
+              <span class="badge" id="blogger_count_badge">{{ config.twitter_blogger_list | length }}</span>
+            </h2>
+            <div class="card-header-actions">
+              <button class="btn btn-secondary btn-sm" onclick="crawlBloggerNow()" title="立即爬取所有博主">▶ 立即爬取</button>
+              <button class="btn btn-ghost btn-sm" onclick="refreshBloggerStatus()" title="刷新列表">↻ 刷新</button>
             </div>
           </div>
-          <!-- Time Range -->
-          <div class="field">
-            <label for="range">时间范围</label>
-            <select id="range" required>
-              {% for option in range_options %}
-              <option value="{{ option.value }}" {% if config.range == option.value %}selected{% endif %}>{{ option.label }}</option>
-              {% endfor %}
-            </select>
+          <div class="card-body">
+            <div id="blogger_chip_list" class="blogger-chip-list"></div>
+            <div class="blogger-input-row">
+              <input id="blogger_add_input" type="text" placeholder="输入用户名（不含 @），回车添加" onkeydown="if(event.key==='Enter')addBlogger()" />
+              <button class="btn btn-primary" onclick="addBlogger()">+ 添加</button>
+            </div>
+            <div class="blogger-status-text">
+              <span><span class="muted">爬取</span>&nbsp;<span id="blogger_is_running">{{ "运行中" if blogger_state.is_running else "空闲" }}</span></span>
+              <span class="sep">·</span>
+              <span><span class="muted">最近</span>&nbsp;<span id="blogger_last_run_time">{{ blogger_state.last_run_time or "暂无" }}</span></span>
+              <span class="sep">·</span>
+              <span id="blogger_last_result" class="muted">{{ blogger_state.last_result }}</span>
+            </div>
           </div>
-          <!-- Video Duration -->
-          <div class="field">
-            <label for="time_filter">时长筛选</label>
-            <select id="time_filter" required>
-              {% for option in time_filter_options %}
-              <option value="{{ option.min }}-{{ option.max }}" data-min="{{ option.min }}" data-max="{{ option.max }}" {% if config.min_time == option.min and config.max_time == option.max %}selected{% endif %}>{{ option.label }}</option>
-              {% endfor %}
-            </select>
+        </div>
+      </div>
+
+      <!-- ─── Right: Filter + Download ─── -->
+      <div class="side-col">
+        <div class="card" id="filter_card">
+          <div class="card-header">
+            <h2>内容筛选</h2>
+            <div class="card-header-actions">
+              <button id="tag_open_btn" type="button" class="btn btn-secondary btn-sm" onclick="openTagModal()">选择标签</button>
+              <button id="tag_clear_btn" type="button" class="btn btn-ghost btn-sm" onclick="clearAllTags()">清空</button>
+            </div>
           </div>
-          <!-- Sort -->
-          <div class="field">
-            <label for="sort">排序方式</label>
-            <select id="sort" required>
-              {% for option in sort_options %}
-              <option value="{{ option.value }}" {% if config.sort == option.value %}selected{% endif %}>{{ option.label }}</option>
-              {% endfor %}
-            </select>
+          <div class="card-body">
+            <input id="tag_codes_input" type="hidden" value='{{ tag_codes_json | safe }}' />
+            <div class="tag-picker">
+              <div class="tag-toolbar">
+                <div id="tag_selection_text" class="tag-selection-text">当前：不筛选</div>
+                <div id="tag_chips" class="tag-chips"></div>
+              </div>
+            </div>
+            <div class="field-group" style="margin-top:12px;">
+              <div class="field">
+                <label for="range">时间范围</label>
+                <select id="range" required>
+                  {% for option in range_options %}
+                  <option value="{{ option.value }}" {% if config.range == option.value %}selected{% endif %}>{{ option.label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="field">
+                <label for="time_filter">时长筛选</label>
+                <select id="time_filter" required>
+                  {% for option in time_filter_options %}
+                  <option value="{{ option.min }}-{{ option.max }}" data-min="{{ option.min }}" data-max="{{ option.max }}" {% if config.min_time == option.min and config.max_time == option.max %}selected{% endif %}>{{ option.label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="field">
+                <label for="sort">排序方式</label>
+                <select id="sort" required>
+                  {% for option in sort_options %}
+                  <option value="{{ option.value }}" {% if config.sort == option.value %}selected{% endif %}>{{ option.label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="field">
+                <label for="max_daily_downloads">每类下载数</label>
+                <input id="max_daily_downloads" type="number" min="1" required value="{{ config.max_daily_downloads }}" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" id="download_card">
+          <div class="card-header">
+            <h2>下载设置</h2>
+          </div>
+          <div class="card-body">
+            <div class="field">
+              <label for="download_root">视频下载根目录</label>
+              <div class="dir-row">
+                <input id="download_root" type="text" value="{{ config.download_root }}" />
+                <button class="btn btn-secondary btn-sm" onclick="browseDirectory()" title="浏览目录">浏览</button>
+              </div>
+              <div class="dir-status" id="dir_status">
+                <span id="dir_status_icon"></span>
+                <span id="dir_status_text"></span>
+                <span id="stat_dir_path" class="muted" style="color: var(--color-gray-400); margin-left: 6px; font-size: 11px;">{{ config.download_root }}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- ═══════════ Download Settings ═══════════ -->
-    <div class="card" id="download_card">
-      <div class="card-header">
-        <h2>下载设置</h2>
-      </div>
-      <div class="card-body">
-        <div class="field-group">
-          <div class="field">
-            <label for="max_daily_downloads">每类视频下载数</label>
-            <input id="max_daily_downloads" type="number" min="1" required value="{{ config.max_daily_downloads }}" />
-          </div>
-          <div class="field">
-            <!-- spacer for 2-col alignment -->
-          </div>
-        </div>
-        <div class="field" style="margin-top:16px;">
-          <label for="download_root">视频下载根目录</label>
-          <div class="dir-row">
-            <input id="download_root" type="text" value="{{ config.download_root }}" />
-            <button class="btn btn-secondary btn-sm" onclick="browseDirectory()" title="浏览目录">浏览</button>
-          </div>
-          <div class="dir-status" id="dir_status">
-            <span id="dir_status_icon"></span>
-            <span id="dir_status_text"></span>
-          </div>
-        </div>
-      </div>
-      <div class="card-footer">
-        <div></div>
-        <div style="display:flex;gap:10px;">
-          <button class="btn btn-lg btn-secondary" onclick="goToPoster()">海报墙</button>
-          <button class="btn btn-lg btn-secondary" onclick="goToWaterfall()">瀑布流</button>
-          <button class="btn btn-lg btn-primary" onclick="runNow()">立即执行</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ═══════════ Log Panel ═══════════ -->
+    <!-- ═══════════ Log Panel (sticky bottom) ═══════════ -->
     <div class="log-panel" id="log_panel">
       <div class="log-panel-header" onclick="toggleLogPanel()">
         <div class="log-panel-header-left">
@@ -1713,6 +1741,15 @@
       const isRunningEl = document.getElementById('stat_is_running');
       isRunningEl.textContent = isRunning ? '运行中' : '空闲';
       isRunningEl.style.color = isRunning ? '#16a34a' : '#6b7280';
+
+      // 同步顶栏状态胶囊
+      const topbarPill = document.getElementById('topbar_status_pill');
+      const topbarText = document.getElementById('topbar_status_text');
+      if (topbarPill && topbarText) {
+        topbarText.textContent = isRunning ? '运行中' : '空闲';
+        topbarPill.classList.toggle('is-running', !!isRunning);
+        topbarPill.classList.toggle('is-idle', !isRunning);
+      }
 
       document.getElementById('stat_last_result').textContent = data.state.last_result || '';
       document.getElementById('stat_last_run_time').textContent = data.state.last_run_time || '暂无';
