@@ -713,6 +713,7 @@ TWITTER_BEARER = "Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4
 TWITTER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
 BLOGGER_DIR_NAME = "blogger"
 BLOGGER_CACHE_FILE = "blogger_cache.pkl"
+BLOGGER_INFO_CACHE_FILE = "blogger_info_cache.pkl"
 
 
 def _build_twitter_headers(cookie: str) -> Dict[str, str]:
@@ -751,6 +752,29 @@ def _save_blogger_cache(download_root: Path, cache: set) -> None:
         pickle.dump(cache, f)
 
 
+def _load_blogger_info_cache(download_root: Path) -> dict:
+    """读取博主资料缓存（头像、简介等）。"""
+    cache_path = download_root / BLOGGER_DIR_NAME / BLOGGER_INFO_CACHE_FILE
+    if cache_path.exists():
+        try:
+            with cache_path.open("rb") as f:
+                data = pickle.load(f)
+                if isinstance(data, dict):
+                    return data
+        except Exception:
+            pass
+    return {}
+
+
+def _save_blogger_info_cache(download_root: Path, cache: dict) -> None:
+    """写入博主资料缓存。"""
+    cache_dir = download_root / BLOGGER_DIR_NAME
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cache_path = cache_dir / BLOGGER_INFO_CACHE_FILE
+    with cache_path.open("wb") as f:
+        pickle.dump(cache, f)
+
+
 def twitter_get_user_info(screen_name: str, headers: Dict[str, str], proxy: Optional[str]) -> Optional[dict]:
     """获取 Twitter 用户基本信息，返回 dict 或 None。"""
     url = (
@@ -774,6 +798,8 @@ def twitter_get_user_info(screen_name: str, headers: Dict[str, str], proxy: Opti
             "screen_name": user_result["legacy"]["screen_name"],
             "statuses_count": user_result["legacy"]["statuses_count"],
             "media_count": user_result["legacy"]["media_count"],
+            "profile_image_url": user_result["legacy"].get("profile_image_url_https", ""),
+            "description": user_result["legacy"].get("description", ""),
         }
     except Exception as exc:
         append_log(f"[博主] 获取 @{screen_name} 信息失败：{exc}")
@@ -1056,6 +1082,19 @@ def twitter_crawl_blogger(
     user_info = twitter_get_user_info(screen_name, headers, proxy_url)
     if not user_info:
         return 0, 0, 1, cache
+
+    # 将博主资料写入缓存，供前端展示
+    try:
+        info_cache = _load_blogger_info_cache(download_root)
+        info_cache[screen_name] = {
+            "name": user_info.get("name") or screen_name,
+            "profile_image_url": user_info.get("profile_image_url", ""),
+            "description": user_info.get("description", ""),
+            "updated_at": time.time(),
+        }
+        _save_blogger_info_cache(download_root, info_cache)
+    except Exception as exc:
+        append_log(f"[博主] 写入 @{screen_name} 资料缓存失败：{exc}")
 
     append_log(
         f"[博主] @{screen_name} ({user_info['name']}) "
@@ -1803,14 +1842,19 @@ def api_blogger_list():
     cfg = get_current_config()
     download_root = resolve_download_root(cfg["download_root"])
     blogger_dir = download_root / BLOGGER_DIR_NAME
+    info_cache = _load_blogger_info_cache(download_root)
     bloggers = []
     for name in cfg.get("twitter_blogger_list", []):
         user_dir = blogger_dir / name
         file_count = 0
         if user_dir.exists():
             file_count = sum(1 for p in user_dir.iterdir() if p.is_file())
+        info = info_cache.get(name, {}) if isinstance(info_cache, dict) else {}
         bloggers.append({
             "screen_name": name,
+            "name": info.get("name") or name,
+            "profile_image_url": info.get("profile_image_url", ""),
+            "description": info.get("description", ""),
             "file_count": file_count,
         })
     return JSONResponse({
@@ -1843,6 +1887,35 @@ async def api_blogger_add(request: Request):
         cfg["twitter_blogger_list"] = bl
         save_config(cfg)
     append_log(f"[博主] 已添加博主 @{screen_name}")
+
+    # 后台异步获取博主资料（头像 / 简介），不影响主流程
+    def _fetch_info_async():
+        try:
+            snapshot = load_config()
+            download_root_local = resolve_download_root(snapshot["download_root"])
+            cookie = str(snapshot.get("twitter_cookie", "")).strip()
+            if not cookie:
+                return
+            proxy = str(snapshot.get("proxy", "")).strip() or None
+            headers = _build_twitter_headers(cookie)
+            headers["referer"] = "https://twitter.com/" + screen_name
+            user_info = twitter_get_user_info(screen_name, headers, proxy)
+            if not user_info:
+                return
+            info_cache = _load_blogger_info_cache(download_root_local)
+            info_cache[screen_name] = {
+                "name": user_info.get("name") or screen_name,
+                "profile_image_url": user_info.get("profile_image_url", ""),
+                "description": user_info.get("description", ""),
+                "updated_at": time.time(),
+            }
+            _save_blogger_info_cache(download_root_local, info_cache)
+            append_log(f"[博主] 已更新 @{screen_name} 资料缓存")
+        except Exception as exc:
+            append_log(f"[博主] 异步获取 @{screen_name} 资料失败：{exc}")
+
+    threading.Thread(target=_fetch_info_async, daemon=True).start()
+
     return JSONResponse({"ok": True, "screen_name": screen_name})
 
 

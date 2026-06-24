@@ -367,11 +367,10 @@
     /* ── Blogger Chips ── */
     .blogger-chip-list {
       display: flex;
-      flex-wrap: wrap;
+      flex-direction: column;
       gap: 8px;
       min-height: 28px;
       margin-bottom: 14px;
-      align-items: center;
     }
     .blogger-chip-empty {
       font-size: 13px;
@@ -379,31 +378,97 @@
       line-height: 28px;
     }
     .blogger-chip {
-      display: inline-flex;
+      display: flex;
       align-items: center;
-      gap: 4px;
-      background: var(--color-primary-light);
-      border: 1px solid var(--color-primary-border);
-      color: #4338ca;
-      border-radius: 20px;
-      padding: 4px 12px;
+      gap: 10px;
+      background: var(--color-gray-50);
+      border: 1px solid var(--color-gray-200);
+      color: var(--color-gray-800);
+      border-radius: 10px;
+      padding: 10px 12px;
       font-size: 13px;
-      font-weight: 500;
       transition: all var(--transition-fast);
     }
-    .blogger-chip:hover { box-shadow: 0 1px 3px rgba(37,99,235,0.15); }
-    .blogger-chip button {
+    .blogger-chip:hover { box-shadow: 0 1px 4px rgba(15,23,42,0.08); border-color: var(--color-gray-300); }
+    .blogger-chip-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--color-primary-light);
+      color: #4338ca;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 15px;
+      flex-shrink: 0;
+      overflow: hidden;
+      object-fit: cover;
+    }
+    .blogger-chip-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .blogger-chip-body {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .blogger-chip-name {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      min-width: 0;
+    }
+    .blogger-chip-display-name {
+      font-weight: 600;
+      color: var(--color-gray-900);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 180px;
+    }
+    .blogger-chip-screen-name {
+      color: var(--color-gray-500);
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .blogger-chip-desc {
+      color: var(--color-gray-600);
+      font-size: 12px;
+      line-height: 1.45;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .blogger-chip-desc.is-empty {
+      color: var(--color-gray-400);
+      font-style: italic;
+    }
+    .blogger-chip-meta {
+      color: var(--color-gray-400);
+      font-size: 11px;
+      margin-top: 1px;
+    }
+    .blogger-chip button.blogger-chip-remove {
       background: none;
       border: none;
-      color: #818cf8;
+      color: var(--color-gray-400);
       cursor: pointer;
-      font-size: 16px;
-      padding: 0 2px;
+      font-size: 18px;
+      padding: 0 4px;
       line-height: 1;
       border-radius: 50%;
       transition: color var(--transition-fast);
+      flex-shrink: 0;
     }
-    .blogger-chip button:hover { color: var(--color-error); }
+    .blogger-chip button.blogger-chip-remove:hover { color: var(--color-error); }
 
     .blogger-input-row {
       display: flex;
@@ -1722,28 +1787,94 @@
 
     let bloggerList = {{ config.twitter_blogger_list | tojson }};
 
+    function bloggerInitial(name) {
+      return (name || '?').replace(/^@/, '').charAt(0).toUpperCase();
+    }
+
+    function buildAvatarEl(screenName, profileImageUrl) {
+      const wrap = document.createElement('div');
+      wrap.className = 'blogger-chip-avatar';
+      wrap.textContent = bloggerInitial(screenName);
+      if (profileImageUrl) {
+        const img = document.createElement('img');
+        img.alt = '@' + screenName;
+        img.loading = 'lazy';
+        img.referrerPolicy = 'no-referrer';
+        img.src = profileImageUrl;
+        img.onload = () => {
+          // 头像加载成功后清除占位字母
+          wrap.textContent = '';
+          wrap.appendChild(img);
+        };
+        img.onerror = () => {
+          // 加载失败时保留首字母占位
+          if (img.parentNode) img.parentNode.removeChild(img);
+        };
+      }
+      return wrap;
+    }
+
     function renderBloggerChips() {
       bloggerChipList.innerHTML = '';
-      bloggerCountBadge.textContent = bloggerList.length;
-      document.getElementById('stat_blogger_count').textContent = bloggerList.length;
-      if (bloggerList.length === 0) {
+      const list = Array.isArray(bloggerList) ? bloggerList : [];
+      bloggerCountBadge.textContent = list.length;
+      document.getElementById('stat_blogger_count').textContent = list.length;
+      if (list.length === 0) {
         const empty = document.createElement('span');
         empty.className = 'blogger-chip-empty';
         empty.textContent = '暂无收藏博主，请在下方输入用户名添加';
         bloggerChipList.appendChild(empty);
         return;
       }
-      bloggerList.forEach(name => {
+      list.forEach(b => {
+        const screenName = b.screen_name || b;
         const chip = document.createElement('div');
         chip.className = 'blogger-chip';
-        const label = document.createElement('span');
-        label.textContent = '@' + name;
-        chip.appendChild(label);
+
+        chip.appendChild(buildAvatarEl(screenName, b.profile_image_url));
+
+        const body = document.createElement('div');
+        body.className = 'blogger-chip-body';
+
+        const nameRow = document.createElement('div');
+        nameRow.className = 'blogger-chip-name';
+        const displayName = document.createElement('span');
+        displayName.className = 'blogger-chip-display-name';
+        displayName.textContent = b.name && b.name !== screenName ? b.name : '@' + screenName;
+        const screenEl = document.createElement('span');
+        screenEl.className = 'blogger-chip-screen-name';
+        screenEl.textContent = '@' + screenName;
+        nameRow.appendChild(displayName);
+        nameRow.appendChild(screenEl);
+        body.appendChild(nameRow);
+
+        const desc = document.createElement('div');
+        desc.className = 'blogger-chip-desc';
+        const descText = (b.description || '').trim();
+        if (descText) {
+          desc.textContent = descText;
+        } else {
+          desc.classList.add('is-empty');
+          desc.textContent = '暂无简介';
+        }
+        body.appendChild(desc);
+
+        if (typeof b.file_count === 'number' && b.file_count > 0) {
+          const meta = document.createElement('div');
+          meta.className = 'blogger-chip-meta';
+          meta.textContent = '已下载 ' + b.file_count + ' 个文件';
+          body.appendChild(meta);
+        }
+
+        chip.appendChild(body);
+
         const rmBtn = document.createElement('button');
+        rmBtn.className = 'blogger-chip-remove';
         rmBtn.textContent = '×';
-        rmBtn.title = '移除 @' + name;
-        rmBtn.onclick = () => removeBlogger(name);
+        rmBtn.title = '移除 @' + screenName;
+        rmBtn.onclick = () => removeBlogger(screenName);
         chip.appendChild(rmBtn);
+
         bloggerChipList.appendChild(chip);
       });
     }
@@ -1812,7 +1943,7 @@
         const data = await resp.json();
         if (!data.ok) return;
 
-        bloggerList = (data.bloggers || []).map(b => b.screen_name);
+        bloggerList = data.bloggers || [];
         renderBloggerChips();
 
         if (data.settings) {
