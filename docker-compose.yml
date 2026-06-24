@@ -1,6 +1,6 @@
 services:
   twitter-ero-video-ranking-downloader:
-    image: hexbkyoma/twitter-ero-video-ranking-downloader:latest
+    build: .
     container_name: twitter-ero-video-ranking-downloader
     restart: unless-stopped
     ports:
