@@ -774,15 +774,15 @@
         const selected = selectedIds.has(item.id);
         const thumb = item.thumbnail
           ? `<img src="${escapeHtml(item.thumbnail)}" alt="${escapeHtml(item.title || item.id)}" loading="lazy" />`
-          : `<div class="fallback">VIDEO</div>`;
+          : `<div class="fallback">视频</div>`;
         const duration = item.duration != null
-          ? `<span class="pill">${escapeHtml(String(item.duration))}s</span>`
+          ? `<span class="pill">${escapeHtml(String(item.duration))} 秒</span>`
           : '';
         const pv = item.pv != null
-          ? `<span class="pill">${escapeHtml(String(item.pv))} PV</span>`
+          ? `<span class="pill">${escapeHtml(String(item.pv))} 播放</span>`
           : '';
         const favorite = item.favorite_count != null
-          ? `<span class="pill">${escapeHtml(String(item.favorite_count))} fav</span>`
+          ? `<span class="pill">${escapeHtml(String(item.favorite_count))} 收藏</span>`
           : '';
         return `
           <article class="card${selected ? ' selected' : ''}" data-id="${escapeHtml(item.id)}">

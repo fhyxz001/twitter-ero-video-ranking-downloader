@@ -470,8 +470,8 @@
       <div class="control">
         <label for="sortSelect">排序方式</label>
         <select id="sortSelect" onchange="applyFilters(false)">
-          <option value="time_desc">时间从新到旧</option>
-          <option value="time_asc">时间从旧到新</option>
+          <option value="time_desc">按名称降序</option>
+          <option value="time_asc">按名称升序</option>
           <option value="size_desc">文件大小从大到小</option>
           <option value="size_asc">文件大小从小到大</option>
           <option value="duration_desc">时长从长到短</option>
@@ -780,7 +780,6 @@
             />
             <div class="cover" role="button" tabindex="0" aria-label="预览 ${escapeHtml(item.video)}" onclick="openPreview('${key}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openPreview('${key}')}">
               ${thumbHtml}
-              <div class="date-badge">${escapeHtml(folderLabel)}</div>
               <div class="play-badge" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg>
               </div>
