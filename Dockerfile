@@ -13,8 +13,11 @@ COPY main.py /app/main.py
 COPY templates /app/templates
 COPY static /app/static
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl ffmpeg && \
+RUN set -eux; \
+    for i in 1 2 3; do \
+        apt-get update -o Acquire::Retries=3 && break || sleep 5; \
+    done; \
+    apt-get install -y --no-install-recommends curl ffmpeg; \
     rm -rf /var/lib/apt/lists/*
 
 EXPOSE 2617
