@@ -505,7 +505,6 @@
     </header>
 
     <section class="dock">
-      <nav id="tabs" class="tabs" aria-label="标签"></nav>
       <div class="status">
         <div id="statusText">正在加载...</div>
         <div class="status-side">
@@ -528,7 +527,7 @@
       <div class="settings-head">
         <div>
           <h2 class="settings-title">瀑布流设置</h2>
-          <p class="settings-note">这里只影响瀑布流预览，不会改动下载页的定时下载筛选。</p>
+          <p class="settings-note">设置每页展示的视频数量。</p>
         </div>
         <button class="btn" type="button" onclick="closeSettings()">&times;</button>
       </div>
@@ -539,30 +538,6 @@
             <select id="settingsPerPage">
               {% for value in page_size_options %}
               <option value="{{ value }}" {% if config.per_page == value %}selected{% endif %}>{{ value }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="field">
-            <label for="settingsSort">排序方式</label>
-            <select id="settingsSort">
-              {% for option in sort_options %}
-              <option value="{{ option.value }}" {% if config.sort == option.value %}selected{% endif %}>{{ option.label }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="field">
-            <label for="settingsRange">时间范围</label>
-            <select id="settingsRange">
-              {% for option in range_options %}
-              <option value="{{ option.value }}" {% if config.range == option.value %}selected{% endif %}>{{ option.label }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="field">
-            <label for="settingsTimeFilter">时间筛选</label>
-            <select id="settingsTimeFilter">
-              {% for option in time_filter_options %}
-              <option value="{{ option.min }}-{{ option.max }}" data-min="{{ option.min }}" data-max="{{ option.max }}" {% if config.min_time == option.min and config.max_time == option.max %}selected{% endif %}>{{ option.label }}</option>
               {% endfor %}
             </select>
           </div>
@@ -588,13 +563,10 @@
   </div>
 
   <script>
-    const initialTabs = {{ tabs | tojson }};
     const initialConfig = {{ config | tojson }};
     const settingsModal = document.getElementById('settingsModal');
 
-    let tabs = initialTabs;
     let currentConfig = { ...initialConfig };
-    let currentTag = new URLSearchParams(location.search).get('tag') || '';
     let currentPage = Math.max(1, parseInt(new URLSearchParams(location.search).get('page') || '1', 10) || 1);
     let pagination = {
       page: currentPage,
@@ -609,7 +581,7 @@
     function renderConfigLine(cfg) {
       if (!cfg) return;
       document.getElementById('configLine').textContent =
-        `排序 ${cfg.sort || '-'} / 范围 ${cfg.range || '-'} / 时长 ${cfg.min_time || 0}-${cfg.max_time || 0} 秒 / 每页 ${cfg.per_page || 10}`;
+        `每页 ${cfg.per_page || 10} 个视频`;
     }
 
     function escapeHtml(value) {
@@ -633,34 +605,8 @@
       return items.find(item => item.id === id) || null;
     }
 
-    function tabName(code) {
-      const tab = tabs.find(item => item.code === code);
-      return tab ? tab.name : '全部';
-    }
-
-    function setTimeFilterValue(minTime, maxTime) {
-      const select = document.getElementById('settingsTimeFilter');
-      const value = `${parseInt(minTime || 0, 10)}-${parseInt(maxTime || 0, 10)}`;
-      if ([...select.options].some(option => option.value === value)) {
-        select.value = value;
-      } else {
-        select.value = '0-86400';
-      }
-    }
-
-    function getSelectedTimeFilter() {
-      const option = document.getElementById('settingsTimeFilter').selectedOptions[0];
-      return {
-        min: parseInt(option.dataset.min || '0', 10),
-        max: parseInt(option.dataset.max || '86400', 10),
-      };
-    }
-
     function openSettings() {
       document.getElementById('settingsPerPage').value = String(currentConfig.per_page || 10);
-      document.getElementById('settingsSort').value = currentConfig.sort || 'pv';
-      document.getElementById('settingsRange').value = currentConfig.range || 'daily';
-      setTimeFilterValue(currentConfig.min_time || 0, currentConfig.max_time || 86400);
       settingsModal.classList.add('open');
     }
 
@@ -675,13 +621,8 @@
     }
 
     async function saveSettings() {
-      const timeFilter = getSelectedTimeFilter();
       const payload = {
         per_page: parseInt(document.getElementById('settingsPerPage').value, 10),
-        sort: document.getElementById('settingsSort').value,
-        range: document.getElementById('settingsRange').value,
-        min_time: timeFilter.min,
-        max_time: timeFilter.max,
       };
 
       try {
@@ -710,25 +651,11 @@
 
     function updateUrl() {
       const params = new URLSearchParams();
-      if (currentTag) {
-        params.set('tag', currentTag);
-      }
       if (currentPage > 1) {
         params.set('page', String(currentPage));
       }
       const query = params.toString();
       history.replaceState(null, '', query ? `/waterfall?${query}` : '/waterfall');
-    }
-
-    function renderTabs() {
-      const box = document.getElementById('tabs');
-      box.innerHTML = tabs.map(tab => `
-        <button
-          type="button"
-          class="tab${tab.code === currentTag ? ' active' : ''}"
-          onclick="switchTab('${jsString(tab.code)}')"
-        >${escapeHtml(tab.name)}</button>
-      `).join('');
     }
 
     function renderStatus() {
@@ -750,14 +677,14 @@
       nextPageBtn.disabled = loading || !pagination.has_next;
       pageInfo.textContent = `第 ${pagination.page} 页`;
       if (loading) {
-        status.innerHTML = `正在加载 <strong>${escapeHtml(tabName(currentTag))}</strong> 第 ${pagination.page} 页...`;
+        status.innerHTML = `正在加载第 ${pagination.page} 页...`;
         return;
       }
       if (loadError) {
         status.innerHTML = `<strong>${escapeHtml(loadError)}</strong>`;
         return;
       }
-      status.innerHTML = `<strong>${escapeHtml(tabName(currentTag))}</strong> 当前页共 ${items.length} 个视频`;
+      status.innerHTML = `当前页共 ${items.length} 个视频`;
     }
 
     function renderCards() {
@@ -839,14 +766,10 @@
       loading = true;
       loadError = '';
       selectedIds.clear();
-      renderTabs();
       renderSkeletons(currentConfig.per_page || 10);
       renderStatus();
       try {
         const params = new URLSearchParams();
-        if (currentTag) {
-          params.set('tag', currentTag);
-        }
         if (currentPage > 1) {
           params.set('page', String(currentPage));
         }
@@ -856,7 +779,6 @@
         if (!data.ok) {
           throw new Error(data.error || '加载失败');
         }
-        tabs = Array.isArray(data.tabs) ? data.tabs : tabs;
         items = Array.isArray(data.items) ? data.items : [];
         if (data.config) {
           currentConfig = data.config;
@@ -888,20 +810,8 @@
         renderConfigLine(currentConfig);
       } finally {
         loading = false;
-        renderTabs();
         renderCards();
       }
-    }
-
-    function switchTab(code) {
-      if (code === currentTag || loading) return;
-      currentTag = code;
-      currentPage = 1;
-      pagination.page = 1;
-      pagination.has_next = false;
-      updateUrl();
-      loadData();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function changePage(delta) {
@@ -993,7 +903,7 @@
         const resp = await fetch('/api/waterfall/download', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tag_code: currentTag, items: selectedItems }),
+          body: JSON.stringify({ items: selectedItems }),
         });
         const data = await resp.json();
         if (!data.ok) {
@@ -1017,11 +927,7 @@
       }
     });
 
-    if (!tabs.some(tab => tab.code === currentTag)) {
-      currentTag = '';
-    }
     renderConfigLine(currentConfig);
-    renderTabs();
     updateUrl();
     loadData();
   </script>

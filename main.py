@@ -1,7 +1,9 @@
 import asyncio
+import hashlib
 import json
 import os
 import pickle
+import re
 import subprocess
 import sys
 import threading
@@ -46,14 +48,9 @@ APP_DIR = get_exe_dir()
 CONFIG_PATH = APP_DIR / "config.json"
 TEMPLATES_PATH = get_resource_path("templates")
 STATIC_PATH = get_resource_path("static")
-MEDIA_API_URL = "https://truvaze.com/api/media"
+MEDIA_API_URL = "https://ttt.monsnode.com/"
 REQUEST_TIMEOUT = 30
-TIME_FILTER_MIN = 0
-TIME_FILTER_MAX = 24 * 60 * 60
-ALLOWED_SORTS = {"time", "favorite", "pv", "created"}
-ALLOWED_RANGES = {"daily", "weekly", "monthly", "all"}
 ALLOWED_WATERFALL_PAGE_SIZES = {10, 20, 30, 50, 100}
-UNTAGGED_FOLDER_NAME = "无标签"
 
 DEFAULT_CONFIG: Dict[str, object] = {
     "download_root": "/data/downloads",
@@ -61,17 +58,7 @@ DEFAULT_CONFIG: Dict[str, object] = {
     "auto_download_enabled": True,
     "schedule_cron": "0 3 * * *",
     "max_daily_downloads": 10,
-    "sort": "pv",
-    "range": "daily",
-    "min_time": TIME_FILTER_MIN,
-    "max_time": TIME_FILTER_MAX,
-    "time_filter_unit": "seconds",
-    "tag_codes": [],
     "waterfall_per_page": 10,
-    "waterfall_sort": "pv",
-    "waterfall_range": "daily",
-    "waterfall_min_time": TIME_FILTER_MIN,
-    "waterfall_max_time": TIME_FILTER_MAX,
     "twitter_cookie": "",
     "twitter_blogger_list": [],
     "twitter_blogger_enabled": True,
@@ -79,29 +66,6 @@ DEFAULT_CONFIG: Dict[str, object] = {
     "twitter_blogger_max_media": -1,
     "twitter_blogger_has_retweet": False,
 }
-
-TIME_FILTER_OPTIONS = [
-    {"label": "全部", "min": 0, "max": TIME_FILTER_MAX},
-    {"label": "0-5分钟", "min": 0, "max": 5 * 60},
-    {"label": "5-15分钟", "min": 5 * 60, "max": 15 * 60},
-    {"label": "15-30分钟", "min": 15 * 60, "max": 30 * 60},
-    {"label": "30分钟-1小时", "min": 30 * 60, "max": 60 * 60},
-    {"label": "一小时以上", "min": 60 * 60, "max": TIME_FILTER_MAX},
-]
-
-SORT_OPTIONS = [
-    {"value": "created", "label": "最近添加"},
-    {"value": "time", "label": "按时长"},
-    {"value": "favorite", "label": "按点赞"},
-    {"value": "pv", "label": "按观看数"},
-]
-
-RANGE_OPTIONS = [
-    {"value": "daily", "label": "每日"},
-    {"value": "weekly", "label": "每周"},
-    {"value": "monthly", "label": "每月"},
-    {"value": "all", "label": "全部"},
-]
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -159,16 +123,47 @@ def get_logs() -> List[str]:
         return list(log_lines)
 
 
-def validate_time_window(min_value: object, max_value: object, label: str) -> tuple[int, int]:
-    min_time = int(min_value)
-    max_time = int(max_value)
-    if min_time < TIME_FILTER_MIN or min_time > TIME_FILTER_MAX:
-        raise ValueError(f"{label}最小时长必须在 {TIME_FILTER_MIN} 到 {TIME_FILTER_MAX} 秒之间")
-    if max_time < TIME_FILTER_MIN or max_time > TIME_FILTER_MAX:
-        raise ValueError(f"{label}最大时长必须在 {TIME_FILTER_MIN} 到 {TIME_FILTER_MAX} 秒之间")
-    if min_time > max_time:
-        raise ValueError(f"{label}最小时长不能大于最大时长")
-    return min_time, max_time
+def parse_monsnode_html(html: str) -> List[dict]:
+    """Parse monsnode.com HTML to extract video URLs and thumbnails from div.listn blocks.
+
+    Expected structure:
+        <div class="listn" id="">
+          <a href="video_url" ...>
+            <img src="thumbnail_url" ...>
+          </a>
+        </div>
+    """
+    items: List[dict] = []
+    pattern = r'<div\s+class="listn"[^>]*>\s*<a\s+href="([^"]*)"[^>]*>\s*<img\s+src="([^"]*)"[^>]*>\s*</a>\s*</div>'
+    for match in re.finditer(pattern, html, re.DOTALL | re.IGNORECASE):
+        video_url = match.group(1).strip()
+        thumb_url = match.group(2).strip()
+        if not video_url:
+            continue
+        video_id = _generate_video_id(video_url)
+        items.append({
+            "id": video_id,
+            "url": video_url,
+            "thumbnail": thumb_url if thumb_url.startswith("http") else "",
+            "title": video_id,
+        })
+    return items
+
+
+def _generate_video_id(url: str) -> str:
+    """Extract a stable ID from a video URL. Prefers Twitter's numeric ID in the path."""
+    parsed = urlparse(url)
+    path_parts = parsed.path.strip("/").split("/")
+    # Look for a numeric Twitter-style ID (19 digits typical) in the path
+    for part in path_parts:
+        if part.isdigit() and len(part) >= 15:
+            return part
+    # Fallback: use the filename without extension
+    filename = Path(parsed.path).stem
+    if filename:
+        return filename
+    # Last resort: MD5 hash of the URL
+    return hashlib.md5(url.encode()).hexdigest()[:16]
 
 
 def validate_config(raw: Dict[str, object]) -> Dict[str, object]:
@@ -185,16 +180,6 @@ def validate_config(raw: Dict[str, object]) -> Dict[str, object]:
 
     cfg["auto_download_enabled"] = parse_bool(cfg.get("auto_download_enabled", True))
 
-    sort = str(cfg.get("sort", "pv")).strip()
-    if sort not in ALLOWED_SORTS:
-        raise ValueError("排序方式必须是 time、favorite、pv 或 created")
-    cfg["sort"] = sort
-
-    range_value = str(cfg.get("range", "daily")).strip()
-    if range_value not in ALLOWED_RANGES:
-        raise ValueError("时间范围必须是 daily、weekly、monthly 或 all")
-    cfg["range"] = range_value
-
     schedule_cron = str(cfg.get("schedule_cron", "")).strip()
     try:
         CronTrigger.from_crontab(schedule_cron)
@@ -204,58 +189,13 @@ def validate_config(raw: Dict[str, object]) -> Dict[str, object]:
 
     max_daily = int(cfg.get("max_daily_downloads", 0))
     if max_daily <= 0:
-        raise ValueError("每类视频下载数必须大于0")
+        raise ValueError("每次下载数必须大于0")
     cfg["max_daily_downloads"] = max_daily
-
-    min_time, max_time = validate_time_window(
-        cfg.get("min_time", TIME_FILTER_MIN),
-        cfg.get("max_time", TIME_FILTER_MAX),
-        "",
-    )
-    cfg["min_time"] = min_time
-    cfg["max_time"] = max_time
-    cfg["time_filter_unit"] = "seconds"
-
-    tag_codes = cfg.get("tag_codes", [])
-    if isinstance(tag_codes, str):
-        try:
-            tag_codes = json.loads(tag_codes)
-        except (json.JSONDecodeError, TypeError):
-            tag_codes = []
-    if not isinstance(tag_codes, list):
-        tag_codes = []
-    tag_codes = [str(t).strip() for t in tag_codes if str(t).strip()]
-    # deduplicate while preserving order
-    seen = set()
-    deduped = []
-    for t in tag_codes:
-        if t not in seen:
-            seen.add(t)
-            deduped.append(t)
-    cfg["tag_codes"] = deduped
 
     waterfall_per_page = int(cfg.get("waterfall_per_page", 10))
     if waterfall_per_page not in ALLOWED_WATERFALL_PAGE_SIZES:
         raise ValueError("瀑布流每页展示数量必须是 10、20、30、50 或 100")
     cfg["waterfall_per_page"] = waterfall_per_page
-
-    waterfall_sort = str(cfg.get("waterfall_sort", "pv")).strip()
-    if waterfall_sort not in ALLOWED_SORTS:
-        raise ValueError("瀑布流排序方式必须是 time、favorite、pv 或 created")
-    cfg["waterfall_sort"] = waterfall_sort
-
-    waterfall_range = str(cfg.get("waterfall_range", "daily")).strip()
-    if waterfall_range not in ALLOWED_RANGES:
-        raise ValueError("瀑布流时间范围必须是 daily、weekly、monthly 或 all")
-    cfg["waterfall_range"] = waterfall_range
-
-    waterfall_min_time, waterfall_max_time = validate_time_window(
-        cfg.get("waterfall_min_time", TIME_FILTER_MIN),
-        cfg.get("waterfall_max_time", TIME_FILTER_MAX),
-        "瀑布流",
-    )
-    cfg["waterfall_min_time"] = waterfall_min_time
-    cfg["waterfall_max_time"] = waterfall_max_time
 
     # --- Twitter blogger config ---
     cfg["twitter_cookie"] = str(cfg.get("twitter_cookie", "")).strip()
@@ -322,17 +262,6 @@ def load_config() -> Dict[str, object]:
     try:
         with CONFIG_PATH.open("r", encoding="utf-8") as f:
             raw = json.load(f)
-        # backward compatibility: old configs stored duration in minutes.
-        if raw.get("time_filter_unit") != "seconds" and 0 < int(raw.get("min_time", 0)) <= 180:
-            raw["min_time"] = int(raw["min_time"]) * 60
-        if raw.get("time_filter_unit") != "seconds" and 0 < int(raw.get("max_time", 0)) <= 180:
-            raw["max_time"] = int(raw["max_time"]) * 60
-        raw["time_filter_unit"] = "seconds"
-        # backward compatibility: convert old tag_code string to tag_codes list
-        if "tag_code" in raw and "tag_codes" not in raw:
-            old_tag = str(raw["tag_code"]).strip()
-            raw["tag_codes"] = [old_tag] if old_tag else []
-            del raw["tag_code"]
         return validate_config(raw)
     except Exception as exc:
         append_log(f"读取配置失败，已回退默认配置：{exc}")
@@ -380,16 +309,6 @@ def update_schedule(cfg: Dict[str, object]) -> None:
         append_log(f"博主定时爬取已更新：cron={blogger_cron}")
 
 
-def get_waterfall_config(cfg: Dict[str, object]) -> Dict[str, object]:
-    return {
-        "per_page": int(cfg.get("waterfall_per_page", 10)),
-        "sort": str(cfg.get("waterfall_sort", "pv")),
-        "range": str(cfg.get("waterfall_range", "daily")),
-        "min_time": int(cfg.get("waterfall_min_time", TIME_FILTER_MIN)),
-        "max_time": int(cfg.get("waterfall_max_time", TIME_FILTER_MAX)),
-    }
-
-
 def get_file_ext_from_url(url: str, fallback: str) -> str:
     parsed = urlparse(url)
     ext = Path(parsed.path).suffix.lower()
@@ -402,102 +321,6 @@ def build_proxies(proxy: str) -> Optional[Dict[str, str]]:
     if not proxy:
         return None
     return {"http": proxy, "https": proxy}
-
-
-def build_media_request_params(
-    cfg: Dict[str, object],
-    tag_code: str = "",
-    per_page: int = 30,
-    page: int = 1,
-) -> Dict[str, object]:
-    params: Dict[str, object] = {
-        "page": max(1, int(page)),
-        "per_page": per_page,
-        "ids": "",
-        "isAnimeOnly": 0,
-        "sort": str(cfg["sort"]),
-    }
-    min_time = int(cfg["min_time"])
-    max_time = int(cfg["max_time"])
-    if min_time > TIME_FILTER_MIN:
-        params["min_time"] = min_time
-    if max_time < TIME_FILTER_MAX:
-        params["max_time"] = max_time
-    tc = str(tag_code).strip()
-    if tc:
-        params["category"] = tc
-    range_value = str(cfg["range"])
-    if range_value != "daily":
-        params["range"] = range_value
-    return params
-
-
-TAGS_JSON_PATH = get_resource_path("templates/code.json")
-
-_tags_cache: Optional[List[Dict[str, object]]] = None
-
-
-def _load_tags_static() -> List[Dict[str, object]]:
-    global _tags_cache
-    if _tags_cache is not None:
-        return _tags_cache
-
-    with TAGS_JSON_PATH.open("r", encoding="utf-8") as f:
-        raw = json.load(f)
-    tags: List[Dict[str, object]] = []
-    for item in raw:
-        code = str(item.get("code", "")).strip()
-        if not code:
-            continue
-        name = str(item.get("name_zh_cn", "")).strip() or code
-        tags.append({"code": code, "name": name})
-    _tags_cache = tags
-    return tags
-
-
-_INVALID_FOLDER_CHARS = '\\/:*?"<>|'
-
-
-def sanitize_folder_name(name: str) -> str:
-    """清理文件夹名中的非法字符与控制字符，保证可作为目录名。"""
-    cleaned = "".join(
-        ch for ch in str(name)
-        if ch not in _INVALID_FOLDER_CHARS and ord(ch) >= 32
-    ).strip().strip(".")
-    return cleaned
-
-
-def get_tag_name(tag_code: str) -> str:
-    """根据标签 code 查中文名，查不到则回退到 code 本身。"""
-    code = str(tag_code).strip()
-    if not code:
-        return ""
-    for tag in _load_tags_static():
-        if tag.get("code") == code:
-            return str(tag.get("name") or code)
-    return code
-
-
-def resolve_target_dir(cfg: Dict[str, object], download_root: Path, tag_code: str = "") -> Path:
-    """根据分类决定视频落地的目标文件夹（无标签或标签子文件夹）。"""
-    tc = str(tag_code).strip()
-    if not tc:
-        return download_root / UNTAGGED_FOLDER_NAME
-    folder = sanitize_folder_name(get_tag_name(tc)) or sanitize_folder_name(tc)
-    if not folder:
-        return download_root
-    return download_root / folder
-
-
-def build_download_categories(cfg: Dict[str, object]) -> List[Dict[str, str]]:
-    """构建本次任务要下载的分类。无标签分类固定排在第一位。"""
-    categories = [{"tag_code": "", "name": UNTAGGED_FOLDER_NAME}]
-    for tag_code in cfg.get("tag_codes", []):
-        code = str(tag_code).strip()
-        if not code:
-            continue
-        categories.append({"tag_code": code, "name": get_tag_name(code) or code})
-    return categories
 
 
 def download_binary(session: requests.Session, url: str, target_path: Path, proxies: Optional[Dict[str, str]]) -> bool:
@@ -519,11 +342,10 @@ def download_binary(session: requests.Session, url: str, target_path: Path, prox
         return False
 
 
-def _fetch_media_items(session: requests.Session, cfg: Dict[str, object], tag_code: str, proxies) -> List[dict]:
-    """从 API 获取媒体列表，返回 items 数组。"""
+def _fetch_monsnode_media(session: requests.Session, proxies) -> List[dict]:
+    """从 monsnode.com 获取媒体列表，解析 HTML 返回 items 数组。"""
     resp = session.get(
         MEDIA_API_URL,
-        params=build_media_request_params(cfg, tag_code=tag_code),
         timeout=REQUEST_TIMEOUT,
         proxies=proxies,
     )
@@ -531,14 +353,9 @@ def _fetch_media_items(session: requests.Session, cfg: Dict[str, object], tag_co
     raw_text = resp.text.strip()
     if not raw_text:
         raise ValueError(f"API 返回空响应（HTTP {resp.status_code}），请检查接口或代理设置")
-    try:
-        payload = resp.json()
-    except json.JSONDecodeError as exc:
-        preview = raw_text[:200]
-        raise ValueError(f"API 返回非 JSON 内容（{exc}）：{preview}") from exc
-    items = payload.get("items", [])
-    if not isinstance(items, list):
-        raise ValueError("API 返回的 items 不是数组")
+    items = parse_monsnode_html(raw_text)
+    if not items:
+        raise ValueError("未能从页面解析到任何视频")
     return items
 
 
@@ -599,7 +416,7 @@ def _is_safe_remote_media_url(url: str) -> bool:
     return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
 
 
-def _normalize_waterfall_item(item: dict, tag_code: str) -> Optional[dict]:
+def _normalize_waterfall_item(item: dict) -> Optional[dict]:
     if not isinstance(item, dict):
         return None
     video_id = str(item.get("id", "")).strip()
@@ -612,28 +429,8 @@ def _normalize_waterfall_item(item: dict, tag_code: str) -> Optional[dict]:
         "url": video_url,
         "preview_url": video_url,
         "thumbnail": thumbnail_url if _is_safe_remote_media_url(thumbnail_url) else "",
-        "tag_code": tag_code,
-        "title": str(item.get("title") or item.get("name") or video_id),
-        "duration": item.get("duration") or item.get("time") or "",
-        "favorite": item.get("favorite") or item.get("favorites") or "",
-        "pv": item.get("pv") or item.get("views") or "",
+        "title": str(item.get("title") or video_id),
     }
-
-
-def _waterfall_tabs(cfg: Dict[str, object]) -> List[dict]:
-    tabs = [{"code": "", "name": "全部"}]
-    for tag_code in cfg.get("tag_codes", []):
-        code = str(tag_code).strip()
-        if code:
-            tabs.append({"code": code, "name": get_tag_name(code) or code})
-    return tabs
-
-
-def _validate_waterfall_tag(cfg: Dict[str, object], tag_code: str) -> bool:
-    code = str(tag_code or "").strip()
-    if not code:
-        return True
-    return code in {str(t).strip() for t in cfg.get("tag_codes", [])}
 
 
 def run_download_job() -> None:
@@ -652,48 +449,23 @@ def run_download_job() -> None:
         download_root = resolve_download_root(cfg["download_root"])
         download_root.mkdir(parents=True, exist_ok=True)
 
-        max_per_category = int(cfg["max_daily_downloads"])
+        max_downloads = int(cfg["max_daily_downloads"])
         proxy = str(cfg["proxy"]).strip()
         proxies = build_proxies(proxy)
         session = requests.Session()
 
-        total_success = 0
-        total_skip = 0
-        total_fail = 0
+        append_log(f"本次计划最多下载 {max_downloads} 个视频")
 
-        categories = build_download_categories(cfg)
-        expected_total = len(categories) * max_per_category
-        category_names = "、".join(category["name"] for category in categories)
-        append_log(
-            f"本次计划下载 {len(categories)} 个分类：{category_names}；"
-            f"每类 {max_per_category} 个，理论最多 {expected_total} 个"
-        )
-
-        for category in categories:
-            tag_code = category["tag_code"]
-            category_name = category["name"]
-            target_dir = resolve_target_dir(cfg, download_root, tag_code=tag_code)
-            target_dir.mkdir(parents=True, exist_ok=True)
-            tag_label = "无标签" if not tag_code else f"{category_name}({tag_code})"
-            append_log(
-                f"当前筛选：range={cfg['range']} sort={cfg['sort']} "
-                f"time={cfg['min_time']}s-{cfg['max_time']}s "
-                f"分类={tag_label} 目录={target_dir.name}"
-            )
-            try:
-                items = _fetch_media_items(session, cfg, tag_code, proxies)
-                s, k, f = _download_items(session, items, target_dir, max_per_category, proxies)
-            except Exception as exc:
-                s, k, f = 0, 0, 1
-                append_log(f"分类 [{category_name}] 失败：{exc}")
-            append_log(f"分类 [{category_name}] 完成：成功 {s}，跳过 {k}，失败 {f}")
-            total_success += s
-            total_skip += k
-            total_fail += f
+        try:
+            items = _fetch_monsnode_media(session, proxies)
+            s, k, f = _download_items(session, items, download_root, max_downloads, proxies)
+        except Exception as exc:
+            s, k, f = 0, 0, 1
+            append_log(f"下载任务失败：{exc}")
 
         result = (
-            f"任务完成：计划最多 {expected_total}，成功 {total_success}，"
-            f"跳过 {total_skip}，失败 {total_fail}"
+            f"任务完成：计划最多 {max_downloads}，成功 {s}，"
+            f"跳过 {k}，失败 {f}"
         )
         append_log(result)
         runtime_state["last_result"] = result
@@ -1232,10 +1004,6 @@ def index(request: Request):
             "state": state,
             "blogger_state": dict(blogger_state),
             "logs": "\n".join(get_logs()),
-            "time_filter_options": TIME_FILTER_OPTIONS,
-            "tag_codes_json": json.dumps(cfg.get("tag_codes", []), ensure_ascii=False),
-            "sort_options": SORT_OPTIONS,
-            "range_options": RANGE_OPTIONS,
         },
     )
 
@@ -1249,15 +1017,6 @@ async def save(request: Request):
         auto_download_enabled = parse_bool(form.get("auto_download_enabled", "1"))
         schedule_cron = str(form.get("schedule_cron", "")).strip()
         max_daily_downloads = int(form.get("max_daily_downloads", 0))
-        sort = str(form.get("sort", "pv")).strip()
-        range_value = str(form.get("range", "daily")).strip()
-        min_time = int(form.get("min_time", TIME_FILTER_MIN))
-        max_time = int(form.get("max_time", TIME_FILTER_MAX))
-        tag_codes_raw = str(form.get("tag_codes", "[]")).strip()
-        try:
-            tag_codes = json.loads(tag_codes_raw)
-        except json.JSONDecodeError:
-            tag_codes = []
 
         with config_lock:
             cfg = load_config()
@@ -1267,11 +1026,6 @@ async def save(request: Request):
                 "auto_download_enabled": auto_download_enabled,
                 "schedule_cron": schedule_cron,
                 "max_daily_downloads": max_daily_downloads,
-                "sort": sort,
-                "range": range_value,
-                "min_time": min_time,
-                "max_time": max_time,
-                "tag_codes": tag_codes,
                 "twitter_cookie": str(form.get("twitter_cookie", cfg.get("twitter_cookie", ""))).strip(),
                 "twitter_blogger_enabled": parse_bool(form.get("twitter_blogger_enabled", cfg.get("twitter_blogger_enabled", True))),
                 "twitter_blogger_cron": str(form.get("twitter_blogger_cron", cfg.get("twitter_blogger_cron", "0 4 * * *"))).strip(),
@@ -1298,19 +1052,12 @@ async def save_quick(request: Request):
             if "download_root" in form:
                 cfg["download_root"] = str(form.get("download_root", "")).strip()
 
-            if "tag_codes" in form:
-                tag_codes_raw = str(form.get("tag_codes", "[]")).strip()
-                try:
-                    cfg["tag_codes"] = json.loads(tag_codes_raw)
-                except json.JSONDecodeError:
-                    cfg["tag_codes"] = []
-
             save_config(cfg)
             updated = load_config()
-        append_log("下载根目录/标签筛选已自动保存")
+        append_log("下载根目录已自动保存")
         return JSONResponse({"ok": True, "config": updated})
     except Exception as exc:
-        append_log(f"自动保存下载根目录/标签筛选失败：{exc}")
+        append_log(f"自动保存下载根目录失败：{exc}")
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
 
 
@@ -1321,14 +1068,10 @@ async def save_waterfall_settings(request: Request):
         with config_lock:
             cfg = load_config()
             cfg["waterfall_per_page"] = int(body.get("per_page", cfg.get("waterfall_per_page", 10)))
-            cfg["waterfall_sort"] = str(body.get("sort", cfg.get("waterfall_sort", "pv"))).strip()
-            cfg["waterfall_range"] = str(body.get("range", cfg.get("waterfall_range", "daily"))).strip()
-            cfg["waterfall_min_time"] = int(body.get("min_time", cfg.get("waterfall_min_time", TIME_FILTER_MIN)))
-            cfg["waterfall_max_time"] = int(body.get("max_time", cfg.get("waterfall_max_time", TIME_FILTER_MAX)))
             save_config(cfg)
             updated = load_config()
         append_log("瀑布流配置已保存")
-        return JSONResponse({"ok": True, "config": get_waterfall_config(updated)})
+        return JSONResponse({"ok": True, "config": {"per_page": int(updated.get("waterfall_per_page", 10))}})
     except Exception as exc:
         append_log(f"瀑布流配置保存失败：{exc}")
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
@@ -1338,11 +1081,11 @@ async def save_waterfall_settings(request: Request):
 def run_now():
     messages = []
     if runtime_state["is_running"]:
-        messages.append("排名下载任务正在运行中")
+        messages.append("下载任务正在运行中")
     else:
         threading.Thread(target=run_download_job, daemon=True).start()
-        append_log("已触发手动执行排名下载任务")
-        messages.append("排名下载任务已启动")
+        append_log("已触发手动执行下载任务")
+        messages.append("下载任务已启动")
 
     if blogger_state["is_running"]:
         messages.append("博主爬取任务正在运行中")
@@ -1371,66 +1114,33 @@ def status():
     )
 
 
-@app.get("/api/tags")
-def api_tags(page: int = 1, per_page: int = 10):
-    safe_per_page = max(1, min(per_page, 30))
-    tags = _load_tags_static()
-
-    total = len(tags)
-    total_pages = max(1, (total + safe_per_page - 1) // safe_per_page)
-    safe_page = min(max(page, 1), total_pages)
-    start = (safe_page - 1) * safe_per_page
-    end = start + safe_per_page
-
-    return JSONResponse(
-        {
-            "ok": True,
-            "items": tags[start:end],
-            "pagination": {
-                "page": safe_page,
-                "per_page": safe_per_page,
-                "total": total,
-                "total_pages": total_pages,
-            },
-        }
-    )
-
-
 @app.get("/api/waterfall")
-def api_waterfall(tag: str = "", page: int = 1):
+def api_waterfall(page: int = 1):
     cfg = get_current_config()
-    tag_code = str(tag or "").strip()
-    if not _validate_waterfall_tag(cfg, tag_code):
-        return JSONResponse({"ok": False, "error": "无效标签"}, status_code=400)
-
-    waterfall_cfg = get_waterfall_config(cfg)
-    per_page = int(waterfall_cfg["per_page"])
+    per_page = int(cfg.get("waterfall_per_page", 10))
     safe_page = max(1, int(page))
     proxies = build_proxies(str(cfg.get("proxy", "")).strip())
     session = requests.Session()
     try:
-        params = build_media_request_params(waterfall_cfg, tag_code=tag_code, per_page=per_page, page=safe_page)
-        resp = session.get(MEDIA_API_URL, params=params, timeout=REQUEST_TIMEOUT, proxies=proxies)
-        resp.raise_for_status()
-        payload = resp.json()
-        raw_items = payload.get("items", [])
-        if not isinstance(raw_items, list):
-            raise ValueError("API 返回的 items 不是数组")
+        all_items = _fetch_monsnode_media(session, proxies)
+        # Client-side pagination: slice the full result set
+        total = len(all_items)
+        start = (safe_page - 1) * per_page
+        end = start + per_page
+        page_items = all_items[start:end]
         items = [
             normalized
-            for normalized in (_normalize_waterfall_item(item, tag_code) for item in raw_items)
+            for normalized in (_normalize_waterfall_item(item) for item in page_items)
             if normalized is not None
         ]
         return JSONResponse({
             "ok": True,
-            "tag": tag_code,
-            "tabs": _waterfall_tabs(cfg),
             "items": items,
-            "config": waterfall_cfg,
+            "config": {"per_page": per_page},
             "pagination": {
                 "page": safe_page,
                 "per_page": per_page,
-                "has_next": len(raw_items) >= per_page,
+                "has_next": end < total,
             },
         })
     except Exception as exc:
@@ -1441,25 +1151,22 @@ def api_waterfall(tag: str = "", page: int = 1):
 @app.post("/api/waterfall/download")
 async def api_waterfall_download(request: Request):
     body = await request.json()
-    tag_code = str(body.get("tag_code", "")).strip()
     raw_items = body.get("items", [])
     if not isinstance(raw_items, list):
         return JSONResponse({"ok": False, "error": "items 必须是数组"}, status_code=400)
 
     cfg = get_current_config()
-    if not _validate_waterfall_tag(cfg, tag_code):
-        return JSONResponse({"ok": False, "error": "无效标签"}, status_code=400)
 
     items = [
         normalized
-        for normalized in (_normalize_waterfall_item(item, tag_code) for item in raw_items)
+        for normalized in (_normalize_waterfall_item(item) for item in raw_items)
         if normalized is not None
     ]
     if not items:
         return JSONResponse({"ok": False, "error": "没有可下载的视频"}, status_code=400)
 
     root = resolve_download_root(cfg["download_root"])
-    target_dir = resolve_target_dir(cfg, root, tag_code=tag_code)
+    target_dir = root
     root.mkdir(parents=True, exist_ok=True)
     target_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1473,8 +1180,7 @@ async def api_waterfall_download(request: Request):
         proxies=proxies,
     )
     append_log(
-        f"瀑布流手动下载完成：分类={get_tag_name(tag_code) or '全部'}，"
-        f"成功 {success_count}，跳过 {skip_count}，失败 {fail_count}"
+        f"瀑布流手动下载完成：成功 {success_count}，跳过 {skip_count}，失败 {fail_count}"
     )
     return JSONResponse({
         "ok": True,
@@ -1811,11 +1517,7 @@ def waterfall_page(request: Request):
         "waterfall.html",
         {
             "request": request,
-            "tabs": _waterfall_tabs(cfg),
-            "config": get_waterfall_config(cfg),
-            "time_filter_options": TIME_FILTER_OPTIONS,
-            "sort_options": SORT_OPTIONS,
-            "range_options": RANGE_OPTIONS,
+            "config": {"per_page": int(cfg.get("waterfall_per_page", 10))},
             "page_size_options": sorted(ALLOWED_WATERFALL_PAGE_SIZES),
         },
     )

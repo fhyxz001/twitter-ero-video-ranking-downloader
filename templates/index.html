@@ -974,57 +974,8 @@
         </div>
       </div>
 
-      <!-- ─── Right: Filter + Download ─── -->
+      <!-- ─── Right: Download Settings ─── -->
       <div class="side-col">
-        <div class="card" id="filter_card">
-          <div class="card-header">
-            <h2>内容筛选</h2>
-            <div class="card-header-actions">
-              <button id="tag_open_btn" type="button" class="btn btn-secondary btn-sm" onclick="openTagModal()">选择标签</button>
-              <button id="tag_clear_btn" type="button" class="btn btn-ghost btn-sm" onclick="clearAllTags()">清空</button>
-            </div>
-          </div>
-          <div class="card-body">
-            <input id="tag_codes_input" type="hidden" value='{{ tag_codes_json | safe }}' />
-            <div class="tag-picker">
-              <div class="tag-toolbar">
-                <div id="tag_selection_text" class="tag-selection-text">当前：不筛选</div>
-                <div id="tag_chips" class="tag-chips"></div>
-              </div>
-            </div>
-            <div class="field-group" style="margin-top:12px;">
-              <div class="field">
-                <label for="range">时间范围</label>
-                <select id="range" required>
-                  {% for option in range_options %}
-                  <option value="{{ option.value }}" {% if config.range == option.value %}selected{% endif %}>{{ option.label }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-              <div class="field">
-                <label for="time_filter">时长筛选</label>
-                <select id="time_filter" required>
-                  {% for option in time_filter_options %}
-                  <option value="{{ option.min }}-{{ option.max }}" data-min="{{ option.min }}" data-max="{{ option.max }}" {% if config.min_time == option.min and config.max_time == option.max %}selected{% endif %}>{{ option.label }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-              <div class="field">
-                <label for="sort">排序方式</label>
-                <select id="sort" required>
-                  {% for option in sort_options %}
-                  <option value="{{ option.value }}" {% if config.sort == option.value %}selected{% endif %}>{{ option.label }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-              <div class="field">
-                <label for="max_daily_downloads">每类下载数</label>
-                <input id="max_daily_downloads" type="number" min="1" required value="{{ config.max_daily_downloads }}" />
-              </div>
-            </div>
-          </div>
-        </div>
-
         <div class="card" id="download_card">
           <div class="card-header">
             <h2>下载设置</h2>
@@ -1041,6 +992,10 @@
                 <span id="dir_status_text"></span>
                 <span id="stat_dir_path" class="muted" style="color: var(--color-gray-400); margin-left: 6px; font-size: 11px;">{{ config.download_root }}</span>
               </div>
+            </div>
+            <div class="field" style="margin-top:12px;">
+              <label for="max_daily_downloads">每次下载数量上限</label>
+              <input id="max_daily_downloads" type="number" min="1" required value="{{ config.max_daily_downloads }}" />
             </div>
           </div>
         </div>
@@ -1139,33 +1094,6 @@
     <div class="settings-drawer-footer">
       <button type="button" class="settings-cancel-btn" onclick="closeSettingsModal()">取消</button>
       <button type="button" class="settings-save-btn" onclick="saveSettings()">保存设置</button>
-    </div>
-  </div>
-
-  <!-- ═══════════ Tag Modal ═══════════ -->
-  <div id="tag_modal" class="tag-modal" aria-hidden="true" onclick="handleTagModalBackdrop(event)">
-    <div class="tag-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="tag_modal_title">
-      <div class="tag-modal-header">
-        <div>
-          <h2 id="tag_modal_title" class="tag-modal-title">选择标签</h2>
-          <div class="tag-modal-subtitle">支持分页浏览，点击标签进行多选/取消选择，完成后点击"确认"关闭弹窗。</div>
-        </div>
-        <button type="button" class="tag-close-btn" aria-label="关闭标签弹窗" onclick="closeTagModal()">&times;</button>
-      </div>
-      <div class="tag-modal-body">
-        <div id="tag_list" class="tag-list">
-          <div class="note">正在加载标签...</div>
-        </div>
-        <div class="tag-pager">
-          <button id="tag_prev_btn" type="button" class="btn btn-secondary btn-sm" onclick="loadTags(tagState.page - 1)">上一页</button>
-          <span id="tag_page_info" class="tag-page-info">加载中...</span>
-          <button id="tag_next_btn" type="button" class="btn btn-secondary btn-sm" onclick="loadTags(tagState.page + 1)">下一页</button>
-        </div>
-        <div id="tag_error" class="tag-error"></div>
-      </div>
-      <div class="tag-modal-footer">
-        <button type="button" class="tag-confirm-btn" onclick="closeTagModal()">确认选择</button>
-      </div>
     </div>
   </div>
 
@@ -1282,257 +1210,29 @@
     document.getElementById('download_root').addEventListener('change', validateDirectory);
     document.getElementById('download_root').addEventListener('blur', validateDirectory);
 
-    // ══════════════════════════════════════════
-    //  Tag multi-select (preserved)
-    // ══════════════════════════════════════════
-    const tagCodesInput = document.getElementById('tag_codes_input');
-    const tagModal = document.getElementById('tag_modal');
-    const tagList = document.getElementById('tag_list');
-    const tagSelectionText = document.getElementById('tag_selection_text');
-    const tagChipsContainer = document.getElementById('tag_chips');
-    const tagPageInfo = document.getElementById('tag_page_info');
-    const tagPrevBtn = document.getElementById('tag_prev_btn');
-    const tagNextBtn = document.getElementById('tag_next_btn');
-    const tagError = document.getElementById('tag_error');
-    const tagClearBtn = document.getElementById('tag_clear_btn');
     const downloadRootInput = document.getElementById('download_root');
 
-    let selectedTagCodes = JSON.parse(tagCodesInput.value || '[]');
-    let tagSelectionDirty = false;
     let downloadRootDirty = false;
     let settingsDirty = false;
     let quickSaveTimer = null;
     let quickSaveChain = Promise.resolve();
-    const tagMetaMap = {};
-
-    const tagState = {
-      page: 1,
-      perPage: 10,
-      total: 0,
-      totalPages: 1,
-      items: [],
-      loading: false,
-    };
-
-    function updateTagDisplay() {
-      tagCodesInput.value = JSON.stringify(selectedTagCodes);
-      if (selectedTagCodes.length === 0) {
-        tagSelectionText.textContent = '当前：不筛选';
-      } else {
-        tagSelectionText.textContent = `已选 ${selectedTagCodes.length} 个标签`;
-      }
-      tagClearBtn.disabled = selectedTagCodes.length === 0;
-
-      tagChipsContainer.innerHTML = '';
-      selectedTagCodes.forEach(code => {
-        const meta = tagMetaMap[code];
-        const chip = document.createElement('div');
-        chip.className = 'tag-chip';
-        const label = document.createElement('span');
-        label.textContent = meta ? `${meta.name}` : code;
-        const removeBtn = document.createElement('button');
-        removeBtn.className = 'tag-chip-remove';
-        removeBtn.textContent = '×';
-        removeBtn.onclick = () => {
-          selectedTagCodes = selectedTagCodes.filter(c => c !== code);
-          tagSelectionDirty = true;
-          updateTagDisplay();
-          renderTags();
-          queueQuickConfigSave();
-        };
-        chip.appendChild(label);
-        chip.appendChild(removeBtn);
-        tagChipsContainer.appendChild(chip);
-      });
-    }
-
-    function openTagModal() {
-      tagModal.classList.add('show');
-      tagModal.setAttribute('aria-hidden', 'false');
-      document.body.classList.add('modal-open');
-      if (!tagState.items.length && !tagState.loading) {
-        loadTags(tagState.page);
-      } else {
-        renderTags();
-      }
-    }
-
-    function closeTagModal() {
-      tagModal.classList.remove('show');
-      tagModal.setAttribute('aria-hidden', 'true');
-      document.body.classList.remove('modal-open');
-    }
-
-    function handleTagModalBackdrop(event) {
-      if (event.target === tagModal) {
-        closeTagModal();
-      }
-    }
-
-    function clearAllTags() {
-      selectedTagCodes = [];
-      tagSelectionDirty = true;
-      updateTagDisplay();
-      renderTags();
-      queueQuickConfigSave();
-    }
-
-    function renderTagPagination() {
-      tagPageInfo.textContent = `第 ${tagState.page} / ${tagState.totalPages} 页，共 ${tagState.total} 个标签`;
-      tagPrevBtn.disabled = tagState.loading || tagState.page <= 1;
-      tagNextBtn.disabled = tagState.loading || tagState.page >= tagState.totalPages;
-    }
-
-    function renderTags() {
-      tagList.innerHTML = '';
-
-      if (!tagState.items.length) {
-        const empty = document.createElement('div');
-        empty.className = 'note';
-        empty.textContent = tagState.loading ? '正在加载标签...' : '暂无可用标签';
-        tagList.appendChild(empty);
-        renderTagPagination();
-        return;
-      }
-
-      tagState.items.forEach((tag) => {
-        const button = document.createElement('button');
-        button.type = 'button';
-        const isActive = selectedTagCodes.includes(tag.code);
-        button.className = `tag-item${isActive ? ' active' : ''}`;
-        button.disabled = tagState.loading;
-
-        const check = document.createElement('span');
-        check.className = 'tag-check';
-        check.textContent = isActive ? '✓' : '';
-        button.appendChild(check);
-
-        const name = document.createElement('div');
-        name.className = 'tag-name';
-        name.textContent = tag.name || tag.code;
-
-        const code = document.createElement('div');
-        code.className = 'tag-code';
-        code.textContent = tag.code;
-
-        button.appendChild(name);
-        button.appendChild(code);
-
-        button.addEventListener('click', () => {
-          if (selectedTagCodes.includes(tag.code)) {
-            selectedTagCodes = selectedTagCodes.filter(c => c !== tag.code);
-          } else {
-            selectedTagCodes.push(tag.code);
-          }
-          tagSelectionDirty = true;
-          tagMetaMap[tag.code] = tag;
-          updateTagDisplay();
-          renderTags();
-          queueQuickConfigSave();
-        });
-
-        tagList.appendChild(button);
-      });
-
-      renderTagPagination();
-      updateTagDisplay();
-    }
-
-    async function loadTags(page = 1) {
-      const targetPage = Math.max(1, page);
-      tagState.loading = true;
-      tagError.textContent = '';
-      renderTags();
-
-      try {
-        const resp = await fetch(`/api/tags?page=${targetPage}&per_page=${tagState.perPage}`);
-        const data = await resp.json();
-        if (!data.ok) {
-          throw new Error(data.error || '标签加载失败');
-        }
-
-        tagState.page = data.pagination?.page || 1;
-        tagState.total = data.pagination?.total || 0;
-        tagState.totalPages = data.pagination?.total_pages || 1;
-        tagState.items = Array.isArray(data.items) ? data.items : [];
-
-        tagState.items.forEach(tag => {
-          tagMetaMap[tag.code] = tag;
-        });
-      } catch (error) {
-        tagState.items = [];
-        tagState.total = 0;
-        tagState.totalPages = 1;
-        tagState.page = 1;
-        tagError.textContent = error.message || '标签加载失败';
-      } finally {
-        tagState.loading = false;
-        renderTags();
-      }
-    }
 
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') {
-        if (tagModal.classList.contains('show')) {
-          closeTagModal();
-        }
         if (document.getElementById('settings_modal').classList.contains('show')) {
           closeSettingsModal();
         }
       }
     });
 
-    updateTagDisplay();
-
-    async function preloadAllTagNames() {
-      try {
-        const resp = await fetch(`/api/tags?page=1&per_page=30`);
-        const data = await resp.json();
-        if (data.ok && data.items) {
-          data.items.forEach(tag => { tagMetaMap[tag.code] = tag; });
-        }
-        if (data.pagination && data.pagination.total_pages > 1) {
-          for (let p = 2; p <= data.pagination.total_pages; p++) {
-            const resp2 = await fetch(`/api/tags?page=${p}&per_page=30`);
-            const data2 = await resp2.json();
-            if (data2.ok && data2.items) {
-              data2.items.forEach(tag => { tagMetaMap[tag.code] = tag; });
-            }
-          }
-        }
-        updateTagDisplay();
-      } catch (e) {
-        // ignore
-      }
-    }
-    preloadAllTagNames();
-
     // ══════════════════════════════════════════
-    //  Settings Drawer (preserved)
+    //  Settings Drawer
     // ══════════════════════════════════════════
     const settingsModal = document.getElementById('settings_modal');
 
     function syncAutoDownloadFields() {
       const enabled = document.getElementById('settings_auto_download_enabled').checked;
       document.getElementById('settings_schedule_cron').disabled = !enabled;
-    }
-
-    function setTimeFilterValue(minTime, maxTime) {
-      const select = document.getElementById('time_filter');
-      const value = `${parseInt(minTime || 0)}-${parseInt(maxTime || 0)}`;
-      if ([...select.options].some(option => option.value === value)) {
-        select.value = value;
-      } else {
-        select.value = '0-86400';
-      }
-    }
-
-    function getSelectedTimeFilter() {
-      const option = document.getElementById('time_filter').selectedOptions[0];
-      return {
-        min: parseInt(option.dataset.min || '0'),
-        max: parseInt(option.dataset.max || '86400'),
-      };
     }
 
     function openSettingsModal() {
@@ -1568,12 +1268,6 @@
       formData.append('auto_download_enabled', document.getElementById('settings_auto_download_enabled').checked ? '1' : '0');
       formData.append('schedule_cron', document.getElementById('settings_schedule_cron').value);
       formData.append('max_daily_downloads', document.getElementById('max_daily_downloads').value);
-      formData.append('sort', document.getElementById('sort').value);
-      formData.append('range', document.getElementById('range').value);
-      const timeFilter = getSelectedTimeFilter();
-      formData.append('min_time', timeFilter.min);
-      formData.append('max_time', timeFilter.max);
-      formData.append('tag_codes', JSON.stringify(selectedTagCodes));
       formData.append('twitter_cookie', document.getElementById('settings_twitter_cookie').value);
       formData.append('twitter_blogger_enabled', document.getElementById('settings_blogger_enabled').checked ? '1' : '0');
       formData.append('twitter_blogger_cron', document.getElementById('settings_blogger_cron').value);
@@ -1588,19 +1282,13 @@
           currentConfig.auto_download_enabled = document.getElementById('settings_auto_download_enabled').checked;
           currentConfig.schedule_cron = document.getElementById('settings_schedule_cron').value;
           currentConfig.max_daily_downloads = parseInt(document.getElementById('max_daily_downloads').value);
-          currentConfig.sort = document.getElementById('sort').value;
-          currentConfig.range = document.getElementById('range').value;
-          currentConfig.min_time = timeFilter.min;
-          currentConfig.max_time = timeFilter.max;
           currentConfig.download_root = downloadRootInput.value;
-          currentConfig.tag_codes = [...selectedTagCodes];
           currentConfig.twitter_cookie = document.getElementById('settings_twitter_cookie').value;
           currentConfig.twitter_blogger_enabled = document.getElementById('settings_blogger_enabled').checked;
           currentConfig.twitter_blogger_cron = document.getElementById('settings_blogger_cron').value;
           currentConfig.twitter_blogger_max_media = parseInt(document.getElementById('settings_blogger_max_media').value);
           currentConfig.twitter_blogger_has_retweet = document.getElementById('settings_blogger_has_retweet').checked;
           downloadRootDirty = false;
-          tagSelectionDirty = false;
           settingsDirty = false;
           closeSettingsModal();
           refreshStatus();
@@ -1622,11 +1310,6 @@
       auto_download_enabled: {{ 'true' if config.auto_download_enabled else 'false' }},
       schedule_cron: {{ config.schedule_cron | tojson }},
       max_daily_downloads: {{ config.max_daily_downloads }},
-      sort: {{ config.sort | tojson }},
-      range: {{ config.range | tojson }},
-      min_time: {{ config.min_time }},
-      max_time: {{ config.max_time }},
-      tag_codes: selectedTagCodes,
       twitter_cookie: {{ config.twitter_cookie | tojson }},
       twitter_blogger_enabled: {{ 'true' if config.twitter_blogger_enabled else 'false' }},
       twitter_blogger_cron: {{ config.twitter_blogger_cron | tojson }},
@@ -1634,20 +1317,14 @@
       twitter_blogger_has_retweet: {{ 'true' if config.twitter_blogger_has_retweet else 'false' }},
     };
 
-    function sameTagCodes(left, right) {
-      return JSON.stringify(left || []) === JSON.stringify(right || []);
-    }
-
     async function saveQuickConfigNow() {
-      if (!downloadRootDirty && !tagSelectionDirty) {
+      if (!downloadRootDirty) {
         return true;
       }
 
       const downloadRootSnapshot = downloadRootInput.value;
-      const tagCodesSnapshot = [...selectedTagCodes];
       const formData = new FormData();
       formData.append('download_root', downloadRootSnapshot);
-      formData.append('tag_codes', JSON.stringify(tagCodesSnapshot));
 
       try {
         const resp = await fetch('/save-quick', { method: 'POST', body: formData });
@@ -1661,9 +1338,6 @@
         }
         if (downloadRootInput.value === downloadRootSnapshot) {
           downloadRootDirty = false;
-        }
-        if (sameTagCodes(selectedTagCodes, tagCodesSnapshot)) {
-          tagSelectionDirty = false;
         }
         return true;
       } catch (error) {
@@ -1699,7 +1373,7 @@
     });
 
     // Main-page config field change tracking
-    ['max_daily_downloads', 'sort', 'range', 'time_filter'].forEach(id => {
+    ['max_daily_downloads'].forEach(id => {
       const el = document.getElementById(id);
       if (el) {
         el.addEventListener('change', () => { settingsDirty = true; });
@@ -1713,7 +1387,7 @@
     async function runNow() {
       const quickSaved = await flushQuickConfigSave();
       if (!quickSaved) {
-        alert('下载根目录或标签筛选自动保存失败，请检查后重试');
+        alert('下载根目录自动保存失败，请检查后重试');
         return;
       }
       const resp = await fetch('/run-now', { method: 'POST' });
@@ -1782,15 +1456,8 @@
           downloadRootInput.value = currentConfig.download_root || '';
           validateDirectory();
         }
-        if (!tagSelectionDirty && Array.isArray(currentConfig.tag_codes)) {
-          selectedTagCodes = [...currentConfig.tag_codes];
-          updateTagDisplay();
-        }
         if (!settingsDirty) {
-          document.getElementById('max_daily_downloads').value = currentConfig.max_daily_downloads || 30;
-          document.getElementById('sort').value = currentConfig.sort || 'pv';
-          document.getElementById('range').value = currentConfig.range || 'daily';
-          setTimeFilterValue(currentConfig.min_time || 0, currentConfig.max_time || 86400);
+          document.getElementById('max_daily_downloads').value = currentConfig.max_daily_downloads || 10;
         }
       }
       if (data.blogger_state) {
