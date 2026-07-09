@@ -8,41 +8,41 @@
 </head>
 <body>
   <div class="shell shell--narrow">
-    <!-- ═══════════ Hero ═══════════ -->
-    <section class="hero" style="margin-top: var(--ds-space-6);">
+    <!-- ═════ Hero ═════ -->
+    <section class="hero">
       <div>
         <a class="hero-nav" href="/">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
           返回首页
         </a>
         <h1 id="pageTitle">全部视频海报墙</h1>
-        <p>点击海报即可直接预览视频；顶部筛选栏可按文件夹快速过滤内容，卡片同时展示时长、大小和所属文件夹。</p>
+        <p>点击海报即可预览视频；顶部筛选栏可按文件夹筛选，卡片展示时长、大小和文件夹信息。</p>
       </div>
-      <div class="hero-stats">
-        <div class="hero-stat">
-          <div class="hero-stat-label">筛选结果</div>
-          <div class="hero-stat-value" id="statVisible">0</div>
+      <div class="hero-st">
+        <div class="hero-it">
+          <div class="hero-l">筛选结果</div>
+          <div class="hero-v" id="statVisible">0</div>
         </div>
-        <div class="hero-stat">
-          <div class="hero-stat-label">全部视频</div>
-          <div class="hero-stat-value" id="statTotal">0</div>
+        <div class="hero-it">
+          <div class="hero-l">全部视频</div>
+          <div class="hero-v" id="statTotal">0</div>
         </div>
-        <div class="hero-stat">
-          <div class="hero-stat-label">文件夹</div>
-          <div class="hero-stat-value" id="statFolders">0</div>
+        <div class="hero-it">
+          <div class="hero-l">文件夹</div>
+          <div class="hero-v" id="statFolders">0</div>
         </div>
       </div>
     </section>
 
-    <!-- ═══════════ Toolbar ═══════════ -->
-    <section class="toolbar" style="margin-top: var(--ds-space-4);">
-      <div class="toolbar-select">
+    <!-- ═════ Toolbar ═════ -->
+    <section class="tbar" style="margin-top:var(--p4);">
+      <div class="tbar-sel">
         <label for="folderFilter">文件夹筛选</label>
         <select id="folderFilter" onchange="applyFilters()">
           <option value="">全部文件夹</option>
         </select>
       </div>
-      <div class="toolbar-select">
+      <div class="tbar-sel">
         <label for="sortSelect">排序方式</label>
         <select id="sortSelect" onchange="applyFilters(false)">
           <option value="time_desc">按名称降序</option>
@@ -53,444 +53,205 @@
           <option value="duration_asc">时长从短到长</option>
         </select>
       </div>
-      <div class="toolbar-select">
+      <div class="tbar-sel">
         <label for="pageSizeSelect">每页数量</label>
         <select id="pageSizeSelect" onchange="changePageSize()">
           <option value="10" selected>10</option>
-          <option value="15">15</option>
-          <option value="20">20</option>
-          <option value="25">25</option>
-          <option value="30">30</option>
+          <option value="15">15</option><option value="20">20</option>
+          <option value="25">25</option><option value="30">30</option>
         </select>
       </div>
-      <div class="toolbar-spacer"></div>
-      <button class="btn btn-ghost" type="button" onclick="reloadData()">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      <div class="tbar-sp"></div>
+      <button class="btn btn-gho" onclick="reloadData()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
         刷新
       </button>
-      <button class="btn btn-ghost" type="button" onclick="toggleSelectAll()" id="btnSelectAll">全选当前筛选</button>
-      <button class="btn btn-danger" type="button" id="btnBatchDelete" onclick="batchDelete()" disabled>批量删除</button>
+      <button class="btn btn-gho" onclick="toggleSelectAll()" id="btnSelectAll">全选当前筛选</button>
+      <button class="btn btn-dgr" id="btnBatchDelete" onclick="batchDelete()" disabled>批量删除</button>
     </section>
 
-    <!-- ═══════════ Status Bar ═══════════ -->
-    <div class="status-bar" style="margin-bottom: var(--ds-space-4);">
+    <!-- ═════ Status Bar ═════ -->
+    <div class="sbar" style="margin-bottom:var(--p4);">
       <div id="statusText">正在加载海报墙数据...</div>
       <div>已选 <strong id="selectedCount">0</strong> 个</div>
     </div>
 
-    <!-- ═══════════ Grid ═══════════ -->
-    <div id="grid" class="media-grid"></div>
-    <div id="emptyMsg" class="empty-state">当前筛选条件下暂无视频。</div>
+    <!-- ═════ Grid ═════ -->
+    <div id="grid" class="mgrid"></div>
+    <div id="emptyMsg" class="empty">当前筛选条件下暂无视频。</div>
 
-    <!-- ═══════════ Pagination ═══════════ -->
-    <div id="pagination" class="pagination-block hidden">
-      <div id="paginationInfo" class="pagination-info">第 1 / 1 页</div>
-      <div class="pagination-actions">
-        <button class="btn btn-secondary btn-sm" type="button" id="btnFirstPage" onclick="setPage(1)">首页</button>
-        <button class="btn btn-secondary btn-sm" type="button" id="btnPrevPage" onclick="changePage(-1)">上一页</button>
-        <button class="btn btn-secondary btn-sm" type="button" id="btnNextPage" onclick="changePage(1)">下一页</button>
-        <button class="btn btn-secondary btn-sm" type="button" id="btnLastPage" onclick="setPage(getTotalPages())">末页</button>
+    <!-- ═════ Pagination ═════ -->
+    <div id="pagination" class="pag hidden">
+      <div id="paginationInfo" class="pag-i">第 1 / 1 页</div>
+      <div class="pag-a">
+        <button class="btn btn-sec btn-sm" id="btnFirstPage" onclick="setPage(1)">首页</button>
+        <button class="btn btn-sec btn-sm" id="btnPrevPage" onclick="changePage(-1)">上一页</button>
+        <button class="btn btn-sec btn-sm" id="btnNextPage" onclick="changePage(1)">下一页</button>
+        <button class="btn btn-sec btn-sm" id="btnLastPage" onclick="setPage(getTotalPages())">末页</button>
       </div>
     </div>
   </div>
 
-  <!-- ═══════════ Preview Modal ═══════════ -->
-  <div id="previewModal" class="player-modal" onclick="closePreviewOnMask(event)" role="dialog" aria-modal="true" aria-labelledby="previewTitle">
-    <div class="player-container">
-      <div class="player-header">
+  <!-- ═════ Player Modal ═════ -->
+  <div id="previewModal" class="ply" onclick="closePreviewOnMask(event)" role="dialog" aria-modal="true">
+    <div class="ply-c">
+      <div class="ply-h">
         <div>
-          <div class="player-title" id="previewTitle">视频预览</div>
-          <div class="muted-darker text-xs" id="previewMeta" style="margin-top: 2px;">--</div>
+          <div class="ply-t" id="previewTitle">视频预览</div>
+          <div class="mute-d text-xs" id="previewMeta" style="margin-top:2px;">--</div>
         </div>
-        <button class="player-close" type="button" onclick="closePreview()" aria-label="关闭预览">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <button class="ply-x" onclick="closePreview()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
-      <video id="previewVideo" class="player-video" controls preload="metadata"></video>
+      <video id="previewVideo" class="ply-v" controls preload="metadata"></video>
     </div>
   </div>
 
-  <!-- ═══════════ Replace Cover Modal ═══════════ -->
+  <!-- ═════ Replace Cover Modal ═════ -->
   <div id="replaceModal" class="modal" onclick="closeReplaceOnMask(event)" role="dialog" aria-modal="true">
-    <div class="modal-dialog" style="max-width: 420px;">
-      <div class="modal-header">
+    <div class="modal-d" style="max-width:400px;">
+      <div class="modal-h">
         <div>
-          <h2 class="modal-title">替换封面</h2>
-          <p class="modal-subtitle" id="replaceMeta">请选择新的封面图片文件。</p>
+          <h2 class="modal-t">替换封面</h2>
+          <p class="modal-s" id="replaceMeta">选择新的封面图片文件</p>
         </div>
-        <button type="button" class="drawer-close" onclick="closeReplaceModal()">&times;</button>
+        <button type="button" class="dclose" onclick="closeReplaceModal()">&times;</button>
       </div>
-      <div class="modal-body">
-        <input type="file" id="replaceFileInput" accept="image/*" style="padding: 8px 0; border: none; background: transparent;" />
+      <div class="modal-b">
+        <input type="file" id="replaceFileInput" accept="image/*" style="padding:8px 0;border:none;background:transparent;width:100%;color:var(--text-primary);" />
       </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" type="button" onclick="closeReplaceModal()">取消</button>
-        <button class="btn btn-primary" type="button" onclick="doReplaceCover()">确认替换</button>
+      <div class="modal-f">
+        <button type="button" class="btn btn-sec" onclick="closeReplaceModal()">取消</button>
+        <button type="button" class="btn btn-pri" onclick="doReplaceCover()">确认替换</button>
       </div>
     </div>
   </div>
 
   <script>
-    const params = new URLSearchParams(location.search);
-    const INITIAL_FOLDER = params.get('folder') || '';
+    const params=new URLSearchParams(location.search),INITIAL_FOLDER=params.get('folder')||'';
+    let allItems=[],visibleItems=[],selectedKeys=new Set(),durationCache=new Map(),durationProbeQueue=[],durationProbeRunning=0,replaceTarget=null,currentPage=1;
 
-    let allItems = [];
-    let visibleItems = [];
-    let selectedKeys = new Set();
-    let durationCache = new Map();
-    let durationProbeQueue = [];
-    let durationProbeRunning = 0;
-    let replaceTarget = null;
-    let currentPage = 1;
-
-    function itemKey(item) { return item.folder + '::' + item.stem; }
-
-    function escapeHtml(v) {
-      return String(v || '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+    function itemKey(i){return i.folder+'::'+i.stem;}
+    function esc(v){return String(v||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');}
+    function fmtSize(b){if(b>=1073741824)return(b/1073741824).toFixed(2)+' GB';if(b>=1048576)return(b/1048576).toFixed(1)+' MB';if(b>=1024)return(b/1024).toFixed(0)+' KB';return b+' B';}
+    function durL(i){return i.duration||durationCache.get(itemKey(i))||'--:--';}
+    function durS(i){
+      const r=i.duration||durationCache.get(itemKey(i))||'',p=r.split(':').map(Number);if(!p.length||p.some(isNaN))return-1;
+      if(p.length===2)return p[0]*60+p[1];if(p.length===3)return p[0]*3600+p[1]*60+p[2];return-1;
     }
+    function getPS(){return Number(document.getElementById('pageSizeSelect').value)||10;}
+    function getTP(){return Math.max(1,Math.ceil(visibleItems.length/getPS()));}
+    function clampCP(){currentPage=Math.min(Math.max(currentPage,1),getTP());}
+    function getCPI(){const ps=getPS(),s=(currentPage-1)*ps;return visibleItems.slice(s,s+ps);}
 
-    function fmtSize(bytes) {
-      if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(2) + ' GB';
-      if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
-      if (bytes >= 1024) return (bytes / 1024).toFixed(0) + ' KB';
-      return bytes + ' B';
+    async function loadItems(){
+      const q=new URLSearchParams(),fv=document.getElementById('folderFilter').value;if(fv)q.set('folder',fv);
+      const url=q.toString()?'/api/poster?'+q.toString():'/api/poster',r=await fetch(url),d=await r.json();
+      if(!d.ok)throw new Error(d.error||'加载失败');
+      allItems=d.items||[];(d.items||[]).forEach(i=>{if(i.duration)durationCache.set(itemKey(i),i.duration);});
+      renderFolderOptions(d.folders||[]);updateStats(d.folders||[]);applyFilters(false);
     }
-
-    function durationLabel(item) { return item.duration || durationCache.get(itemKey(item)) || '--:--'; }
-
-    function durationSeconds(item) {
-      const raw = item.duration || durationCache.get(itemKey(item)) || '';
-      const parts = raw.split(':').map(Number);
-      if (!parts.length || parts.some(isNaN)) return -1;
-      if (parts.length === 2) return parts[0] * 60 + parts[1];
-      if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
-      return -1;
+    function renderFolderOptions(folders){
+      const s=document.getElementById('folderFilter'),cv=s.value||INITIAL_FOLDER;
+      let o='<option value="">全部文件夹</option>';
+      folders.forEach(f=>{o+='<option value="'+f.folder+'">'+(f.folder||'根目录')+' ('+f.count+')</option>';});
+      s.innerHTML=o;if(cv&&folders.some(f=>f.folder===cv))s.value=cv;else s.value='';syncPT();
     }
+    function updateStats(folders){document.getElementById('statTotal').textContent=''+allItems.length;document.getElementById('statFolders').textContent=''+folders.length;}
+    function syncPT(){const fv=document.getElementById('folderFilter').value;document.getElementById('pageTitle').textContent=fv?fv+' 的视频海报墙':'全部视频海报墙';history.replaceState(null,'',fv?'/poster?folder='+encodeURIComponent(fv):'/poster');}
 
-    function getPageSize() { return Number(document.getElementById('pageSizeSelect').value) || 10; }
-    function getTotalPages() { return Math.max(1, Math.ceil(visibleItems.length / getPageSize())); }
-
-    function clampCurrentPage() { currentPage = Math.min(Math.max(currentPage, 1), getTotalPages()); }
-
-    function getCurrentPageItems() {
-      const ps = getPageSize();
-      const start = (currentPage - 1) * ps;
-      return visibleItems.slice(start, start + ps);
-    }
-
-    async function loadItems() {
-      const q = new URLSearchParams();
-      const fv = document.getElementById('folderFilter').value;
-      if (fv) q.set('folder', fv);
-      const url = q.toString() ? '/api/poster?' + q.toString() : '/api/poster';
-      const resp = await fetch(url);
-      const data = await resp.json();
-      if (!data.ok) throw new Error(data.error || '加载失败');
-      allItems = data.items || [];
-      (data.items || []).forEach(item => { if (item.duration) durationCache.set(itemKey(item), item.duration); });
-      renderFolderOptions(data.folders || []);
-      updateStats(data.folders || []);
-      applyFilters(false);
-    }
-
-    function renderFolderOptions(folders) {
-      const sel = document.getElementById('folderFilter');
-      const cv = sel.value || INITIAL_FOLDER;
-      let opts = ['<option value="">全部文件夹</option>'];
-      folders.forEach(f => { opts.push('<option value="' + f.folder + '">' + (f.folder || '根目录') + ' (' + f.count + ')</option>'); });
-      sel.innerHTML = opts.join('');
-      if (cv && folders.some(f => f.folder === cv)) sel.value = cv; else sel.value = '';
-      syncPageTitle();
-    }
-
-    function updateStats(folders) {
-      document.getElementById('statTotal').textContent = '' + allItems.length;
-      document.getElementById('statFolders').textContent = '' + folders.length;
-    }
-
-    function syncPageTitle() {
-      const fv = document.getElementById('folderFilter').value;
-      document.getElementById('pageTitle').textContent = fv ? fv + ' 的视频海报墙' : '全部视频海报墙';
-      history.replaceState(null, '', fv ? '/poster?folder=' + encodeURIComponent(fv) : '/poster');
-    }
-
-    function applyFilters(needReload) {
-      if (needReload) { reloadData(); return; }
-      const fv = document.getElementById('folderFilter').value;
-      const sv = document.getElementById('sortSelect').value;
-      visibleItems = allItems.filter(item => !fv || item.folder === fv);
-      visibleItems.sort((a, b) => {
-        if (sv === 'time_asc') return a.stem.localeCompare(b.stem);
-        if (sv === 'time_desc') return b.stem.localeCompare(a.stem);
-        if (sv === 'size_asc') return a.size - b.size;
-        if (sv === 'size_desc') return b.size - a.size;
-        if (sv === 'duration_asc') return durationSeconds(a) - durationSeconds(b);
-        if (sv === 'duration_desc') return durationSeconds(b) - durationSeconds(a);
-        return 0;
+    function applyFilters(need){
+      if(need){reloadData();return;}
+      const fv=document.getElementById('folderFilter').value,sv=document.getElementById('sortSelect').value;
+      visibleItems=allItems.filter(i=>!fv||i.folder===fv);
+      visibleItems.sort((a,b)=>{
+        if(sv==='time_asc')return a.stem.localeCompare(b.stem);if(sv==='time_desc')return b.stem.localeCompare(a.stem);
+        if(sv==='size_asc')return a.size-b.size;if(sv==='size_desc')return b.size-a.size;
+        if(sv==='duration_asc')return durS(a)-durS(b);if(sv==='duration_desc')return durS(b)-durS(a);return 0;
       });
-      selectedKeys = new Set([...selectedKeys].filter(k => visibleItems.some(item => itemKey(item) === k)));
-      currentPage = 1;
-      syncPageTitle();
-      renderGrid();
-      scheduleDurationProbe();
+      selectedKeys=new Set([...selectedKeys].filter(k=>visibleItems.some(i=>itemKey(i)===k)));
+      currentPage=1;syncPT();renderGrid();scheduleDP();
     }
-
-    function updateStatusText() {
-      const fv = document.getElementById('folderFilter').value;
-      const prefix = fv ? fv + ' · ' : '全部文件夹 · ';
-      document.getElementById('statusText').innerHTML = prefix + '共 <strong>' + visibleItems.length + '</strong> 个视频，当前第 <strong>' + currentPage + '</strong> / <strong>' + getTotalPages() + '</strong> 页';
-      document.getElementById('selectedCount').textContent = '' + selectedKeys.size;
-      document.getElementById('statVisible').textContent = '' + visibleItems.length;
-      document.getElementById('btnBatchDelete').disabled = selectedKeys.size === 0;
-      document.getElementById('btnSelectAll').textContent = visibleItems.length > 0 && visibleItems.every(item => selectedKeys.has(itemKey(item))) ? '取消全选' : '全选当前筛选';
+    function updateST(){
+      const fv=document.getElementById('folderFilter').value,p=fv?fv+' · ':'全部文件夹 · ';
+      document.getElementById('statusText').innerHTML=p+'共 <strong>'+visibleItems.length+'</strong> 个视频，第 <strong>'+currentPage+'</strong> / <strong>'+getTP()+'</strong> 页';
+      document.getElementById('selectedCount').textContent=''+selectedKeys.size;
+      document.getElementById('statVisible').textContent=''+visibleItems.length;
+      document.getElementById('btnBatchDelete').disabled=selectedKeys.size===0;
+      document.getElementById('btnSelectAll').textContent=visibleItems.length>0&&visibleItems.every(i=>selectedKeys.has(itemKey(i)))?'取消全选':'全选当前筛选';
     }
-
-    function renderPagination() {
-      const pagination = document.getElementById('pagination');
-      const totalPages = getTotalPages();
-      const totalItems = visibleItems.length;
-      if (totalItems === 0) { pagination.classList.add('hidden'); return; }
-      pagination.classList.remove('hidden');
-      document.getElementById('paginationInfo').textContent = '第 ' + currentPage + ' / ' + totalPages + ' 页，共 ' + totalItems + ' 项';
-      document.getElementById('btnFirstPage').disabled = currentPage === 1;
-      document.getElementById('btnPrevPage').disabled = currentPage === 1;
-      document.getElementById('btnNextPage').disabled = currentPage === totalPages;
-      document.getElementById('btnLastPage').disabled = currentPage === totalPages;
+    function renderPag(){
+      const p=document.getElementById('pagination'),tp=getTP();if(visibleItems.length===0){p.classList.add('hidden');return;}
+      p.classList.remove('hidden');document.getElementById('paginationInfo').textContent='第 '+currentPage+' / '+tp+' 页，共 '+visibleItems.length+' 项';
+      document.getElementById('btnFirstPage').disabled=currentPage===1;document.getElementById('btnPrevPage').disabled=currentPage===1;
+      document.getElementById('btnNextPage').disabled=currentPage===tp;document.getElementById('btnLastPage').disabled=currentPage===tp;
     }
-
-    function renderSkeletons(count) {
-      const grid = document.getElementById('grid');
-      document.getElementById('emptyMsg').style.display = 'none';
-      document.getElementById('pagination').classList.add('hidden');
-      let html = '';
-      for (let i = 0; i < count; i++) {
-        html += '<div class="skeleton" aria-hidden="true"><div class="skeleton-cover"></div><div class="skeleton-body"><div class="skeleton-line"></div><div class="skeleton-line" style="width:55%"></div></div></div>';
-      }
-      grid.innerHTML = html;
-    }
-
-    function renderGrid() {
-      const grid = document.getElementById('grid');
-      const empty = document.getElementById('emptyMsg');
-      clampCurrentPage();
-      const pageItems = getCurrentPageItems();
-      updateStatusText();
-      if (visibleItems.length === 0) {
-        grid.innerHTML = '';
-        empty.style.display = 'block';
-        renderPagination();
-        return;
-      }
-      empty.style.display = 'none';
-      grid.innerHTML = pageItems.map(item => {
-        const key = itemKey(item);
-        const selected = selectedKeys.has(key);
-        const thumbHtml = item.thumbnail_url
-          ? '<img src="' + item.thumbnail_url + '" alt="' + escapeHtml(item.video) + ' 的封面" loading="lazy" />'
-          : '<div class="fallback-icon">MV</div>';
-        const folderLabel = item.folder || '根目录';
-        return '<article class="media-card' + (selected ? ' selected' : '') + '">'
-          + '<input class="media-select" type="checkbox"' + (selected ? ' checked' : '') + ' onchange="toggleSelect(\'' + key + '\')" onclick="event.stopPropagation()" aria-label="选择视频" />'
-          + '<div class="media-cover" role="button" tabindex="0" aria-label="预览 ' + escapeHtml(item.video) + '" onclick="openPreview(\'' + key + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openPreview(\'' + key + '\')}">'
-          + thumbHtml
-          + '<div class="media-play-badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M8 5v14l11-7z"/></svg></div>'
-          + '<div class="media-duration">' + durationLabel(item) + '</div>'
-          + '</div>'
-          + '<div class="media-body">'
-          + '<div class="media-name" title="' + escapeHtml(item.video) + '">' + escapeHtml(item.video) + '</div>'
-          + '<div class="media-meta">'
-          + '<span class="media-pill">' + fmtSize(item.size) + '</span>'
-          + '<span class="media-pill">' + escapeHtml(folderLabel) + '</span>'
-          + '<span class="media-pill">时长 <span data-duration-key="' + key + '">' + durationLabel(item) + '</span></span>'
-          + '</div>'
-          + '<div class="media-actions">'
-          + '<button class="btn btn-secondary btn-sm" type="button" onclick="openReplaceModal(\'' + key + '\')">替换封面</button>'
-          + '<button class="btn btn-danger btn-sm" type="button" onclick="deleteItem(\'' + key + '\')">删除</button>'
-          + '</div>'
-          + '</div>'
-          + '</article>';
+    function renderSkeletons(c){const g=document.getElementById('grid');document.getElementById('emptyMsg').style.display='none';document.getElementById('pagination').classList.add('hidden');let h='';for(let i=0;i<c;i++)h+='<div class="skeleton" aria-hidden="true"><div class="sk-cover"></div><div class="sk-body"><div class="sk-line"></div><div class="sk-line" style="width:55%"></div></div></div>';g.innerHTML=h;}
+    function renderGrid(){
+      const g=document.getElementById('grid'),e=document.getElementById('emptyMsg');clampCP();const pi=getCPI();updateST();
+      if(visibleItems.length===0){g.innerHTML='';e.style.display='block';renderPag();return;}
+      e.style.display='none';
+      g.innerHTML=pi.map(i=>{
+        const k=itemKey(i),sel=selectedKeys.has(k);
+        const th=i.thumbnail_url?'<img src="'+i.thumbnail_url+'" alt="'+esc(i.video)+'" loading="lazy" />':'<div class="fb">MV</div>';
+        return '<article class="mcard'+(sel?' sel':'')+'">'
+          +'<input class="msel" type="checkbox"'+(sel?' checked':'')+' onchange="toggleSelect(\''+k+'\')" onclick="event.stopPropagation()" aria-label="选择视频" />'
+          +'<div class="mcv" role="button" tabindex="0" aria-label="预览 '+esc(i.video)+'" onclick="openPreview(\''+k+'\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openPreview(\''+k+'\')}">'
+          +th+'<div class="mplay" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>'
+          +'<div class="mdur">'+durL(i)+'</div></div>'
+          +'<div class="mbd"><div class="mnm" title="'+esc(i.video)+'">'+esc(i.video)+'</div>'
+          +'<div class="mmt"><span class="mpil">'+fmtSize(i.size)+'</span><span class="mpil">'+esc(i.folder||'根目录')+'</span>'
+          +'<span class="mpil">时长 <span data-dk="'+k+'">'+durL(i)+'</span></span></div>'
+          +'<div class="mac"><button class="btn btn-sec btn-sm" onclick="openReplaceModal(\''+k+'\')">替换封面</button>'
+          +'<button class="btn btn-dgr btn-sm" onclick="deleteItem(\''+k+'\')">删除</button></div></div></article>';
       }).join('');
-      renderPagination();
+      renderPag();
     }
-
-    function setPage(page) {
-      const next = Math.min(Math.max(Number(page) || 1, 1), getTotalPages());
-      if (next === currentPage) return;
-      currentPage = next;
-      renderGrid();
-      scheduleDurationProbe();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+    function setPage(p){const n=Math.min(Math.max(Number(p)||1,1),getTP());if(n===currentPage)return;currentPage=n;renderGrid();scheduleDP();window.scrollTo({top:0,behavior:'smooth'});}
+    function changePage(d){setPage(currentPage+d);}
+    function changePageSize(){currentPage=1;renderGrid();scheduleDP();}
+    function findByKey(k){return allItems.find(i=>itemKey(i)===k)||null;}
+    function toggleSelect(k){if(selectedKeys.has(k))selectedKeys.delete(k);else selectedKeys.add(k);renderGrid();}
+    function toggleSelectAll(){if(visibleItems.length===0)return;const a=visibleItems.every(i=>selectedKeys.has(itemKey(i)));if(a)visibleItems.forEach(i=>selectedKeys.delete(itemKey(i)));else visibleItems.forEach(i=>selectedKeys.add(itemKey(i)));renderGrid();}
+    function openPreview(k){
+      const i=findByKey(k);if(!i)return;
+      document.getElementById('previewTitle').textContent=i.video;
+      document.getElementById('previewMeta').textContent=(i.folder||'根目录')+' · '+fmtSize(i.size)+' · 时长 '+durL(i);
+      const v=document.getElementById('previewVideo');v.poster=i.thumb_url||i.thumbnail_url||'';v.src=i.video_url;v.play().catch(function(){});document.getElementById('previewModal').classList.add('open');document.body.classList.add('modal-open');
     }
-
-    function changePage(delta) { setPage(currentPage + delta); }
-
-    function changePageSize() { currentPage = 1; renderGrid(); scheduleDurationProbe(); }
-
-    function findItemByKey(key) { return allItems.find(item => itemKey(item) === key) || null; }
-
-    function toggleSelect(key) {
-      if (selectedKeys.has(key)) selectedKeys.delete(key); else selectedKeys.add(key);
-      renderGrid();
+    function closePreview(){const v=document.getElementById('previewVideo');v.pause();v.src='';v.poster='';document.getElementById('previewModal').classList.remove('open');document.body.classList.remove('modal-open');}
+    function closePreviewOnMask(e){if(e.target.id==='previewModal')closePreview();}
+    function openReplaceModal(k){const i=findByKey(k);if(!i)return;replaceTarget=i;document.getElementById('replaceMeta').textContent=(i.folder||'根目录')+' · '+i.video;document.getElementById('replaceFileInput').value='';document.getElementById('replaceModal').classList.add('open');document.body.classList.add('modal-open');}
+    function closeReplaceModal(){replaceTarget=null;document.getElementById('replaceModal').classList.remove('open');document.body.classList.remove('modal-open');}
+    function closeReplaceOnMask(e){if(e.target.id==='replaceModal')closeReplaceModal();}
+    async function doReplaceCover(){const inp=document.getElementById('replaceFileInput');if(!replaceTarget)return;if(!inp.files||!inp.files[0]){alert('请选择图片文件');return;}
+      const fd=new FormData();fd.append('folder',replaceTarget.folder);fd.append('stem',replaceTarget.stem);fd.append('file',inp.files[0]);
+      const r=await fetch('/api/poster/replace-cover',{method:'POST',body:fd}),d=await r.json();
+      if(!d.ok){alert(d.error||'替换失败');return;}
+      replaceTarget.thumb=d.thumb;replaceTarget.thumbnail_url='/api/poster-thumb?folder='+encodeURIComponent(replaceTarget.folder)+'&name='+encodeURIComponent(d.thumb)+'&t='+Date.now();closeReplaceModal();renderGrid();
     }
-
-    function toggleSelectAll() {
-      if (visibleItems.length === 0) return;
-      const all = visibleItems.every(item => selectedKeys.has(itemKey(item)));
-      if (all) visibleItems.forEach(item => selectedKeys.delete(itemKey(item)));
-      else visibleItems.forEach(item => selectedKeys.add(itemKey(item)));
-      renderGrid();
+    async function deleteItem(k){const i=findByKey(k);if(!i||!confirm('确认删除 '+i.video+' 吗？'))return;
+      const r=await fetch('/api/poster/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({folder:i.folder,stems:[i.stem]})}),d=await r.json();
+      if(!d.ok){alert(d.error||'删除失败');return;}allItems=allItems.filter(c=>itemKey(c)!==k);selectedKeys.delete(k);applyFilters(false);
     }
-
-    function openPreview(key) {
-      const item = findItemByKey(key);
-      if (!item) return;
-      const fl = item.folder || '根目录';
-      document.getElementById('previewTitle').textContent = item.video;
-      document.getElementById('previewMeta').textContent = fl + ' · ' + fmtSize(item.size) + ' · 时长 ' + durationLabel(item);
-      const video = document.getElementById('previewVideo');
-      video.poster = item.thumb_url || item.thumbnail_url || '';
-      video.src = item.video_url;
-      video.play().catch(function(){});
-      document.getElementById('previewModal').classList.add('open');
-      document.body.classList.add('modal-open');
+    async function batchDelete(){if(selectedKeys.size===0||!confirm('确认删除选中的 '+selectedKeys.size+' 个视频吗？'))return;
+      const g=new Map();visibleItems.filter(i=>selectedKeys.has(itemKey(i))).forEach(i=>{if(!g.has(i.folder))g.set(i.folder,[]);g.get(i.folder).push(i.stem);});
+      for(const[f,ss]of g){const r=await fetch('/api/poster/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({folder:f,stems:ss})}),d=await r.json();if(!d.ok){alert(d.error||'删除失败');return;}}
+      allItems=allItems.filter(i=>!selectedKeys.has(itemKey(i)));selectedKeys.clear();applyFilters(false);
     }
-
-    function closePreview() {
-      const video = document.getElementById('previewVideo');
-      video.pause();
-      video.src = '';
-      video.poster = '';
-      document.getElementById('previewModal').classList.remove('open');
-      document.body.classList.remove('modal-open');
+    function updateDK(k,l){document.querySelectorAll('[data-dk="'+CSS.escape(k)+'"]').forEach(n=>{n.textContent=l;});}
+    function scheduleDP(){const m=getCPI().filter(i=>!durationCache.get(itemKey(i))&&!i.duration);durationProbeQueue=m.map(i=>itemKey(i));if(durationProbeQueue.length===0)return;runDP();runDP();}
+    function runDP(){if(durationProbeRunning>=2)return;const nk=durationProbeQueue.shift();if(!nk)return;const i=findByKey(nk);if(!i){runDP();return;}
+      durationProbeRunning+=1;const p=document.createElement('video');p.preload='metadata';p.src=i.video_url;
+      p.onloadedmetadata=function(){const t=Math.max(0,Math.round(p.duration||0));const h=Math.floor(t/3600),m=Math.floor((t%3600)/60),s=t%60;const l=h>0?pad(h)+':'+pad(m)+':'+pad(s):pad(m)+':'+pad(s);durationCache.set(nk,l);updateDK(nk,l);cl();};
+      p.onerror=cl;p.load();
+      function pad(n){return n<10?'0'+n:''+n;}
+      function cl(){p.src='';durationProbeRunning-=1;runDP();}
     }
-
-    function closePreviewOnMask(e) { if (e.target.id === 'previewModal') closePreview(); }
-
-    function openReplaceModal(key) {
-      const item = findItemByKey(key);
-      if (!item) return;
-      replaceTarget = item;
-      document.getElementById('replaceMeta').textContent = (item.folder || '根目录') + ' · ' + item.video;
-      document.getElementById('replaceFileInput').value = '';
-      document.getElementById('replaceModal').classList.add('open');
-      document.body.classList.add('modal-open');
-    }
-
-    function closeReplaceModal() {
-      replaceTarget = null;
-      document.getElementById('replaceModal').classList.remove('open');
-      document.body.classList.remove('modal-open');
-    }
-
-    function closeReplaceOnMask(e) { if (e.target.id === 'replaceModal') closeReplaceModal(); }
-
-    async function doReplaceCover() {
-      const input = document.getElementById('replaceFileInput');
-      if (!replaceTarget) return;
-      if (!input.files || !input.files[0]) { alert('请选择图片文件'); return; }
-      const fd = new FormData();
-      fd.append('folder', replaceTarget.folder);
-      fd.append('stem', replaceTarget.stem);
-      fd.append('file', input.files[0]);
-      const resp = await fetch('/api/poster/replace-cover', { method: 'POST', body: fd });
-      const data = await resp.json();
-      if (!data.ok) { alert(data.error || '替换失败'); return; }
-      replaceTarget.thumb = data.thumb;
-      replaceTarget.thumbnail_url = '/api/poster-thumb?folder=' + encodeURIComponent(replaceTarget.folder) + '&name=' + encodeURIComponent(data.thumb) + '&t=' + Date.now();
-      closeReplaceModal();
-      renderGrid();
-    }
-
-    async function deleteItem(key) {
-      const item = findItemByKey(key);
-      if (!item) return;
-      if (!confirm('确认删除 ' + item.video + ' 及其封面吗？')) return;
-      const resp = await fetch('/api/poster/delete', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({folder: item.folder, stems: [item.stem]}),
-      });
-      const data = await resp.json();
-      if (!data.ok) { alert(data.error || '删除失败'); return; }
-      allItems = allItems.filter(c => itemKey(c) !== key);
-      selectedKeys.delete(key);
-      applyFilters(false);
-    }
-
-    async function batchDelete() {
-      if (selectedKeys.size === 0) return;
-      if (!confirm('确认删除选中的 ' + selectedKeys.size + ' 个视频吗？')) return;
-      const groups = new Map();
-      visibleItems.filter(item => selectedKeys.has(itemKey(item))).forEach(item => {
-        if (!groups.has(item.folder)) groups.set(item.folder, []);
-        groups.get(item.folder).push(item.stem);
-      });
-      for (const [folder, stems] of groups.entries()) {
-        const resp = await fetch('/api/poster/delete', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({folder, stems}) });
-        const data = await resp.json();
-        if (!data.ok) { alert(data.error || folder + ' 删除失败'); return; }
-      }
-      allItems = allItems.filter(item => !selectedKeys.has(itemKey(item)));
-      selectedKeys.clear();
-      applyFilters(false);
-    }
-
-    function updateDurationView(key, label) {
-      document.querySelectorAll('[data-duration-key="' + CSS.escape(key) + '"]').forEach(n => { n.textContent = label; });
-    }
-
-    function scheduleDurationProbe() {
-      const missing = getCurrentPageItems().filter(item => !durationCache.get(itemKey(item)) && !item.duration);
-      durationProbeQueue = missing.map(item => itemKey(item));
-      if (durationProbeQueue.length === 0) return;
-      runDurationProbe();
-      runDurationProbe();
-    }
-
-    function runDurationProbe() {
-      if (durationProbeRunning >= 2) return;
-      const nextKey = durationProbeQueue.shift();
-      if (!nextKey) return;
-      const item = findItemByKey(nextKey);
-      if (!item) { runDurationProbe(); return; }
-      durationProbeRunning += 1;
-      const probe = document.createElement('video');
-      probe.preload = 'metadata';
-      probe.src = item.video_url;
-      probe.onloadedmetadata = function() {
-        const total = Math.max(0, Math.round(probe.duration || 0));
-        const h = Math.floor(total / 3600);
-        const m = Math.floor((total % 3600) / 60);
-        const s = total % 60;
-        const label = h > 0 ? pad2(h) + ':' + pad2(m) + ':' + pad2(s) : pad2(m) + ':' + pad2(s);
-        durationCache.set(nextKey, label);
-        updateDurationView(nextKey, label);
-        cleanup();
-      };
-      probe.onerror = cleanup;
-      probe.load();
-      function pad2(n) { return n < 10 ? '0' + n : '' + n; }
-      function cleanup() { probe.src = ''; durationProbeRunning -= 1; runDurationProbe(); }
-    }
-
-    async function reloadData() {
-      document.getElementById('statusText').textContent = '正在刷新数据...';
-      renderSkeletons(getPageSize());
-      try {
-        await loadItems();
-      } catch (error) {
-        document.getElementById('grid').innerHTML = '';
-        document.getElementById('emptyMsg').style.display = 'block';
-        document.getElementById('statusText').textContent = error.message || '加载失败';
-      }
-    }
-
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') { closePreview(); closeReplaceModal(); }
-    });
-
-    document.getElementById('folderFilter').value = INITIAL_FOLDER;
-    reloadData();
+    async function reloadData(){document.getElementById('statusText').textContent='正在刷新...';renderSkeletons(getPS());try{await loadItems();}catch(e){document.getElementById('grid').innerHTML='';document.getElementById('emptyMsg').style.display='block';document.getElementById('statusText').textContent=e.message||'加载失败';}}
+    document.addEventListener('keydown',function(e){if(e.key==='Escape'){closePreview();closeReplaceModal();}});
+    document.getElementById('folderFilter').value=INITIAL_FOLDER;reloadData();
   </script>
 </body>
 </html>
