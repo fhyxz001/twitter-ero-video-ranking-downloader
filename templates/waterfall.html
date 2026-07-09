@@ -4,536 +4,72 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>瀑布流预览</title>
-
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      color-scheme: light;
-      --bg: #FFFFFF;
-      --ink: #111111;
-      --ink-secondary: #555555;
-      --muted: #888888;
-      --line: #E5E5E5;
-      --line-hover: #BBBBBB;
-      --accent: #111111;
-      --danger: #C0392B;
-      --radius: 6px;
-    }
-    body {
-      min-height: 100vh;
-      font-family: -apple-system, BlinkMacSystemFont, "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
-      color: var(--ink);
-      background: var(--bg);
-      font-size: 14px;
-      line-height: 1.5;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
-    button { font: inherit; }
-
-    /* ── Layout ── */
-    .shell {
-      width: min(1080px, calc(100% - 32px));
-      margin: 0 auto;
-      padding: 24px 0 64px;
-    }
-
-    /* ── Header ── */
-    .topbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      gap: 16px;
-      margin-bottom: 16px;
-    }
-    .back {
-      color: var(--ink-secondary);
-      text-decoration: none;
-      font-size: 13px;
-    }
-    .back:hover { color: var(--ink); }
-    h1 {
-      margin: 4px 0 0;
-      font-size: 22px;
-      font-weight: 600;
-      line-height: 1.2;
-      color: var(--ink);
-    }
-    .config-line {
-      margin-top: 6px;
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    /* ── Buttons ── */
-    .actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-    }
-    .btn {
-      height: 32px;
-      border-radius: var(--radius);
-      border: 1px solid var(--line);
-      padding: 0 12px;
-      cursor: pointer;
-      background: var(--bg);
-      color: var(--ink);
-      font-weight: 500;
-      font-size: 13px;
-      transition: border-color 100ms, color 100ms;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .btn:hover {
-      border-color: var(--line-hover);
-    }
-    .btn-primary {
-      background: var(--accent);
-      color: #fff;
-      border-color: var(--accent);
-    }
-    .btn-primary:hover {
-      border-color: var(--accent);
-      opacity: 0.85;
-    }
-    .btn:disabled {
-      opacity: .4;
-      cursor: not-allowed;
-      pointer-events: none;
-    }
-
-    /* ── Dock (sticky nav) ── */
-    .dock {
-      position: sticky;
-      top: 0;
-      z-index: 20;
-      padding: 12px 0;
-      background: var(--bg);
-      border-bottom: 1px solid var(--line);
-    }
-    .tabs {
-      display: flex;
-      gap: 4px;
-      overflow-x: auto;
-      padding-bottom: 2px;
-      scrollbar-width: none;
-    }
-    .tabs::-webkit-scrollbar { display: none; }
-    .tab {
-      height: 30px;
-      white-space: nowrap;
-      border-radius: var(--radius);
-      border: 1px solid transparent;
-      background: transparent;
-      color: var(--ink-secondary);
-      padding: 0 12px;
-      cursor: pointer;
-      font-weight: 500;
-      font-size: 13px;
-      transition: color 100ms, background 100ms;
-    }
-    .tab:hover {
-      color: var(--ink);
-    }
-    .tab.active {
-      color: var(--bg);
-      background: var(--ink);
-      border-color: var(--ink);
-    }
-
-    /* ── Status bar ── */
-    .status {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      margin: 12px 0 16px;
-      color: var(--ink-secondary);
-      font-size: 13px;
-      flex-wrap: wrap;
-    }
-    .status strong { color: var(--ink); font-weight: 600; }
-    .status-side {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-    .pager {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .page-info {
-      min-width: 70px;
-      text-align: center;
-      font-weight: 500;
-      font-size: 13px;
-      color: var(--ink);
-    }
-
-    /* ── Masonry ── */
-    .masonry {
-      width: 100%;
-      column-count: 3;
-      column-gap: 12px;
-    }
-
-    /* ── Card ── */
-    .card {
-      display: inline-block;
-      width: 100%;
-      break-inside: avoid;
-      margin: 0 0 12px;
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      background: var(--bg);
-      overflow: hidden;
-      cursor: pointer;
-    }
-    .card:hover {
-      border-color: var(--line-hover);
-    }
-    .card.selected {
-      border-color: var(--accent);
-    }
-
-    /* ── Poster ── */
-    .poster {
-      position: relative;
-      min-height: 120px;
-      background: #F0F0F0;
-      cursor: pointer;
-      overflow: hidden;
-    }
-    .poster img {
-      display: block;
-      width: 100%;
-      height: auto;
-      min-height: 120px;
-      aspect-ratio: 16 / 9;
-      object-fit: cover;
-      background: #F0F0F0;
-    }
-    .fallback {
-      min-height: 160px;
-      display: grid;
-      place-items: center;
-      color: var(--muted);
-      font-size: 24px;
-      font-weight: 600;
-    }
-    .select {
-      position: absolute;
-      top: 8px;
-      left: 8px;
-      width: 16px;
-      height: 16px;
-      accent-color: var(--accent);
-      z-index: 2;
-      cursor: pointer;
-    }
-    .play {
-      position: absolute;
-      right: 8px;
-      bottom: 8px;
-      width: 28px;
-      height: 28px;
-      border-radius: 999px;
-      border: none;
-      background: rgba(0, 0, 0, 0.5);
-      display: grid;
-      place-items: center;
-    }
-    .play::before {
-      content: "";
-      width: 0;
-      height: 0;
-      border-top: 6px solid transparent;
-      border-bottom: 6px solid transparent;
-      border-left: 9px solid #fff;
-      margin-left: 2px;
-    }
-
-    /* ── Card body ── */
-    .body {
-      padding: 10px 12px 12px;
-    }
-    .title {
-      margin: 0 0 6px;
-      font-size: 13px;
-      line-height: 1.4;
-      word-break: break-word;
-      font-weight: 500;
-      color: var(--ink);
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-    .meta {
-      display: flex;
-      gap: 4px;
-      flex-wrap: wrap;
-      color: var(--ink-secondary);
-      font-size: 11px;
-    }
-    .pill {
-      padding: 2px 6px;
-      border-radius: 4px;
-      background: #F5F5F5;
-      font-weight: 400;
-    }
-
-    /* ── Skeleton (static placeholders) ── */
-    .skeleton {
-      display: inline-block;
-      width: 100%;
-      break-inside: avoid;
-      margin: 0 0 12px;
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      background: var(--bg);
-      overflow: hidden;
-    }
-    .skeleton-poster {
-      aspect-ratio: 16 / 9;
-      background: #F0F0F0;
-    }
-    .skeleton-body {
-      padding: 10px 12px 12px;
-    }
-    .skeleton-line {
-      height: 10px;
-      border-radius: 4px;
-      background: #F0F0F0;
-      margin-bottom: 6px;
-    }
-    .skeleton-line:last-child { width: 60%; margin-bottom: 0; }
-    .skeleton-pills {
-      display: flex;
-      gap: 4px;
-      margin-top: 6px;
-    }
-    .skeleton-pill {
-      height: 14px;
-      width: 36px;
-      border-radius: 4px;
-      background: #F0F0F0;
-    }
-
-    /* ── Empty state ── */
-    .empty {
-      display: none;
-      width: 100%;
-      margin: 40px auto 0;
-      padding: 48px 24px;
-      border: 1px dashed var(--line);
-      border-radius: var(--radius);
-      text-align: center;
-      color: var(--muted);
-      background: var(--bg);
-      font-size: 13px;
-    }
-
-    /* ── Settings Modal ── */
-    .settings-modal {
-      position: fixed;
-      inset: 0;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      background: rgba(0, 0, 0, 0.3);
-      z-index: 90;
-    }
-    .settings-modal.open { display: flex; }
-    .settings-panel {
-      width: min(440px, 100%);
-      border-radius: var(--radius);
-      border: 1px solid var(--line);
-      background: var(--bg);
-      overflow: hidden;
-    }
-    .settings-head,
-    .settings-foot {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      padding: 14px 18px;
-      border-bottom: 1px solid var(--line);
-    }
-    .settings-foot {
-      border-bottom: none;
-      border-top: 1px solid var(--line);
-      justify-content: flex-end;
-    }
-    .settings-title {
-      margin: 0;
-      font-size: 15px;
-      font-weight: 600;
-    }
-    .settings-note {
-      margin: 4px 0 0;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.5;
-    }
-    .settings-body { padding: 18px; }
-    .settings-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
-    }
-    .field {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .field.full { grid-column: 1 / -1; }
-    .field label {
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--ink-secondary);
-    }
-    .field select {
-      height: 32px;
-      border-radius: var(--radius);
-      border: 1px solid var(--line);
-      background: var(--bg);
-      padding: 0 10px;
-      color: var(--ink);
-      font: inherit;
-      font-size: 13px;
-      cursor: pointer;
-    }
-    .field select:hover { border-color: var(--line-hover); }
-    .field select:focus {
-      outline: none;
-      border-color: var(--accent);
-    }
-
-    /* ── Preview Modal ── */
-    .modal {
-      position: fixed;
-      inset: 0;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      background: rgba(0, 0, 0, 0.8);
-      z-index: 100;
-    }
-    .modal.open { display: flex; }
-    .player {
-      width: min(900px, 100%);
-      background: #000;
-      border-radius: var(--radius);
-      overflow: hidden;
-    }
-    .player-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      color: #fff;
-      padding: 10px 14px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    .player-title {
-      font-weight: 500;
-      font-size: 13px;
-      word-break: break-word;
-      opacity: 0.9;
-    }
-    .close {
-      min-width: 30px;
-      width: 30px;
-      height: 30px;
-      border-radius: var(--radius);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      background: transparent;
-      color: #fff;
-      cursor: pointer;
-      font-size: 18px;
-      display: grid;
-      place-items: center;
-    }
-    .close:hover { background: rgba(255, 255, 255, 0.1); }
-    video {
-      width: 100%;
-      max-height: 78vh;
-      display: block;
-      background: #000;
-    }
-
-    /* ── Responsive ── */
-    @media (max-width: 920px) {
-      .masonry { column-count: 2; }
-      .topbar { align-items: flex-start; flex-direction: column; }
-      .actions { justify-content: flex-start; }
-    }
-    @media (max-width: 620px) {
-      .shell { width: calc(100% - 24px); padding-top: 16px; }
-      .masonry { column-count: 1; }
-      .actions .btn { flex: 1; min-width: 100px; justify-content: center; }
-      .status { align-items: flex-start; flex-direction: column; }
-      .status-side { width: 100%; justify-content: space-between; }
-      .pager { width: 100%; justify-content: space-between; }
-      .settings-grid { grid-template-columns: 1fr; }
-    }
-  </style>
+  <link rel="stylesheet" href="{{ url_for('static', path='css/design-system.css') }}" />
 </head>
 <body>
-  <main class="shell">
-    <header class="topbar">
+  <div class="shell shell--narrow">
+    <!-- ═══════════ Header ═══════════ -->
+    <header style="display: flex; justify-content: space-between; align-items: flex-end; gap: var(--ds-space-4); margin: var(--ds-space-6) 0 var(--ds-space-4); flex-wrap: wrap;">
       <div>
-        <a class="back" href="/">&larr; 返回首页</a>
-        <h1>瀑布流</h1>
-        <div id="configLine" class="config-line"></div>
+        <a class="hero-nav" href="/">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          返回首页
+        </a>
+        <h1 style="margin-top: var(--ds-space-2); font-size: var(--ds-text-2xl); font-weight: 700; color: var(--ds-text-primary); letter-spacing: var(--ds-tracking-tight);">瀑布流</h1>
+        <div id="configLine" class="muted-darker text-sm" style="margin-top: var(--ds-space-1);"></div>
       </div>
-      <div class="actions">
-        <button class="btn" type="button" onclick="openSettings()">设置</button>
-        <button class="btn" type="button" onclick="reloadData()">刷新</button>
-        <button class="btn" type="button" id="selectAllBtn" onclick="toggleSelectAll()">全选当前页</button>
-        <button class="btn btn-primary" type="button" id="downloadBtn" onclick="downloadSelected()" disabled>下载选中</button>
+      <div class="btn-group">
+        <button class="btn btn-ghost" type="button" onclick="openSettings()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          设置
+        </button>
+        <button class="btn btn-ghost" type="button" onclick="reloadData()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          刷新
+        </button>
+        <button class="btn btn-ghost" type="button" id="selectAllBtn" onclick="toggleSelectAll()">全选当前页</button>
+        <button class="btn btn-primary" type="button" id="downloadBtn" onclick="downloadSelected()" disabled>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          下载选中
+        </button>
       </div>
     </header>
 
+    <!-- ═══════════ Sticky Dock ═══════════ -->
     <section class="dock">
-      <nav id="tabs" class="tabs" aria-label="标签"></nav>
-      <div class="status">
+      <nav id="tabs" class="dock-tabs" aria-label="标签"></nav>
+      <div class="status-bar" style="margin-top: var(--ds-space-3);">
         <div id="statusText">正在加载...</div>
-        <div class="status-side">
+        <div class="status-bar-side">
           <div>已选 <strong id="selectedCount">0</strong> 个</div>
           <div class="pager">
-            <button class="btn" type="button" id="prevPageBtn" onclick="changePage(-1)">上一页</button>
+            <button class="btn btn-secondary btn-sm" type="button" id="prevPageBtn" onclick="changePage(-1)">上一页</button>
             <span id="pageInfo" class="page-info">第 1 页</span>
-            <button class="btn" type="button" id="nextPageBtn" onclick="changePage(1)">下一页</button>
+            <button class="btn btn-secondary btn-sm" type="button" id="nextPageBtn" onclick="changePage(1)">下一页</button>
           </div>
         </div>
       </div>
     </section>
 
+    <!-- ═══════════ Masonry Grid ═══════════ -->
     <section id="masonry" class="masonry"></section>
-    <div id="empty" class="empty">当前配置下没有可预览的视频。</div>
-  </main>
+    <div id="empty" class="empty-state">当前配置下没有可预览的视频。</div>
+  </div>
 
-  <div id="settingsModal" class="settings-modal" onclick="closeSettingsOnMask(event)">
-    <div class="settings-panel">
-      <div class="settings-head">
+  <!-- ═══════════ Settings Modal ═══════════ -->
+  <div id="settingsModal" class="modal" onclick="closeSettingsOnMask(event)">
+    <div class="modal-dialog" style="max-width: 460px;">
+      <div class="modal-header">
         <div>
-          <h2 class="settings-title">瀑布流设置</h2>
-          <p class="settings-note">这里只影响瀑布流预览，不会改动下载页的定时下载筛选。</p>
+          <h2 class="modal-title">瀑布流设置</h2>
+          <p class="modal-subtitle">这里只影响瀑布流预览，不会改动下载页的定时下载筛选。</p>
         </div>
-        <button class="btn" type="button" onclick="closeSettings()">&times;</button>
+        <button type="button" class="drawer-close" onclick="closeSettings()">&times;</button>
       </div>
-      <div class="settings-body">
-        <div class="settings-grid">
+      <div class="modal-body">
+        <div class="drawer-grid">
           <div class="field">
             <label for="settingsPerPage">分页展示数量</label>
             <select id="settingsPerPage">
@@ -568,39 +104,35 @@
           </div>
         </div>
       </div>
-      <div class="settings-foot">
-        <button class="btn" type="button" onclick="closeSettings()">取消</button>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" type="button" onclick="closeSettings()">取消</button>
         <button class="btn btn-primary" type="button" onclick="saveSettings()">保存</button>
       </div>
     </div>
   </div>
 
-  <div id="previewModal" class="modal" onclick="closePreviewOnMask(event)">
-    <div class="player">
-      <div class="player-head">
+  <!-- ═══════════ Preview Modal ═══════════ -->
+  <div id="previewModal" class="player-modal" onclick="closePreviewOnMask(event)">
+    <div class="player-container">
+      <div class="player-header">
         <div id="previewTitle" class="player-title">视频预览</div>
-        <button class="close" type="button" onclick="closePreview()">&times;</button>
+        <button class="player-close" type="button" onclick="closePreview()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
       </div>
-      <div class="preview-wrap">
-        <video id="previewVideo" controls preload="metadata"></video>
-      </div>
+      <video id="previewVideo" class="player-video" controls preload="metadata"></video>
     </div>
   </div>
 
   <script>
     const initialTabs = {{ tabs | tojson }};
     const initialConfig = {{ config | tojson }};
-    const settingsModal = document.getElementById('settingsModal');
 
     let tabs = initialTabs;
-    let currentConfig = { ...initialConfig };
+    let currentConfig = Object.assign({}, initialConfig);
     let currentTag = new URLSearchParams(location.search).get('tag') || '';
     let currentPage = Math.max(1, parseInt(new URLSearchParams(location.search).get('page') || '1', 10) || 1);
-    let pagination = {
-      page: currentPage,
-      per_page: currentConfig.per_page || 10,
-      has_next: false,
-    };
+    let pagination = { page: currentPage, per_page: currentConfig.per_page || 10, has_next: false };
     let items = [];
     let loadError = '';
     let selectedIds = new Set();
@@ -608,92 +140,58 @@
 
     function renderConfigLine(cfg) {
       if (!cfg) return;
-      document.getElementById('configLine').textContent =
-        `排序 ${cfg.sort || '-'} / 范围 ${cfg.range || '-'} / 时长 ${cfg.min_time || 0}-${cfg.max_time || 0} 秒 / 每页 ${cfg.per_page || 10}`;
+      document.getElementById('configLine').textContent = '排序 ' + (cfg.sort || '-') + ' / 范围 ' + (cfg.range || '-') + ' / 时长 ' + (cfg.min_time || 0) + '-' + (cfg.max_time || 0) + ' 秒 / 每页 ' + (cfg.per_page || 10);
     }
 
-    function escapeHtml(value) {
-      return String(value || '')
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;');
-    }
-
-    function jsString(value) {
-      return String(value || '')
-        .replaceAll('\\', '\\\\')
-        .replaceAll("'", "\\'")
-        .replaceAll('\n', '\\n')
-        .replaceAll('\r', '\\r');
-    }
-
-    function itemById(id) {
-      return items.find(item => item.id === id) || null;
-    }
-
-    function tabName(code) {
-      const tab = tabs.find(item => item.code === code);
-      return tab ? tab.name : '全部';
-    }
+    function escapeHtml(v) { return String(v || '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;'); }
+    function jsString(v) { return String(v || '').replaceAll('\\', '\\\\').replaceAll("'", "\\'").replaceAll('\n', '\\n').replaceAll('\r', '\\r'); }
+    function itemById(id) { return items.find(item => item.id === id) || null; }
+    function tabName(code) { const t = tabs.find(n => n.code === code); return t ? t.name : '全部'; }
 
     function setTimeFilterValue(minTime, maxTime) {
-      const select = document.getElementById('settingsTimeFilter');
-      const value = `${parseInt(minTime || 0, 10)}-${parseInt(maxTime || 0, 10)}`;
-      if ([...select.options].some(option => option.value === value)) {
-        select.value = value;
-      } else {
-        select.value = '0-86400';
-      }
+      const sel = document.getElementById('settingsTimeFilter');
+      const val = '' + (parseInt(minTime || 0)) + '-' + (parseInt(maxTime || 0));
+      if ([...sel.options].some(o => o.value === val)) sel.value = val; else sel.value = '0-86400';
     }
 
     function getSelectedTimeFilter() {
-      const option = document.getElementById('settingsTimeFilter').selectedOptions[0];
-      return {
-        min: parseInt(option.dataset.min || '0', 10),
-        max: parseInt(option.dataset.max || '86400', 10),
-      };
+      const o = document.getElementById('settingsTimeFilter').selectedOptions[0];
+      return { min: parseInt(o.dataset.min || '0', 10), max: parseInt(o.dataset.max || '86400', 10) };
     }
 
     function openSettings() {
-      document.getElementById('settingsPerPage').value = String(currentConfig.per_page || 10);
+      document.getElementById('settingsPerPage').value = '' + (currentConfig.per_page || 10);
       document.getElementById('settingsSort').value = currentConfig.sort || 'pv';
       document.getElementById('settingsRange').value = currentConfig.range || 'daily';
       setTimeFilterValue(currentConfig.min_time || 0, currentConfig.max_time || 86400);
-      settingsModal.classList.add('open');
+      document.getElementById('settingsModal').classList.add('open');
+      document.body.classList.add('modal-open');
     }
 
     function closeSettings() {
-      settingsModal.classList.remove('open');
+      document.getElementById('settingsModal').classList.remove('open');
+      document.body.classList.remove('modal-open');
     }
 
-    function closeSettingsOnMask(event) {
-      if (event.target === settingsModal) {
-        closeSettings();
-      }
-    }
+    function closeSettingsOnMask(e) { if (e.target === document.getElementById('settingsModal')) closeSettings(); }
 
     async function saveSettings() {
-      const timeFilter = getSelectedTimeFilter();
+      const tf = getSelectedTimeFilter();
       const payload = {
         per_page: parseInt(document.getElementById('settingsPerPage').value, 10),
         sort: document.getElementById('settingsSort').value,
         range: document.getElementById('settingsRange').value,
-        min_time: timeFilter.min,
-        max_time: timeFilter.max,
+        min_time: tf.min,
+        max_time: tf.max,
       };
-
       try {
         const resp = await fetch('/api/waterfall/settings', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {'Content-Type': 'application/json'},
           body: JSON.stringify(payload),
         });
         const data = await resp.json();
-        if (!data.ok) {
-          throw new Error(data.error || '保存失败');
-        }
+        if (!data.ok) throw new Error(data.error || '保存失败');
         currentConfig = data.config || payload;
         currentPage = 1;
         pagination.page = 1;
@@ -703,32 +201,20 @@
         updateUrl();
         renderConfigLine(currentConfig);
         await loadData();
-      } catch (error) {
-        alert(error.message || '保存失败');
-      }
+      } catch (error) { alert(error.message || '保存失败'); }
     }
 
     function updateUrl() {
-      const params = new URLSearchParams();
-      if (currentTag) {
-        params.set('tag', currentTag);
-      }
-      if (currentPage > 1) {
-        params.set('page', String(currentPage));
-      }
-      const query = params.toString();
-      history.replaceState(null, '', query ? `/waterfall?${query}` : '/waterfall');
+      const p = new URLSearchParams();
+      if (currentTag) p.set('tag', currentTag);
+      if (currentPage > 1) p.set('page', '' + currentPage);
+      const q = p.toString();
+      history.replaceState(null, '', q ? '/waterfall?' + q : '/waterfall');
     }
 
     function renderTabs() {
       const box = document.getElementById('tabs');
-      box.innerHTML = tabs.map(tab => `
-        <button
-          type="button"
-          class="tab${tab.code === currentTag ? ' active' : ''}"
-          onclick="switchTab('${jsString(tab.code)}')"
-        >${escapeHtml(tab.name)}</button>
-      `).join('');
+      box.innerHTML = tabs.map(tab => '<button type="button" class="dock-tab' + (tab.code === currentTag ? ' active' : '') + '" onclick="switchTab(\'' + jsString(tab.code) + '\')">' + escapeHtml(tab.name) + '</button>').join('');
     }
 
     function renderStatus() {
@@ -740,24 +226,16 @@
       const nextPageBtn = document.getElementById('nextPageBtn');
       const pageInfo = document.getElementById('pageInfo');
 
-      selectedCount.textContent = String(selectedIds.size);
+      selectedCount.textContent = '' + selectedIds.size;
       downloadBtn.disabled = selectedIds.size === 0 || loading;
       selectAllBtn.disabled = items.length === 0 || loading;
-      selectAllBtn.textContent = items.length && items.every(item => selectedIds.has(item.id))
-        ? '取消全选'
-        : '全选当前页';
+      selectAllBtn.textContent = items.length && items.every(item => selectedIds.has(item.id)) ? '取消全选' : '全选当前页';
       prevPageBtn.disabled = loading || pagination.page <= 1;
       nextPageBtn.disabled = loading || !pagination.has_next;
-      pageInfo.textContent = `第 ${pagination.page} 页`;
-      if (loading) {
-        status.innerHTML = `正在加载 <strong>${escapeHtml(tabName(currentTag))}</strong> 第 ${pagination.page} 页...`;
-        return;
-      }
-      if (loadError) {
-        status.innerHTML = `<strong>${escapeHtml(loadError)}</strong>`;
-        return;
-      }
-      status.innerHTML = `<strong>${escapeHtml(tabName(currentTag))}</strong> 当前页共 ${items.length} 个视频`;
+      pageInfo.textContent = '第 ' + pagination.page + ' 页';
+      if (loading) { status.innerHTML = '正在加载 <strong>' + escapeHtml(tabName(currentTag)) + '</strong> 第 ' + pagination.page + ' 页...'; return; }
+      if (loadError) { status.innerHTML = '<strong>' + escapeHtml(loadError) + '</strong>'; return; }
+      status.innerHTML = '<strong>' + escapeHtml(tabName(currentTag)) + '</strong> 当前页共 ' + items.length + ' 个视频';
     }
 
     function renderCards() {
@@ -771,68 +249,39 @@
       }
       empty.style.display = 'none';
       masonry.innerHTML = items.map(item => {
-        const selected = selectedIds.has(item.id);
+        const sel = selectedIds.has(item.id);
         const thumb = item.thumbnail
-          ? `<img src="${escapeHtml(item.thumbnail)}" alt="${escapeHtml(item.title || item.id)}" loading="lazy" />`
-          : `<div class="fallback">视频</div>`;
-        const duration = item.duration != null
-          ? `<span class="pill">${escapeHtml(String(item.duration))} 秒</span>`
-          : '';
-        const pv = item.pv != null
-          ? `<span class="pill">${escapeHtml(String(item.pv))} 播放</span>`
-          : '';
-        const favorite = item.favorite_count != null
-          ? `<span class="pill">${escapeHtml(String(item.favorite_count))} 收藏</span>`
-          : '';
-        return `
-          <article class="card${selected ? ' selected' : ''}" data-id="${escapeHtml(item.id)}">
-            <div class="poster" onclick="openPreview('${jsString(item.id)}')">
-              <input
-                class="select"
-                type="checkbox"
-                ${selected ? 'checked' : ''}
-                onclick="event.stopPropagation()"
-                onchange="toggleSelect('${jsString(item.id)}')"
-                aria-label="选择视频"
-              />
-              ${thumb}
-              <div class="play" aria-hidden="true"></div>
-            </div>
-            <div class="body">
-              <p class="title">${escapeHtml(item.title || item.id)}</p>
-              <div class="meta">
-                <span class="pill">${escapeHtml(item.id)}</span>
-                ${duration}${pv}${favorite}
-              </div>
-            </div>
-          </article>
-        `;
+          ? '<img src="' + escapeHtml(item.thumbnail) + '" alt="' + escapeHtml(item.title || item.id) + '" loading="lazy" />'
+          : '<div class="masonry-fallback">视频</div>';
+        const duration = item.duration != null ? '<span class="masonry-pill">' + escapeHtml('' + item.duration) + ' 秒</span>' : '';
+        const pv = item.pv != null ? '<span class="masonry-pill">' + escapeHtml('' + item.pv) + ' 播放</span>' : '';
+        const favorite = item.favorite_count != null ? '<span class="masonry-pill">' + escapeHtml('' + item.favorite_count) + ' 收藏</span>' : '';
+        return '<article class="masonry-card' + (sel ? ' selected' : '') + '" data-id="' + escapeHtml(item.id) + '">'
+          + '<div class="masonry-poster" onclick="openPreview(\'' + jsString(item.id) + '\')">'
+          + '<input class="masonry-select" type="checkbox"' + (sel ? ' checked' : '') + ' onclick="event.stopPropagation()" onchange="toggleSelect(\'' + jsString(item.id) + '\')" aria-label="选择视频" />'
+          + thumb
+          + '<div class="masonry-play" aria-hidden="true"></div>'
+          + '</div>'
+          + '<div class="masonry-body">'
+          + '<div class="masonry-title">' + escapeHtml(item.title || item.id) + '</div>'
+          + '<div class="masonry-meta">'
+          + '<span class="masonry-pill">' + escapeHtml(item.id) + '</span>'
+          + duration + pv + favorite
+          + '</div>'
+          + '</div>'
+          + '</article>';
       }).join('');
       renderStatus();
     }
 
     function renderSkeletons(count) {
       const masonry = document.getElementById('masonry');
-      const empty = document.getElementById('empty');
-      empty.style.display = 'none';
-      const skeletons = [];
+      document.getElementById('empty').style.display = 'none';
+      let html = '';
       for (let i = 0; i < count; i++) {
-        skeletons.push(`
-          <div class="skeleton">
-            <div class="skeleton-poster"></div>
-            <div class="skeleton-body">
-              <div class="skeleton-line"></div>
-              <div class="skeleton-line"></div>
-              <div class="skeleton-pills">
-                <div class="skeleton-pill"></div>
-                <div class="skeleton-pill"></div>
-                <div class="skeleton-pill"></div>
-              </div>
-            </div>
-          </div>
-        `);
+        html += '<div class="skeleton"><div class="skeleton-cover"></div><div class="skeleton-body"><div class="skeleton-line"></div><div class="skeleton-line"></div><div style="display:flex;gap:4px;margin-top:6px;"><div style="height:14px;width:36px;border-radius:4px;background:var(--ds-bg-raised)"></div><div style="height:14px;width:36px;border-radius:4px;background:var(--ds-bg-raised)"></div></div></div></div>';
       }
-      masonry.innerHTML = skeletons.join('');
+      masonry.innerHTML = html;
     }
 
     async function loadData() {
@@ -843,48 +292,28 @@
       renderSkeletons(currentConfig.per_page || 10);
       renderStatus();
       try {
-        const params = new URLSearchParams();
-        if (currentTag) {
-          params.set('tag', currentTag);
-        }
-        if (currentPage > 1) {
-          params.set('page', String(currentPage));
-        }
-        const query = params.toString();
-        const resp = await fetch(query ? `/api/waterfall?${query}` : '/api/waterfall');
+        const p = new URLSearchParams();
+        if (currentTag) p.set('tag', currentTag);
+        if (currentPage > 1) p.set('page', '' + currentPage);
+        const q = p.toString();
+        const resp = await fetch(q ? '/api/waterfall?' + q : '/api/waterfall');
         const data = await resp.json();
-        if (!data.ok) {
-          throw new Error(data.error || '加载失败');
-        }
+        if (!data.ok) throw new Error(data.error || '加载失败');
         tabs = Array.isArray(data.tabs) ? data.tabs : tabs;
         items = Array.isArray(data.items) ? data.items : [];
-        if (data.config) {
-          currentConfig = data.config;
-        }
+        if (data.config) currentConfig = data.config;
         if (data.pagination) {
-          pagination = {
-            page: data.pagination.page || currentPage,
-            per_page: data.pagination.per_page || currentConfig.per_page || 10,
-            has_next: Boolean(data.pagination.has_next),
-          };
+          pagination = { page: data.pagination.page || currentPage, per_page: data.pagination.per_page || currentConfig.per_page || 10, has_next: Boolean(data.pagination.has_next) };
           currentPage = pagination.page;
         } else {
-          pagination = {
-            page: currentPage,
-            per_page: currentConfig.per_page || 10,
-            has_next: false,
-          };
+          pagination = { page: currentPage, per_page: currentConfig.per_page || 10, has_next: false };
         }
         renderConfigLine(currentConfig);
         updateUrl();
       } catch (error) {
         items = [];
         loadError = error.message || '加载失败';
-        pagination = {
-          page: currentPage,
-          per_page: currentConfig.per_page || 10,
-          has_next: false,
-        };
+        pagination = { page: currentPage, per_page: currentConfig.per_page || 10, has_next: false };
         renderConfigLine(currentConfig);
       } finally {
         loading = false;
@@ -906,52 +335,37 @@
 
     function changePage(delta) {
       if (loading) return;
-      const nextPage = currentPage + delta;
-      if (nextPage < 1) return;
+      const next = currentPage + delta;
+      if (next < 1) return;
       if (delta > 0 && !pagination.has_next) return;
-      currentPage = nextPage;
-      pagination.page = nextPage;
+      currentPage = next;
+      pagination.page = next;
       updateUrl();
       loadData();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    function reloadData() {
-      if (loading) return;
-      loadData();
-    }
+    function reloadData() { if (!loading) loadData(); }
 
     function updateCardSelected(id) {
-      const card = document.querySelector(`.card[data-id="${CSS.escape(id)}"]`);
+      const card = document.querySelector('.masonry-card[data-id="' + CSS.escape(id) + '"]');
       if (!card) return;
-      const checkbox = card.querySelector('.select');
-      if (selectedIds.has(id)) {
-        card.classList.add('selected');
-        if (checkbox) checkbox.checked = true;
-      } else {
-        card.classList.remove('selected');
-        if (checkbox) checkbox.checked = false;
-      }
+      const cb = card.querySelector('.masonry-select');
+      if (selectedIds.has(id)) { card.classList.add('selected'); if (cb) cb.checked = true; }
+      else { card.classList.remove('selected'); if (cb) cb.checked = false; }
     }
 
     function toggleSelect(id) {
-      if (selectedIds.has(id)) {
-        selectedIds.delete(id);
-      } else {
-        selectedIds.add(id);
-      }
+      if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id);
       updateCardSelected(id);
       renderStatus();
     }
 
     function toggleSelectAll() {
       if (!items.length) return;
-      const allSelected = items.every(item => selectedIds.has(item.id));
-      if (allSelected) {
-        items.forEach(item => selectedIds.delete(item.id));
-      } else {
-        items.forEach(item => selectedIds.add(item.id));
-      }
+      const all = items.every(item => selectedIds.has(item.id));
+      if (all) items.forEach(item => selectedIds.delete(item.id));
+      else items.forEach(item => selectedIds.add(item.id));
       items.forEach(item => updateCardSelected(item.id));
       renderStatus();
     }
@@ -959,14 +373,15 @@
     function openPreview(id) {
       const item = itemById(id);
       if (!item) return;
-      const previewUrl = item.preview_url || item.url;
-      if (!previewUrl) return;
+      const url = item.preview_url || item.url;
+      if (!url) return;
       document.getElementById('previewTitle').textContent = item.title || item.id;
       const video = document.getElementById('previewVideo');
       video.poster = item.thumbnail || '';
-      video.src = previewUrl;
-      video.play().catch(() => {});
+      video.src = url;
+      video.play().catch(function(){});
       document.getElementById('previewModal').classList.add('open');
+      document.body.classList.add('modal-open');
     }
 
     function closePreview() {
@@ -975,51 +390,37 @@
       video.src = '';
       video.poster = '';
       document.getElementById('previewModal').classList.remove('open');
+      document.body.classList.remove('modal-open');
     }
 
-    function closePreviewOnMask(event) {
-      if (event.target.id === 'previewModal') {
-        closePreview();
-      }
-    }
+    function closePreviewOnMask(e) { if (e.target.id === 'previewModal') closePreview(); }
 
     async function downloadSelected() {
-      const selectedItems = items.filter(item => selectedIds.has(item.id));
-      if (!selectedItems.length || loading) return;
-      const downloadBtn = document.getElementById('downloadBtn');
-      downloadBtn.disabled = true;
-      downloadBtn.textContent = '下载中...';
+      const sel = items.filter(item => selectedIds.has(item.id));
+      if (!sel.length || loading) return;
+      const btn = document.getElementById('downloadBtn');
+      btn.disabled = true;
+      btn.textContent = '下载中...';
       try {
         const resp = await fetch('/api/waterfall/download', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tag_code: currentTag, items: selectedItems }),
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ tag_code: currentTag, items: sel }),
         });
         const data = await resp.json();
-        if (!data.ok) {
-          throw new Error(data.error || '下载失败');
-        }
-        alert(`下载完成：成功 ${data.success}，跳过 ${data.skipped}，失败 ${data.failed}`);
+        if (!data.ok) throw new Error(data.error || '下载失败');
+        alert('下载完成：成功 ' + data.success + '，跳过 ' + data.skipped + '，失败 ' + data.failed);
         selectedIds.clear();
         renderCards();
-      } catch (error) {
-        alert(error.message || '下载失败');
-      } finally {
-        downloadBtn.textContent = '下载选中';
-        renderStatus();
-      }
+      } catch (error) { alert(error.message || '下载失败'); }
+      finally { btn.textContent = '下载选中'; renderStatus(); }
     }
 
-    document.addEventListener('keydown', event => {
-      if (event.key === 'Escape') {
-        closePreview();
-        closeSettings();
-      }
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') { closePreview(); closeSettings(); }
     });
 
-    if (!tabs.some(tab => tab.code === currentTag)) {
-      currentTag = '';
-    }
+    if (!tabs.some(tab => tab.code === currentTag)) currentTag = '';
     renderConfigLine(currentConfig);
     renderTabs();
     updateUrl();

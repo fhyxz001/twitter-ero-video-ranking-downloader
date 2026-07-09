@@ -3,962 +3,102 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>twitter-ero-video-ranking-downloader</title>
-  <style>
-    /* ══════════════════════════════════════════
-       Design System — Modern Admin Panel
-       ══════════════════════════════════════════ */
-    :root {
-      --color-primary: #2563eb;
-      --color-primary-hover: #1d4ed8;
-      --color-primary-light: #eff6ff;
-      --color-primary-border: #bfdbfe;
-      --color-success: #16a34a;
-      --color-success-bg: #f0fdf4;
-      --color-warning: #ea580c;
-      --color-warning-bg: #fff7ed;
-      --color-error: #dc2626;
-      --color-error-bg: #fef2f2;
-      --color-gray-50: #f9fafb;
-      --color-gray-100: #f3f4f6;
-      --color-gray-200: #e5e7eb;
-      --color-gray-300: #d1d5db;
-      --color-gray-400: #9ca3af;
-      --color-gray-500: #6b7280;
-      --color-gray-600: #4b5563;
-      --color-gray-700: #374151;
-      --color-gray-800: #1f2937;
-      --color-gray-900: #111827;
-      --color-white: #ffffff;
-      --radius-sm: 8px;
-      --radius-md: 12px;
-      --radius-lg: 16px;
-      --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
-      --shadow-md: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-      --shadow-lg: 0 4px 6px rgba(0,0,0,0.04), 0 2px 4px rgba(0,0,0,0.04);
-      --spacing-xs: 4px;
-      --spacing-sm: 8px;
-      --spacing-md: 16px;
-      --spacing-lg: 24px;
-      --spacing-xl: 32px;
-      --transition-fast: 0.15s ease;
-      --transition-normal: 0.2s ease;
-    }
-
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-      background: #f1f5f9;
-      color: var(--color-gray-800);
-      min-height: 100vh;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
-
-    /* ── Container ── */
-    .app-container {
-      max-width: 1440px;
-      margin: 0 auto;
-      padding: 20px 24px 0;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
-
-    /* ── Top Bar ── */
-    .topbar {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      padding-bottom: 4px;
-    }
-    .topbar-brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-shrink: 0;
-    }
-    .topbar-logo {
-      width: 30px; height: 30px;
-      border-radius: 8px;
-      background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 14px;
-      font-weight: 700;
-      box-shadow: 0 2px 6px rgba(37,99,235,0.25);
-    }
-    .topbar h1 {
-      font-size: 18px;
-      font-weight: 700;
-      color: var(--color-gray-900);
-      letter-spacing: -0.2px;
-    }
-    .topbar-spacer { flex: 1; }
-    .topbar-actions {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-shrink: 0;
-    }
-    .status-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      height: 34px;
-      padding: 0 12px;
-      border-radius: 999px;
-      background: var(--color-gray-100);
-      color: var(--color-gray-700);
-      font-size: 12px;
-      font-weight: 600;
-      border: 1px solid var(--color-gray-200);
-    }
-    .status-pill .stat-dot {
-      width: 7px; height: 7px;
-      border-radius: 50%;
-      background: var(--color-gray-400);
-    }
-    .status-pill.is-running {
-      background: #f0fdf4;
-      color: #15803d;
-      border-color: #bbf7d0;
-    }
-    .status-pill.is-running .stat-dot {
-      background: #16a34a;
-      box-shadow: 0 0 0 3px rgba(22,163,74,0.18);
-      animation: statusPulse 1.6s infinite;
-    }
-    .status-pill.is-idle { color: var(--color-gray-500); }
-    @keyframes statusPulse {
-      0%, 100% { box-shadow: 0 0 0 3px rgba(22,163,74,0.18); }
-      50% { box-shadow: 0 0 0 6px rgba(22,163,74,0.06); }
-    }
-
-    /* ── Tab Navigation ── */
-    .tab-nav {
-      display: flex;
-      gap: 2px;
-      background: var(--color-gray-100);
-      border-radius: var(--radius-sm);
-      padding: 3px;
-    }
-    .tab-nav-btn {
-      padding: 6px 14px;
-      border: none;
-      background: transparent;
-      color: var(--color-gray-600);
-      border-radius: 6px;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all var(--transition-fast);
-      white-space: nowrap;
-      font-family: inherit;
-    }
-    .tab-nav-btn:hover { color: var(--color-gray-800); background: rgba(255,255,255,0.6); }
-    .tab-nav-btn.active {
-      background: var(--color-white);
-      color: var(--color-gray-900);
-      font-weight: 600;
-      box-shadow: var(--shadow-sm);
-    }
-
-    /* ── Status Strip (1-line metrics) ── */
-    .status-strip {
-      display: flex;
-      align-items: center;
-      gap: 0;
-      background: var(--color-white);
-      border: 1px solid var(--color-gray-200);
-      border-radius: var(--radius-md);
-      padding: 0;
-      overflow: hidden;
-      box-shadow: var(--shadow-sm);
-    }
-    .status-strip-item {
-      flex: 1;
-      min-width: 0;
-      padding: 10px 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      border-right: 1px solid var(--color-gray-100);
-    }
-    .status-strip-item:last-child { border-right: none; }
-    .status-strip-label {
-      font-size: 11px;
-      color: var(--color-gray-500);
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
-    }
-    .status-strip-value {
-      font-size: 13px;
-      color: var(--color-gray-900);
-      font-weight: 600;
-      line-height: 1.3;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .status-strip-value.muted { color: var(--color-gray-500); font-weight: 500; }
-    .status-strip-value.ok    { color: #15803d; }
-    .status-strip-value.warn  { color: #b45309; }
-    .status-strip-value.err   { color: var(--color-error); }
-
-    /* Legacy stat-card classes (kept for backward-compat; values populate from JS) */
-    .stats-row { display: none; }
-    .stat-card, .stat-card-header, .stat-label, .stat-icon, .stat-value, .stat-sub, .stat-dot { display: none; }
-
-    /* ── Card ── */
-    .card {
-      background: var(--color-white);
-      border: 1px solid var(--color-gray-200);
-      border-radius: var(--radius-md);
-      box-shadow: var(--shadow-sm);
-      overflow: hidden;
-    }
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--color-gray-100);
-    }
-    .card-header h2 {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--color-gray-900);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      letter-spacing: 0.1px;
-    }
-    .card-header h2 .h2-sub {
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--color-gray-500);
-    }
-    .card-header-actions {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-    .badge {
-      background: var(--color-primary);
-      color: var(--color-white);
-      font-size: 11px;
-      border-radius: 10px;
-      padding: 1px 7px;
-      font-weight: 600;
-      line-height: 18px;
-      min-width: 20px;
-      text-align: center;
-    }
-    .badge.gray { background: var(--color-gray-200); color: var(--color-gray-700); }
-    .card-body {
-      padding: 14px 16px;
-    }
-    .card-body.tight { padding: 8px 16px 12px; }
-    .card-footer {
-      padding: 10px 16px;
-      border-top: 1px solid var(--color-gray-100);
-      background: var(--color-gray-50);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    /* ── Main 2-column grid ── */
-    .main-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
-      gap: 14px;
-      align-items: start;
-    }
-    .main-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-    .side-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-
-    /* ── Form Fields ── */
-    .field { display: flex; flex-direction: column; }
-    .field label {
-      font-size: 13px;
-      margin-bottom: 5px;
-      color: var(--color-gray-700);
-      font-weight: 500;
-    }
-    .field-group {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-    }
-    input[type="text"],
-    input[type="number"],
-    input[type="time"],
-    select {
-      height: 38px;
-      border: 1px solid var(--color-gray-200);
-      border-radius: var(--radius-sm);
-      padding: 0 12px;
-      font-size: 13px;
-      background: var(--color-gray-50);
-      color: var(--color-gray-900);
-      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-      font-family: inherit;
-    }
-    input:focus, select:focus {
-      outline: none;
-      border-color: var(--color-primary);
-      box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
-      background: var(--color-white);
-    }
-    select {
-      cursor: pointer;
-      appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 12px center;
-      padding-right: 32px;
-    }
-
-    /* ── Buttons ── */
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      height: 34px;
-      padding: 0 14px;
-      border: none;
-      border-radius: var(--radius-sm);
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all var(--transition-normal);
-      font-family: inherit;
-      white-space: nowrap;
-    }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn-primary {
-      background: var(--color-primary);
-      color: var(--color-white);
-      box-shadow: 0 1px 2px rgba(37,99,235,0.2);
-    }
-    .btn-primary:hover:not(:disabled) {
-      background: var(--color-primary-hover);
-      box-shadow: 0 2px 8px rgba(37,99,235,0.3);
-    }
-    .btn-secondary {
-      background: var(--color-white);
-      color: var(--color-gray-700);
-      border: 1px solid var(--color-gray-200);
-    }
-    .btn-secondary:hover:not(:disabled) {
-      background: var(--color-gray-50);
-      border-color: var(--color-gray-300);
-    }
-    .btn-ghost {
-      background: transparent;
-      color: var(--color-gray-600);
-    }
-    .btn-ghost:hover:not(:disabled) {
-      background: var(--color-gray-100);
-      color: var(--color-gray-800);
-    }
-    .btn-sm {
-      height: 28px;
-      padding: 0 10px;
-      font-size: 12px;
-      border-radius: 6px;
-    }
-    .btn-lg {
-      height: 38px;
-      padding: 0 18px;
-      font-size: 13px;
-      font-weight: 600;
-      border-radius: var(--radius-sm);
-    }
-    .btn-danger {
-      background: var(--color-error);
-      color: var(--color-white);
-    }
-    .btn-danger:hover:not(:disabled) {
-      background: #b91c1c;
-    }
-    .btn-icon {
-      width: 34px; min-width: 34px; padding: 0;
-    }
-
-    /* ── Icon Button ── */
-    .icon-btn {
-      width: 34px; height: 34px;
-      border: 1px solid var(--color-gray-200);
-      background: var(--color-white);
-      color: var(--color-gray-500);
-      border-radius: var(--radius-sm);
-      font-size: 16px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all var(--transition-normal);
-      flex-shrink: 0;
-    }
-    .icon-btn:hover {
-      background: var(--color-gray-50);
-      border-color: var(--color-gray-300);
-      color: var(--color-gray-700);
-    }
-    .icon-btn img {
-      width: 16px; height: 16px;
-      display: block; object-fit: contain; pointer-events: none;
-    }
-
-    /* ── Blogger Chips ── */
-    .blogger-chip-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      min-height: 28px;
-      margin-bottom: 14px;
-    }
-    .blogger-chip-empty {
-      font-size: 13px;
-      color: var(--color-gray-400);
-      line-height: 28px;
-    }
-    .blogger-chip {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      background: var(--color-gray-50);
-      border: 1px solid var(--color-gray-200);
-      color: var(--color-gray-800);
-      border-radius: 10px;
-      padding: 10px 12px;
-      font-size: 13px;
-      transition: all var(--transition-fast);
-    }
-    .blogger-chip:hover { box-shadow: 0 1px 4px rgba(15,23,42,0.08); border-color: var(--color-gray-300); }
-    .blogger-chip-avatar {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: var(--color-primary-light);
-      color: #4338ca;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 600;
-      font-size: 15px;
-      flex-shrink: 0;
-      overflow: hidden;
-      object-fit: cover;
-    }
-    .blogger-chip-avatar img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-    .blogger-chip-body {
-      flex: 1;
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-    .blogger-chip-name {
-      display: flex;
-      align-items: baseline;
-      gap: 6px;
-      min-width: 0;
-    }
-    .blogger-chip-display-name {
-      font-weight: 600;
-      color: var(--color-gray-900);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 180px;
-    }
-    .blogger-chip-screen-name {
-      color: var(--color-gray-500);
-      font-size: 12px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .blogger-chip-desc {
-      color: var(--color-gray-600);
-      font-size: 12px;
-      line-height: 1.45;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .blogger-chip-desc.is-empty {
-      color: var(--color-gray-400);
-      font-style: italic;
-    }
-    .blogger-chip-meta {
-      color: var(--color-gray-400);
-      font-size: 11px;
-      margin-top: 1px;
-    }
-    .blogger-chip button.blogger-chip-remove {
-      background: none;
-      border: none;
-      color: var(--color-gray-400);
-      cursor: pointer;
-      font-size: 18px;
-      padding: 0 4px;
-      line-height: 1;
-      border-radius: 50%;
-      transition: color var(--transition-fast);
-      flex-shrink: 0;
-    }
-    .blogger-chip button.blogger-chip-remove:hover { color: var(--color-error); }
-
-    .blogger-input-row {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-    .blogger-input-row input {
-      flex: 1;
-      min-width: 0;
-    }
-    .blogger-secondary-actions {
-      display: flex;
-      gap: 6px;
-      margin-top: 10px;
-      padding-top: 10px;
-      border-top: 1px dashed var(--color-gray-200);
-    }
-    .blogger-status-text {
-      font-size: 12px;
-      color: var(--color-gray-500);
-      line-height: 1.6;
-      margin-top: 8px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-    .blogger-status-text .sep { color: var(--color-gray-300); }
-
-    /* ── Tag Picker ── */
-    .tag-picker {
-      border: 1px solid var(--color-gray-200);
-      border-radius: var(--radius-sm);
-      background: var(--color-gray-50);
-      padding: 10px 12px;
-    }
-    .tag-toolbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .tag-selection-text {
-      font-size: 12px;
-      color: var(--color-gray-700);
-      font-weight: 500;
-    }
-    .tag-toolbar-actions {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-    .tag-chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
-      margin-top: 8px;
-    }
-    .tag-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      background: #eff6ff;
-      border: 1px solid #bfdbfe;
-      color: var(--color-primary);
-      border-radius: 6px;
-      padding: 3px 10px;
-      font-size: 12px;
-      font-weight: 500;
-    }
-    .tag-chip-remove {
-      background: none;
-      border: none;
-      color: #60a5fa;
-      font-size: 15px;
-      cursor: pointer;
-      padding: 0 2px;
-      line-height: 1;
-      border-radius: 50%;
-    }
-    .tag-chip-remove:hover { color: var(--color-error); }
-
-    /* ── Download Directory ── */
-    .dir-row {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-    .dir-row input {
-      flex: 1;
-      min-width: 0;
-    }
-    .dir-status {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      margin-top: 6px;
-    }
-    .dir-status-ok    { color: var(--color-success); }
-    .dir-status-error { color: var(--color-error); }
-
-    /* ── Action Bar ── */
-    .action-bar {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      padding: 16px 0 4px;
-      flex-wrap: wrap;
-    }
-    .action-bar .btn-lg { min-width: 140px; }
-    .action-bar-divider {
-      width: 1px;
-      height: 28px;
-      background: var(--color-gray-200);
-      margin: 0 4px;
-    }
-    .action-bar { display: none; }
-
-    /* ── Log Panel ── */
-    .log-panel {
-      background: var(--color-white);
-      border: 1px solid var(--color-gray-200);
-      border-radius: var(--radius-md);
-      box-shadow: var(--shadow-sm);
-      overflow: hidden;
-      transition: all var(--transition-normal);
-      position: sticky;
-      bottom: 12px;
-      z-index: 5;
-    }
-    .log-panel-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 14px;
-      border-bottom: 1px solid var(--color-gray-100);
-      cursor: pointer;
-      user-select: none;
-    }
-    .log-panel-header-left {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .log-panel-header h2 {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--color-gray-900);
-      margin: 0;
-    }
-    .log-status-dot {
-      width: 7px; height: 7px;
-      border-radius: 50%;
-      background: #22c55e;
-      flex-shrink: 0;
-    }
-    .log-status-dot.idle { background: var(--color-gray-300); }
-    .log-panel-header-right {
-      display: flex;
-      gap: 6px;
-      align-items: center;
-    }
-    .log-toggle-icon {
-      font-size: 11px;
-      color: var(--color-gray-400);
-      transition: transform var(--transition-normal);
-      margin-left: 4px;
-    }
-    .log-panel.collapsed .log-toggle-icon {
-      transform: rotate(-90deg);
-    }
-    .log-panel-body {
-      overflow: hidden;
-      transition: max-height 0.3s ease;
-    }
-    .log-panel.collapsed .log-panel-body {
-      max-height: 0 !important;
-    }
-    .logs {
-      background: #0f172a;
-      color: #e2e8f0;
-      font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
-      font-size: 12px;
-      line-height: 1.7;
-      padding: 12px 14px;
-      white-space: pre-wrap;
-      overflow-y: auto;
-      word-break: break-all;
-      height: 220px;
-    }
-    .logs::-webkit-scrollbar { width: 5px; }
-    .logs::-webkit-scrollbar-track { background: transparent; }
-    .logs::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
-    .logs::-webkit-scrollbar-thumb:hover { background: #64748b; }
-
-    /* ── Tag Modal ── */
-    .tag-modal {
-      position: fixed; inset: 0; display: none;
-      align-items: center; justify-content: center;
-      padding: 20px; background: rgba(0,0,0,0.35);
-      backdrop-filter: blur(2px); z-index: 1000;
-    }
-    .tag-modal.show { display: flex; }
-    .tag-modal-dialog {
-      width: min(760px, 100%); max-height: min(80vh, 720px);
-      display: flex; flex-direction: column;
-      background: var(--color-white);
-      border: 1px solid var(--color-gray-200);
-      border-radius: var(--radius-lg);
-      box-shadow: 0 24px 64px rgba(0,0,0,0.12);
-      overflow: hidden;
-    }
-    .tag-modal-header {
-      display: flex; justify-content: space-between; align-items: flex-start;
-      gap: 12px; padding: 18px 22px 14px; border-bottom: 1px solid var(--color-gray-100);
-    }
-    .tag-modal-title { margin: 0; font-size: 18px; color: var(--color-gray-900); font-weight: 700; }
-    .tag-modal-subtitle { margin-top: 4px; font-size: 13px; color: var(--color-gray-500); line-height: 1.5; }
-    .tag-close-btn {
-      border: 1px solid var(--color-gray-200); background: var(--color-white); color: var(--color-gray-500);
-      border-radius: var(--radius-sm); width: 36px; min-width: 36px; padding: 0;
-      font-size: 18px; line-height: 1; cursor: pointer; transition: all var(--transition-normal);
-    }
-    .tag-close-btn:hover { background: var(--color-gray-100); color: var(--color-gray-700); }
-    .tag-modal-body { padding: 16px 22px 22px; overflow: auto; }
-    .tag-modal-footer { display: flex; justify-content: flex-end; padding: 12px 22px; border-top: 1px solid var(--color-gray-100); }
-    .tag-confirm-btn {
-      background: var(--color-primary); color: var(--color-white); border: none; border-radius: var(--radius-sm);
-      height: 38px; padding: 0 18px; font-size: 14px; font-weight: 600;
-      cursor: pointer; transition: all var(--transition-normal); font-family: inherit;
-    }
-    .tag-confirm-btn:hover { background: var(--color-primary-hover); }
-    .tag-list {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px;
-    }
-    .tag-item {
-      border: 1px solid var(--color-gray-200); border-radius: 10px;
-      background: var(--color-white); color: var(--color-gray-700);
-      min-height: 58px; padding: 10px 12px;
-      text-align: left; display: flex; flex-direction: column;
-      justify-content: center; gap: 4px;
-      cursor: pointer; position: relative; transition: all var(--transition-normal);
-      font-family: inherit;
-    }
-    .tag-item:hover { border-color: #93c5fd; background: #f8faff; }
-    .tag-item.active {
-      border-color: var(--color-primary); background: #eff6ff; color: #1d4ed8;
-    }
-    .tag-item:disabled { cursor: not-allowed; opacity: 0.5; }
-    .tag-name { font-size: 14px; font-weight: 600; line-height: 1.4; }
-    .tag-code { font-size: 12px; color: var(--color-gray-500); word-break: break-all; }
-    .tag-item.active .tag-code { color: var(--color-primary); }
-    .tag-check { position: absolute; top: 6px; right: 8px; font-size: 16px; color: var(--color-primary); }
-    .tag-pager {
-      margin-top: 12px; display: flex; justify-content: space-between;
-      align-items: center; gap: 12px; flex-wrap: wrap;
-    }
-    .tag-page-info { font-size: 13px; color: var(--color-gray-500); }
-    .tag-error { margin-top: 8px; color: var(--color-error); font-size: 12px; }
-    .note { margin-top: 10px; color: var(--color-gray-400); font-size: 12px; }
-
-    /* ── Settings Drawer ── */
-    .settings-backdrop {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.3); backdrop-filter: blur(2px);
-      z-index: 1000; opacity: 0; visibility: hidden;
-      transition: opacity 0.25s, visibility 0.25s;
-    }
-    .settings-backdrop.show { opacity: 1; visibility: visible; }
-    .settings-drawer {
-      position: fixed; top: 0; right: 0;
-      width: min(440px, 90vw); height: 100vh;
-      background: var(--color-white); border-left: 1px solid var(--color-gray-200);
-      box-shadow: -8px 0 32px rgba(0,0,0,0.08);
-      z-index: 1001; display: flex; flex-direction: column;
-      transform: translateX(100%);
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    .settings-drawer.show { transform: translateX(0); }
-    .settings-drawer-header {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 20px 24px; border-bottom: 1px solid var(--color-gray-100); flex-shrink: 0;
-    }
-    .settings-modal-title {
-      margin: 0; font-size: 18px; color: var(--color-gray-900); font-weight: 700;
-      display: flex; align-items: center; gap: 8px;
-    }
-    .settings-title-icon { width: 20px; height: 20px; display: block; object-fit: contain; }
-    .settings-drawer-body { flex: 1; padding: 22px 24px; overflow-y: auto; }
-    .settings-drawer-footer {
-      display: flex; justify-content: flex-end; gap: 10px;
-      padding: 16px 24px; border-top: 1px solid var(--color-gray-100); flex-shrink: 0;
-    }
-    .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .settings-field { display: flex; flex-direction: column; }
-    .settings-field.full { grid-column: 1 / -1; }
-    .settings-field label {
-      font-size: 13px; margin-bottom: 5px; color: var(--color-gray-700); font-weight: 500;
-    }
-    .settings-toggle { display: flex; align-items: center; gap: 10px; min-height: 36px; }
-    .settings-toggle input[type="checkbox"] {
-      width: 16px; height: 16px; margin: 0; accent-color: var(--color-primary);
-    }
-    .settings-toggle span { font-size: 14px; color: var(--color-gray-900); font-weight: 500; }
-    .settings-help { margin-top: 6px; font-size: 12px; color: var(--color-gray-500); line-height: 1.5; }
-    .section-label {
-      font-size: 11px; color: var(--color-gray-500); text-transform: uppercase;
-      letter-spacing: 0.5px; padding-bottom: 8px; margin-bottom: 4px;
-      border-bottom: 1px solid var(--color-gray-200); font-weight: 600;
-    }
-    .settings-save-btn {
-      background: var(--color-primary); color: var(--color-white); border: none; border-radius: var(--radius-sm);
-      height: 38px; padding: 0 20px; font-size: 14px; font-weight: 600;
-      cursor: pointer; transition: all var(--transition-normal); font-family: inherit;
-    }
-    .settings-save-btn:hover { background: var(--color-primary-hover); }
-    .settings-cancel-btn {
-      background: var(--color-white); color: var(--color-gray-700); border: 1px solid var(--color-gray-200);
-      border-radius: var(--radius-sm); height: 38px; padding: 0 20px;
-      font-size: 14px; cursor: pointer; transition: all var(--transition-normal); font-family: inherit;
-    }
-    .settings-cancel-btn:hover { background: var(--color-gray-100); }
-    .settings-close-btn {
-      border: 1px solid var(--color-gray-200); background: var(--color-white); color: var(--color-gray-500);
-      border-radius: var(--radius-sm); width: 36px; min-width: 36px; padding: 0;
-      font-size: 20px; line-height: 1; cursor: pointer; transition: all var(--transition-normal);
-    }
-    .settings-close-btn:hover { background: var(--color-gray-100); color: var(--color-gray-700); }
-
-    body.modal-open { overflow: hidden; }
-
-    /* ── Responsive ── */
-    @media (max-width: 1100px) {
-      .main-grid { grid-template-columns: 1fr; }
-    }
-    @media (max-width: 900px) {
-      .field-group { grid-template-columns: 1fr; }
-      .app-container { padding: 14px 14px 0; }
-      .status-strip { flex-wrap: wrap; }
-      .status-strip-item { flex: 1 1 33%; border-bottom: 1px solid var(--color-gray-100); }
-      .status-strip-item:nth-child(3n) { border-right: none; }
-      .topbar { flex-wrap: wrap; gap: 10px; }
-      .topbar-spacer { display: none; }
-    }
-    @media (max-width: 640px) {
-      .status-strip-item { flex: 1 1 50%; }
-      .status-strip-item:nth-child(3n) { border-right: 1px solid var(--color-gray-100); }
-      .status-strip-item:nth-child(2n) { border-right: none; }
-      .settings-grid { grid-template-columns: 1fr; }
-      .tab-nav { flex-wrap: wrap; }
-      .status-pill { display: none; }
-    }
-  </style>
+  <title>视频下载器 — Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='css/design-system.css') }}" />
 </head>
 <body>
-  <div class="app-container">
+
+  <div class="shell">
     <!-- ═══════════ Top Bar ═══════════ -->
-    <div class="topbar">
+    <header class="topbar">
       <div class="topbar-brand">
-        <div class="topbar-logo">▶</div>
-        <h1>视频下载器</h1>
+        <div class="topbar-logo">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        </div>
+        <span class="topbar-title">视频下载器</span>
       </div>
-      <div class="tab-nav">
+
+      <nav class="tab-nav">
         <button class="tab-nav-btn active" onclick="switchTab('download')">下载任务</button>
         <button class="tab-nav-btn" onclick="goToPoster()">海报墙</button>
         <button class="tab-nav-btn" onclick="goToWaterfall()">瀑布流</button>
-      </div>
+      </nav>
+
       <div class="topbar-spacer"></div>
+
       <div class="topbar-actions">
         <span class="status-pill" id="topbar_status_pill" title="整体状态">
-          <span class="stat-dot"></span>
+          <span class="dot"></span>
           <span id="topbar_status_text">空闲</span>
         </span>
-        <button class="icon-btn" onclick="openSettingsModal()" title="设置">
-          <img src="{{ url_for('static', path='set.png') }}" alt="" aria-hidden="true" />
+        <button class="btn btn-icon" onclick="openSettingsModal()" title="设置" aria-label="设置">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
         </button>
         <button class="btn btn-primary" onclick="runNow()" title="立即执行下载任务">
-          <span style="font-size:14px;line-height:1;">▶</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
           <span>立即执行</span>
         </button>
       </div>
-    </div>
+    </header>
 
     <!-- ═══════════ Status Strip ═══════════ -->
     <div class="status-strip" id="status_strip">
       <div class="status-strip-item">
-        <div class="status-strip-label">定时服务</div>
-        <div class="status-strip-value" id="stat_auto_enabled">—</div>
+        <span class="status-strip-label">定时服务</span>
+        <span class="status-strip-value" id="stat_auto_enabled">—</span>
       </div>
       <div class="status-strip-item">
-        <div class="status-strip-label">运行状态</div>
-        <div class="status-strip-value" id="stat_is_running">—</div>
+        <span class="status-strip-label">运行状态</span>
+        <span class="status-strip-value" id="stat_is_running">—</span>
       </div>
       <div class="status-strip-item">
-        <div class="status-strip-label">监控博主</div>
-        <div class="status-strip-value" id="stat_blogger_count">{{ config.twitter_blogger_list | length }}</div>
+        <span class="status-strip-label">监控博主</span>
+        <span class="status-strip-value" id="stat_blogger_count">{{ config.twitter_blogger_list | length }}</span>
       </div>
       <div class="status-strip-item">
-        <div class="status-strip-label">上次执行</div>
-        <div class="status-strip-value" id="stat_last_run_time">{{ state.last_run_time or "暂无" }}</div>
+        <span class="status-strip-label">上次执行</span>
+        <span class="status-strip-value" id="stat_last_run_time">{{ state.last_run_time or "暂无" }}</span>
       </div>
       <div class="status-strip-item">
-        <div class="status-strip-label">下次计划</div>
-        <div class="status-strip-value muted" id="stat_next_run">{{ config.schedule_cron if config.auto_download_enabled else "未开启" }}</div>
+        <span class="status-strip-label">下次计划</span>
+        <span class="status-strip-value status-strip-value--muted" id="stat_next_run">{{ config.schedule_cron if config.auto_download_enabled else "未开启" }}</span>
       </div>
       <div class="status-strip-item">
-        <div class="status-strip-label">下载目录</div>
-        <div class="status-strip-value" id="stat_dir_status" title="{{ config.download_root }}">检测中…</div>
+        <span class="status-strip-label">下载目录</span>
+        <span class="status-strip-value" id="stat_dir_status" title="{{ config.download_root }}">检测中…</span>
       </div>
     </div>
-    <!-- Hidden target for legacy JS (last_result is not surfaced in the new strip) -->
-    <span id="stat_last_result" hidden></span>
 
-    <!-- ═══════════ Main Grid (2 columns) ═══════════ -->
+    <!-- ═══════════ Main Grid ═══════════ -->
     <div class="main-grid">
-      <!-- ─── Left: Blogger Management ─── -->
+      <!-- ─── Left Column: Blogger Management ─── -->
       <div class="main-col">
         <div class="card" id="blogger_card">
           <div class="card-header">
             <h2>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
               博主管理
               <span class="badge" id="blogger_count_badge">{{ config.twitter_blogger_list | length }}</span>
             </h2>
             <div class="card-header-actions">
-              <button class="btn btn-secondary btn-sm" onclick="crawlBloggerNow()" title="立即爬取所有博主">▶ 立即爬取</button>
-              <button class="btn btn-ghost btn-sm" onclick="refreshBloggerStatus()" title="刷新列表">↻ 刷新</button>
+              <button class="btn btn-secondary btn-sm" onclick="crawlBloggerNow()" title="立即爬取所有博主">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                立即爬取
+              </button>
+              <button class="btn btn-ghost btn-sm" onclick="refreshBloggerStatus()" title="刷新列表">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                </svg>
+                刷新
+              </button>
             </div>
           </div>
           <div class="card-body">
-            <div id="blogger_chip_list" class="blogger-chip-list"></div>
+            <div id="blogger_chip_list" class="blogger-list"></div>
             <div class="blogger-input-row">
               <input id="blogger_add_input" type="text" placeholder="输入用户名（不含 @），回车添加" onkeydown="if(event.key==='Enter')addBlogger()" />
               <button class="btn btn-primary" onclick="addBlogger()">+ 添加</button>
@@ -974,28 +114,33 @@
         </div>
       </div>
 
-      <!-- ─── Right: Filter + Download ─── -->
+      <!-- ─── Right Column: Filter + Download ─── -->
       <div class="side-col">
         <div class="card" id="filter_card">
           <div class="card-header">
-            <h2>内容筛选</h2>
+            <h2>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>
+              </svg>
+              内容筛选
+            </h2>
             <div class="card-header-actions">
-              <button id="tag_open_btn" type="button" class="btn btn-secondary btn-sm" onclick="openTagModal()">选择标签</button>
-              <button id="tag_clear_btn" type="button" class="btn btn-ghost btn-sm" onclick="clearAllTags()">清空</button>
+              <button id="tag_open_btn" class="btn btn-secondary btn-sm" onclick="openTagModal()">选择标签</button>
+              <button id="tag_clear_btn" class="btn btn-ghost btn-sm" onclick="clearAllTags()" disabled>清空</button>
             </div>
           </div>
           <div class="card-body">
             <input id="tag_codes_input" type="hidden" value='{{ tag_codes_json | safe }}' />
-            <div class="tag-picker">
+            <div class="tag-picker mb-3">
               <div class="tag-toolbar">
-                <div id="tag_selection_text" class="tag-selection-text">当前：不筛选</div>
-                <div id="tag_chips" class="tag-chips"></div>
+                <span id="tag_selection_text" class="tag-selection-text">当前：不筛选</span>
               </div>
+              <div id="tag_chips" class="tag-chips"></div>
             </div>
-            <div class="field-group" style="margin-top:12px;">
+            <div class="field-group">
               <div class="field">
                 <label for="range">时间范围</label>
-                <select id="range" required>
+                <select id="range">
                   {% for option in range_options %}
                   <option value="{{ option.value }}" {% if config.range == option.value %}selected{% endif %}>{{ option.label }}</option>
                   {% endfor %}
@@ -1003,7 +148,7 @@
               </div>
               <div class="field">
                 <label for="time_filter">时长筛选</label>
-                <select id="time_filter" required>
+                <select id="time_filter">
                   {% for option in time_filter_options %}
                   <option value="{{ option.min }}-{{ option.max }}" data-min="{{ option.min }}" data-max="{{ option.max }}" {% if config.min_time == option.min and config.max_time == option.max %}selected{% endif %}>{{ option.label }}</option>
                   {% endfor %}
@@ -1011,7 +156,7 @@
               </div>
               <div class="field">
                 <label for="sort">排序方式</label>
-                <select id="sort" required>
+                <select id="sort">
                   {% for option in sort_options %}
                   <option value="{{ option.value }}" {% if config.sort == option.value %}selected{% endif %}>{{ option.label }}</option>
                   {% endfor %}
@@ -1019,7 +164,7 @@
               </div>
               <div class="field">
                 <label for="max_daily_downloads">每类下载数</label>
-                <input id="max_daily_downloads" type="number" min="1" required value="{{ config.max_daily_downloads }}" />
+                <input id="max_daily_downloads" type="number" min="1" value="{{ config.max_daily_downloads }}" />
               </div>
             </div>
           </div>
@@ -1027,7 +172,12 @@
 
         <div class="card" id="download_card">
           <div class="card-header">
-            <h2>下载设置</h2>
+            <h2>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              下载设置
+            </h2>
           </div>
           <div class="card-body">
             <div class="field">
@@ -1039,7 +189,7 @@
               <div class="dir-status" id="dir_status">
                 <span id="dir_status_icon"></span>
                 <span id="dir_status_text"></span>
-                <span id="stat_dir_path" class="muted" style="color: var(--color-gray-400); margin-left: 6px; font-size: 11px;">{{ config.download_root }}</span>
+                <span class="muted-darker" style="margin-left: 6px; font-size: 11px;" id="stat_dir_path">{{ config.download_root }}</span>
               </div>
             </div>
           </div>
@@ -1047,12 +197,12 @@
       </div>
     </div>
 
-    <!-- ═══════════ Log Panel (sticky bottom) ═══════════ -->
-    <div class="log-panel" id="log_panel">
+    <!-- ═══════════ Log Panel ═══════════ -->
+    <div class="log-panel" id="log_panel" style="margin-top: 4px;">
       <div class="log-panel-header" onclick="toggleLogPanel()">
         <div class="log-panel-header-left">
           <h2>运行日志</h2>
-          <span class="log-status-dot" id="log_status_dot" title="实时监控中"></span>
+          <span class="log-dot" id="log_status_dot" title="实时监控中"></span>
         </div>
         <div class="log-panel-header-right">
           <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();copyLogs()" title="复制日志">复制</button>
@@ -1065,123 +215,114 @@
       </div>
     </div>
 
-  </div><!-- /app-container -->
+  </div><!-- /shell -->
 
   <!-- ═══════════ Settings Drawer ═══════════ -->
-  <div id="settings_backdrop" class="settings-backdrop" aria-hidden="true" onclick="closeSettingsModal()"></div>
-  <div id="settings_modal" class="settings-drawer" aria-hidden="true">
-    <div class="settings-drawer-header">
-      <h2 class="settings-modal-title">
-        <img class="settings-title-icon" src="{{ url_for('static', path='set.png') }}" alt="" aria-hidden="true" />
-        <span>设置</span>
-      </h2>
-      <button type="button" class="settings-close-btn" aria-label="关闭设置" onclick="closeSettingsModal()">&times;</button>
+  <div id="settings_backdrop" class="drawer-backdrop" aria-hidden="true" onclick="closeSettingsModal()"></div>
+  <div id="settings_modal" class="drawer" aria-hidden="true">
+    <div class="drawer-header">
+      <h2 class="drawer-title">设置</h2>
+      <button type="button" class="drawer-close" aria-label="关闭设置" onclick="closeSettingsModal()">&times;</button>
     </div>
-    <div class="settings-drawer-body">
-      <div class="settings-grid">
-        <div class="settings-field full">
-          <div class="section-label">下载设置</div>
+    <div class="drawer-body">
+      <div class="drawer-grid">
+        <div class="full">
+          <div class="drawer-section">下载设置</div>
         </div>
-        <div class="settings-field full">
-          <label for="settings_auto_download_enabled">定时下载</label>
-          <label class="settings-toggle">
+        <div class="full">
+          <label for="settings_auto_download_enabled" class="toggle-row">
             <input id="settings_auto_download_enabled" name="auto_download_enabled" type="checkbox" {% if config.auto_download_enabled %}checked{% endif %} onchange="syncAutoDownloadFields()" />
             <span>开启自动下载</span>
           </label>
-          <div class="settings-help">关闭后不会再按计划自动下载，但"立即执行任务"仍可手动下载。</div>
+          <div class="form-hint">关闭后不再按计划自动下载，但"立即执行"仍可手动触发。</div>
         </div>
-        <div class="settings-field">
-          <label for="settings_proxy">HTTP/HTTPS 代理（可空）</label>
-          <input id="settings_proxy" name="proxy" type="text" placeholder="例如：http://127.0.0.1:7890" value="{{ config.proxy }}" />
+        <div class="field">
+          <label for="settings_proxy">HTTP 代理（可空）</label>
+          <input id="settings_proxy" name="proxy" type="text" placeholder="http://127.0.0.1:7890" value="{{ config.proxy }}" />
         </div>
-        <div class="settings-field">
-          <label for="settings_schedule_cron">定时执行 Cron 表达式</label>
+        <div class="field">
+          <label for="settings_schedule_cron">定时 cron 表达式</label>
           <input id="settings_schedule_cron" name="schedule_cron" type="text" placeholder="0 3 * * *" value="{{ config.schedule_cron }}" />
-          <div class="settings-help">标准 5 位 cron 表达式，例如 0 3 * * * 表示每天凌晨 3:00</div>
+          <div class="form-hint">标准 5 位 cron，如 0 3 * * * 为每天 3:00</div>
         </div>
-        <div class="settings-field full" style="padding-top:8px;">
-          <div class="section-label">Twitter 设置</div>
+        <div class="full mt-3">
+          <div class="drawer-section">Twitter 设置</div>
         </div>
-        <div class="settings-field full">
+        <div class="full">
           <label for="settings_twitter_cookie">Twitter Cookie（auth_token + ct0）</label>
           <input id="settings_twitter_cookie" name="twitter_cookie" type="text" placeholder="auth_token=xxx; ct0=xxx;" value="{{ config.twitter_cookie }}" />
-          <div class="settings-help">用于博主爬取的认证信息，格式：auth_token=xxx; ct0=xxx;</div>
+          <div class="form-hint">用于博主爬取的认证信息</div>
         </div>
-        <div class="settings-field full" style="padding-top:8px;">
-          <div class="section-label">博主爬取设置</div>
+        <div class="full mt-3">
+          <div class="drawer-section">博主爬取设置</div>
         </div>
-        <div class="settings-field">
-          <label for="settings_blogger_enabled">博主定时爬取</label>
-          <label class="settings-toggle">
+        <div class="field">
+          <label for="settings_blogger_enabled" class="toggle-row">
             <input id="settings_blogger_enabled" name="twitter_blogger_enabled" type="checkbox" {% if config.twitter_blogger_enabled %}checked{% endif %} />
             <span>开启自动爬取</span>
           </label>
         </div>
-        <div class="settings-field">
-          <label for="settings_blogger_cron">每日爬取 Cron 表达式</label>
+        <div class="field">
+          <label for="settings_blogger_cron">每日爬取 cron</label>
           <input id="settings_blogger_cron" name="twitter_blogger_cron" type="text" placeholder="0 4 * * *" value="{{ config.twitter_blogger_cron }}" />
-          <div class="settings-help">标准 5 位 cron 表达式，例如 0 4 * * * 表示每天凌晨 4:00</div>
+          <div class="form-hint">标准 5 位 cron 表达式</div>
         </div>
-        <div class="settings-field">
-          <label for="settings_blogger_max_media">每人每次最多爬取数</label>
+        <div class="field">
+          <label for="settings_blogger_max_media">每人最多爬取数</label>
           <input id="settings_blogger_max_media" name="twitter_blogger_max_media" type="number" min="-1" max="500" value="{{ config.twitter_blogger_max_media }}" />
-          <div class="settings-help">-1 表示不限制下载数量</div>
+          <div class="form-hint">-1 表示不限制</div>
         </div>
-        <div class="settings-field">
-          <label for="settings_blogger_has_retweet">包含转推</label>
-          <label class="settings-toggle">
+        <div class="field">
+          <label for="settings_blogger_has_retweet" class="toggle-row">
             <input id="settings_blogger_has_retweet" name="twitter_blogger_has_retweet" type="checkbox" {% if config.twitter_blogger_has_retweet %}checked{% endif %} />
-            <span>包含转推内容</span>
+            <span>包含转推</span>
           </label>
         </div>
       </div>
     </div>
-    <div class="settings-drawer-footer">
-      <button type="button" class="settings-cancel-btn" onclick="closeSettingsModal()">取消</button>
-      <button type="button" class="settings-save-btn" onclick="saveSettings()">保存设置</button>
+    <div class="drawer-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeSettingsModal()">取消</button>
+      <button type="button" class="btn btn-primary" onclick="saveSettings()">保存设置</button>
     </div>
   </div>
 
   <!-- ═══════════ Tag Modal ═══════════ -->
-  <div id="tag_modal" class="tag-modal" aria-hidden="true" onclick="handleTagModalBackdrop(event)">
-    <div class="tag-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="tag_modal_title">
-      <div class="tag-modal-header">
+  <div id="tag_modal" class="modal" aria-hidden="true" onclick="handleTagModalBackdrop(event)">
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="tag_modal_title">
+      <div class="modal-header">
         <div>
-          <h2 id="tag_modal_title" class="tag-modal-title">选择标签</h2>
-          <div class="tag-modal-subtitle">支持分页浏览，点击标签进行多选/取消选择，完成后点击"确认"关闭弹窗。</div>
+          <h2 id="tag_modal_title" class="modal-title">选择标签</h2>
+          <p class="modal-subtitle">支持分页浏览，点击标签进行多选/取消选择，完成后关闭即生效。</p>
         </div>
-        <button type="button" class="tag-close-btn" aria-label="关闭标签弹窗" onclick="closeTagModal()">&times;</button>
+        <button type="button" class="drawer-close" aria-label="关闭" onclick="closeTagModal()">&times;</button>
       </div>
-      <div class="tag-modal-body">
-        <div id="tag_list" class="tag-list">
-          <div class="note">正在加载标签...</div>
+      <div class="modal-body">
+        <div id="tag_list" class="tag-grid">
+          <div class="muted-darker" style="padding: 8px 0;">正在加载标签...</div>
         </div>
         <div class="tag-pager">
           <button id="tag_prev_btn" type="button" class="btn btn-secondary btn-sm" onclick="loadTags(tagState.page - 1)">上一页</button>
           <span id="tag_page_info" class="tag-page-info">加载中...</span>
           <button id="tag_next_btn" type="button" class="btn btn-secondary btn-sm" onclick="loadTags(tagState.page + 1)">下一页</button>
         </div>
-        <div id="tag_error" class="tag-error"></div>
+        <div id="tag_error" class="field-error"></div>
       </div>
-      <div class="tag-modal-footer">
-        <button type="button" class="tag-confirm-btn" onclick="closeTagModal()">确认选择</button>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary btn-lg" onclick="closeTagModal()">确认选择</button>
       </div>
     </div>
   </div>
 
   <script>
     // ══════════════════════════════════════════
-    //  Tab Navigation
+    // Tab Navigation
     // ══════════════════════════════════════════
     function switchTab(tab) {
-      if (tab === 'download') {
-        // Already on download page, do nothing
-        return;
-      }
+      if (tab === 'download') return;
     }
 
     // ══════════════════════════════════════════
-    //  Log Panel Toggle
+    // Log Panel
     // ══════════════════════════════════════════
     function toggleLogPanel() {
       const panel = document.getElementById('log_panel');
@@ -1190,16 +331,13 @@
 
     function copyLogs() {
       const logs = document.getElementById('logs');
-      navigator.clipboard.writeText(logs.textContent || '').then(() => {
-        // Brief feedback — could add a toast
-      }).catch(() => {
-        // Fallback
-        const textarea = document.createElement('textarea');
-        textarea.value = logs.textContent || '';
-        document.body.appendChild(textarea);
-        textarea.select();
+      navigator.clipboard.writeText(logs.textContent || '').then(() => {}).catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = logs.textContent || '';
+        document.body.appendChild(ta);
+        ta.select();
         document.execCommand('copy');
-        document.body.removeChild(textarea);
+        document.body.removeChild(ta);
       });
     }
 
@@ -1208,17 +346,18 @@
     }
 
     // ══════════════════════════════════════════
-    //  Directory Validation
+    // Directory Validation
     // ══════════════════════════════════════════
     async function validateDirectory() {
       const dir = document.getElementById('download_root').value.trim();
       const statusIcon = document.getElementById('dir_status_icon');
       const statusText = document.getElementById('dir_status_text');
+      const dirStatus = document.getElementById('stat_dir_status');
       if (!dir) {
         statusIcon.textContent = '⚠';
         statusText.textContent = '目录路径不能为空';
-        statusText.className = 'dir-status-error';
-        document.getElementById('stat_dir_status').textContent = '未设置';
+        statusText.className = 'dir-status--err';
+        dirStatus.textContent = '未设置';
         return;
       }
       try {
@@ -1227,27 +366,23 @@
         if (data.ok) {
           statusIcon.textContent = '✓';
           statusText.textContent = '目录有效';
-          statusText.className = 'dir-status-ok';
-          document.getElementById('stat_dir_status').textContent = '有效';
-          document.getElementById('stat_dir_status').style.color = '#16a34a';
+          statusText.className = 'dir-status--ok';
+          dirStatus.textContent = '有效';
         } else {
           statusIcon.textContent = '✗';
           statusText.textContent = data.error || '目录无效';
-          statusText.className = 'dir-status-error';
-          document.getElementById('stat_dir_status').textContent = '无效';
-          document.getElementById('stat_dir_status').style.color = '#dc2626';
+          statusText.className = 'dir-status--err';
+          dirStatus.textContent = '无效';
         }
       } catch {
         statusIcon.textContent = '⚠';
         statusText.textContent = '无法验证目录';
-        statusText.className = 'dir-status-error';
-        document.getElementById('stat_dir_status').textContent = '未知';
-        document.getElementById('stat_dir_status').style.color = '#6b7280';
+        statusText.className = 'dir-status--err';
+        dirStatus.textContent = '未知';
       }
     }
 
     function browseDirectory() {
-      // Create a hidden file input to trigger directory selection
       const input = document.createElement('input');
       input.type = 'file';
       input.webkitdirectory = true;
@@ -1255,16 +390,11 @@
       input.onchange = (e) => {
         const files = e.target.files;
         if (files && files.length > 0) {
-          // Get the directory path from the first file's webkitRelativePath or full path
           const fullPath = files[0].webkitRelativePath || files[0].name;
-          const dirName = fullPath.split('/')[0] || fullPath.split('\\')[0];
-          // Try to get absolute path from the file object
           if (files[0].path) {
-            // Electron or similar environments expose .path
             const dirPath = files[0].path.replace(/[\\/][^\\/]+$/, '');
             document.getElementById('download_root').value = dirPath;
           } else {
-            // Fallback: use relative name as hint
             document.getElementById('download_root').value = fullPath;
           }
           downloadRootDirty = true;
@@ -1276,14 +406,12 @@
       input.click();
     }
 
-    // Run validation on page load
     setTimeout(validateDirectory, 300);
-
     document.getElementById('download_root').addEventListener('change', validateDirectory);
     document.getElementById('download_root').addEventListener('blur', validateDirectory);
 
     // ══════════════════════════════════════════
-    //  Tag multi-select (preserved)
+    // Tag Multi-select
     // ══════════════════════════════════════════
     const tagCodesInput = document.getElementById('tag_codes_input');
     const tagModal = document.getElementById('tag_modal');
@@ -1305,22 +433,11 @@
     let quickSaveChain = Promise.resolve();
     const tagMetaMap = {};
 
-    const tagState = {
-      page: 1,
-      perPage: 10,
-      total: 0,
-      totalPages: 1,
-      items: [],
-      loading: false,
-    };
+    const tagState = { page: 1, perPage: 10, total: 0, totalPages: 1, items: [], loading: false };
 
     function updateTagDisplay() {
       tagCodesInput.value = JSON.stringify(selectedTagCodes);
-      if (selectedTagCodes.length === 0) {
-        tagSelectionText.textContent = '当前：不筛选';
-      } else {
-        tagSelectionText.textContent = `已选 ${selectedTagCodes.length} 个标签`;
-      }
+      tagSelectionText.textContent = selectedTagCodes.length === 0 ? '当前：不筛选' : `已选 ${selectedTagCodes.length} 个标签`;
       tagClearBtn.disabled = selectedTagCodes.length === 0;
 
       tagChipsContainer.innerHTML = '';
@@ -1329,11 +446,11 @@
         const chip = document.createElement('div');
         chip.className = 'tag-chip';
         const label = document.createElement('span');
-        label.textContent = meta ? `${meta.name}` : code;
-        const removeBtn = document.createElement('button');
-        removeBtn.className = 'tag-chip-remove';
-        removeBtn.textContent = '×';
-        removeBtn.onclick = () => {
+        label.textContent = meta ? meta.name : code;
+        const rm = document.createElement('button');
+        rm.className = 'tag-chip-remove';
+        rm.textContent = '×';
+        rm.onclick = () => {
           selectedTagCodes = selectedTagCodes.filter(c => c !== code);
           tagSelectionDirty = true;
           updateTagDisplay();
@@ -1341,32 +458,27 @@
           queueQuickConfigSave();
         };
         chip.appendChild(label);
-        chip.appendChild(removeBtn);
+        chip.appendChild(rm);
         tagChipsContainer.appendChild(chip);
       });
     }
 
     function openTagModal() {
-      tagModal.classList.add('show');
+      tagModal.classList.add('open');
       tagModal.setAttribute('aria-hidden', 'false');
       document.body.classList.add('modal-open');
-      if (!tagState.items.length && !tagState.loading) {
-        loadTags(tagState.page);
-      } else {
-        renderTags();
-      }
+      if (!tagState.items.length && !tagState.loading) loadTags(tagState.page);
+      else renderTags();
     }
 
     function closeTagModal() {
-      tagModal.classList.remove('show');
+      tagModal.classList.remove('open');
       tagModal.setAttribute('aria-hidden', 'true');
       document.body.classList.remove('modal-open');
     }
 
     function handleTagModalBackdrop(event) {
-      if (event.target === tagModal) {
-        closeTagModal();
-      }
+      if (event.target === tagModal) closeTagModal();
     }
 
     function clearAllTags() {
@@ -1385,40 +497,40 @@
 
     function renderTags() {
       tagList.innerHTML = '';
-
       if (!tagState.items.length) {
         const empty = document.createElement('div');
-        empty.className = 'note';
+        empty.className = 'muted-darker';
+        empty.style.padding = '8px 0';
         empty.textContent = tagState.loading ? '正在加载标签...' : '暂无可用标签';
         tagList.appendChild(empty);
         renderTagPagination();
         return;
       }
 
-      tagState.items.forEach((tag) => {
-        const button = document.createElement('button');
-        button.type = 'button';
+      tagState.items.forEach(tag => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
         const isActive = selectedTagCodes.includes(tag.code);
-        button.className = `tag-item${isActive ? ' active' : ''}`;
-        button.disabled = tagState.loading;
+        btn.className = 'tag-item' + (isActive ? ' active' : '');
+        btn.disabled = tagState.loading;
 
         const check = document.createElement('span');
         check.className = 'tag-check';
         check.textContent = isActive ? '✓' : '';
-        button.appendChild(check);
+        btn.appendChild(check);
 
         const name = document.createElement('div');
-        name.className = 'tag-name';
+        name.className = 'tag-item-name';
         name.textContent = tag.name || tag.code;
 
         const code = document.createElement('div');
-        code.className = 'tag-code';
+        code.className = 'tag-item-code';
         code.textContent = tag.code;
 
-        button.appendChild(name);
-        button.appendChild(code);
+        btn.appendChild(name);
+        btn.appendChild(code);
 
-        button.addEventListener('click', () => {
+        btn.addEventListener('click', () => {
           if (selectedTagCodes.includes(tag.code)) {
             selectedTagCodes = selectedTagCodes.filter(c => c !== tag.code);
           } else {
@@ -1431,34 +543,27 @@
           queueQuickConfigSave();
         });
 
-        tagList.appendChild(button);
+        tagList.appendChild(btn);
       });
 
       renderTagPagination();
       updateTagDisplay();
     }
 
-    async function loadTags(page = 1) {
+    async function loadTags(page) {
       const targetPage = Math.max(1, page);
       tagState.loading = true;
       tagError.textContent = '';
       renderTags();
-
       try {
-        const resp = await fetch(`/api/tags?page=${targetPage}&per_page=${tagState.perPage}`);
+        const resp = await fetch('/api/tags?page=' + targetPage + '&per_page=' + tagState.perPage);
         const data = await resp.json();
-        if (!data.ok) {
-          throw new Error(data.error || '标签加载失败');
-        }
-
+        if (!data.ok) throw new Error(data.error || '标签加载失败');
         tagState.page = data.pagination?.page || 1;
         tagState.total = data.pagination?.total || 0;
         tagState.totalPages = data.pagination?.total_pages || 1;
         tagState.items = Array.isArray(data.items) ? data.items : [];
-
-        tagState.items.forEach(tag => {
-          tagMetaMap[tag.code] = tag;
-        });
+        tagState.items.forEach(tag => { tagMetaMap[tag.code] = tag; });
       } catch (error) {
         tagState.items = [];
         tagState.total = 0;
@@ -1473,12 +578,8 @@
 
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') {
-        if (tagModal.classList.contains('show')) {
-          closeTagModal();
-        }
-        if (document.getElementById('settings_modal').classList.contains('show')) {
-          closeSettingsModal();
-        }
+        if (tagModal.classList.contains('open')) closeTagModal();
+        if (document.getElementById('settings_modal').classList.contains('show')) closeSettingsModal();
       }
     });
 
@@ -1486,29 +587,23 @@
 
     async function preloadAllTagNames() {
       try {
-        const resp = await fetch(`/api/tags?page=1&per_page=30`);
+        const resp = await fetch('/api/tags?page=1&per_page=30');
         const data = await resp.json();
-        if (data.ok && data.items) {
-          data.items.forEach(tag => { tagMetaMap[tag.code] = tag; });
-        }
+        if (data.ok && data.items) data.items.forEach(tag => { tagMetaMap[tag.code] = tag; });
         if (data.pagination && data.pagination.total_pages > 1) {
           for (let p = 2; p <= data.pagination.total_pages; p++) {
-            const resp2 = await fetch(`/api/tags?page=${p}&per_page=30`);
-            const data2 = await resp2.json();
-            if (data2.ok && data2.items) {
-              data2.items.forEach(tag => { tagMetaMap[tag.code] = tag; });
-            }
+            const r2 = await fetch('/api/tags?page=' + p + '&per_page=30');
+            const d2 = await r2.json();
+            if (d2.ok && d2.items) d2.items.forEach(tag => { tagMetaMap[tag.code] = tag; });
           }
         }
         updateTagDisplay();
-      } catch (e) {
-        // ignore
-      }
+      } catch (e) { /* ignore */ }
     }
     preloadAllTagNames();
 
     // ══════════════════════════════════════════
-    //  Settings Drawer (preserved)
+    // Settings Drawer
     // ══════════════════════════════════════════
     const settingsModal = document.getElementById('settings_modal');
 
@@ -1519,20 +614,14 @@
 
     function setTimeFilterValue(minTime, maxTime) {
       const select = document.getElementById('time_filter');
-      const value = `${parseInt(minTime || 0)}-${parseInt(maxTime || 0)}`;
-      if ([...select.options].some(option => option.value === value)) {
-        select.value = value;
-      } else {
-        select.value = '0-86400';
-      }
+      const value = '' + (parseInt(minTime || 0)) + '-' + (parseInt(maxTime || 0));
+      if ([...select.options].some(o => o.value === value)) select.value = value;
+      else select.value = '0-86400';
     }
 
     function getSelectedTimeFilter() {
       const option = document.getElementById('time_filter').selectedOptions[0];
-      return {
-        min: parseInt(option.dataset.min || '0'),
-        max: parseInt(option.dataset.max || '86400'),
-      };
+      return { min: parseInt(option.dataset.min || '0'), max: parseInt(option.dataset.max || '86400') };
     }
 
     function openSettingsModal() {
@@ -1545,7 +634,6 @@
       document.getElementById('settings_blogger_max_media').value = currentConfig.twitter_blogger_max_media ?? -1;
       document.getElementById('settings_blogger_has_retweet').checked = currentConfig.twitter_blogger_has_retweet === true;
       syncAutoDownloadFields();
-
       settingsModal.classList.add('show');
       settingsModal.setAttribute('aria-hidden', 'false');
       document.getElementById('settings_backdrop').classList.add('show');
@@ -1570,16 +658,15 @@
       formData.append('max_daily_downloads', document.getElementById('max_daily_downloads').value);
       formData.append('sort', document.getElementById('sort').value);
       formData.append('range', document.getElementById('range').value);
-      const timeFilter = getSelectedTimeFilter();
-      formData.append('min_time', timeFilter.min);
-      formData.append('max_time', timeFilter.max);
+      const tf = getSelectedTimeFilter();
+      formData.append('min_time', tf.min);
+      formData.append('max_time', tf.max);
       formData.append('tag_codes', JSON.stringify(selectedTagCodes));
       formData.append('twitter_cookie', document.getElementById('settings_twitter_cookie').value);
       formData.append('twitter_blogger_enabled', document.getElementById('settings_blogger_enabled').checked ? '1' : '0');
       formData.append('twitter_blogger_cron', document.getElementById('settings_blogger_cron').value);
       formData.append('twitter_blogger_max_media', document.getElementById('settings_blogger_max_media').value);
       formData.append('twitter_blogger_has_retweet', document.getElementById('settings_blogger_has_retweet').checked ? '1' : '0');
-
       try {
         const resp = await fetch('/save', { method: 'POST', body: formData });
         const data = await resp.json();
@@ -1590,8 +677,8 @@
           currentConfig.max_daily_downloads = parseInt(document.getElementById('max_daily_downloads').value);
           currentConfig.sort = document.getElementById('sort').value;
           currentConfig.range = document.getElementById('range').value;
-          currentConfig.min_time = timeFilter.min;
-          currentConfig.max_time = timeFilter.max;
+          currentConfig.min_time = tf.min;
+          currentConfig.max_time = tf.max;
           currentConfig.download_root = downloadRootInput.value;
           currentConfig.tag_codes = [...selectedTagCodes];
           currentConfig.twitter_cookie = document.getElementById('settings_twitter_cookie').value;
@@ -1599,22 +686,18 @@
           currentConfig.twitter_blogger_cron = document.getElementById('settings_blogger_cron').value;
           currentConfig.twitter_blogger_max_media = parseInt(document.getElementById('settings_blogger_max_media').value);
           currentConfig.twitter_blogger_has_retweet = document.getElementById('settings_blogger_has_retweet').checked;
-          downloadRootDirty = false;
-          tagSelectionDirty = false;
-          settingsDirty = false;
+          downloadRootDirty = false; tagSelectionDirty = false; settingsDirty = false;
           closeSettingsModal();
           refreshStatus();
           validateDirectory();
         } else {
           alert('保存失败：' + (data.error || '未知错误'));
         }
-      } catch (e) {
-        alert('保存失败：网络错误');
-      }
+      } catch (e) { alert('保存失败：网络错误'); }
     }
 
     // ══════════════════════════════════════════
-    //  Current Config
+    // Current Config
     // ══════════════════════════════════════════
     let currentConfig = {
       download_root: {{ config.download_root | tojson }},
@@ -1634,49 +717,31 @@
       twitter_blogger_has_retweet: {{ 'true' if config.twitter_blogger_has_retweet else 'false' }},
     };
 
-    function sameTagCodes(left, right) {
-      return JSON.stringify(left || []) === JSON.stringify(right || []);
-    }
+    function sameTagCodes(a, b) { return JSON.stringify(a || []) === JSON.stringify(b || []); }
 
     async function saveQuickConfigNow() {
-      if (!downloadRootDirty && !tagSelectionDirty) {
-        return true;
-      }
-
-      const downloadRootSnapshot = downloadRootInput.value;
-      const tagCodesSnapshot = [...selectedTagCodes];
-      const formData = new FormData();
-      formData.append('download_root', downloadRootSnapshot);
-      formData.append('tag_codes', JSON.stringify(tagCodesSnapshot));
-
+      if (!downloadRootDirty && !tagSelectionDirty) return true;
+      const drSnap = downloadRootInput.value;
+      const tcSnap = [...selectedTagCodes];
+      const fd = new FormData();
+      fd.append('download_root', drSnap);
+      fd.append('tag_codes', JSON.stringify(tcSnap));
       try {
-        const resp = await fetch('/save-quick', { method: 'POST', body: formData });
+        const resp = await fetch('/save-quick', { method: 'POST', body: fd });
         const data = await resp.json();
-        if (!data.ok) {
-          throw new Error(data.error || '自动保存失败');
-        }
-
-        if (data.config) {
-          currentConfig = data.config;
-        }
-        if (downloadRootInput.value === downloadRootSnapshot) {
-          downloadRootDirty = false;
-        }
-        if (sameTagCodes(selectedTagCodes, tagCodesSnapshot)) {
-          tagSelectionDirty = false;
-        }
+        if (!data.ok) throw new Error(data.error || '自动保存失败');
+        if (data.config) currentConfig = data.config;
+        if (downloadRootInput.value === drSnap) downloadRootDirty = false;
+        if (sameTagCodes(selectedTagCodes, tcSnap)) tagSelectionDirty = false;
         return true;
-      } catch (error) {
-        console.error(error);
-        return false;
-      }
+      } catch (e) { console.error(e); return false; }
     }
 
-    function queueQuickConfigSave(delay = 0) {
+    function queueQuickConfigSave(delay) {
       window.clearTimeout(quickSaveTimer);
       quickSaveTimer = window.setTimeout(() => {
         quickSaveChain = quickSaveChain.then(saveQuickConfigNow);
-      }, delay);
+      }, delay || 0);
     }
 
     async function flushQuickConfigSave() {
@@ -1698,94 +763,62 @@
       validateDirectory();
     });
 
-    // Main-page config field change tracking
     ['max_daily_downloads', 'sort', 'range', 'time_filter'].forEach(id => {
       const el = document.getElementById(id);
-      if (el) {
-        el.addEventListener('change', () => { settingsDirty = true; });
-        el.addEventListener('input', () => { settingsDirty = true; });
-      }
+      if (el) { el.addEventListener('change', () => { settingsDirty = true; }); el.addEventListener('input', () => { settingsDirty = true; }); }
     });
 
     // ══════════════════════════════════════════
-    //  Status Refresh (enhanced)
+    // Status Refresh
     // ══════════════════════════════════════════
     async function runNow() {
-      const quickSaved = await flushQuickConfigSave();
-      if (!quickSaved) {
-        alert('下载根目录或标签筛选自动保存失败，请检查后重试');
-        return;
-      }
+      const ok = await flushQuickConfigSave();
+      if (!ok) { alert('配置自动保存失败，请检查后重试'); return; }
       const resp = await fetch('/run-now', { method: 'POST' });
       const data = await resp.json();
-      if (!data.ok) {
-        alert(data.message || '启动失败');
-      }
+      if (!data.ok) alert(data.message || '启动失败');
       refreshStatus();
     }
 
     async function refreshStatus() {
       const resp = await fetch('/status');
       const data = await resp.json();
-      if (!data.ok) {
-        return;
-      }
+      if (!data.ok) return;
 
-      // Update stat cards
       const autoEnabled = data.config?.auto_download_enabled !== false;
-      const autoEnabledEl = document.getElementById('stat_auto_enabled');
-      autoEnabledEl.textContent = autoEnabled ? '已开启' : '已关闭';
-      autoEnabledEl.style.color = autoEnabled ? '#16a34a' : '#6b7280';
+      const ae = document.getElementById('stat_auto_enabled');
+      ae.textContent = autoEnabled ? '已开启' : '已关闭';
 
       const isRunning = data.state.is_running;
-      const isRunningEl = document.getElementById('stat_is_running');
-      isRunningEl.textContent = isRunning ? '运行中' : '空闲';
-      isRunningEl.style.color = isRunning ? '#16a34a' : '#6b7280';
+      const ir = document.getElementById('stat_is_running');
+      ir.textContent = isRunning ? '运行中' : '空闲';
 
-      // 同步顶栏状态胶囊
-      const topbarPill = document.getElementById('topbar_status_pill');
-      const topbarText = document.getElementById('topbar_status_text');
-      if (topbarPill && topbarText) {
-        topbarText.textContent = isRunning ? '运行中' : '空闲';
-        topbarPill.classList.toggle('is-running', !!isRunning);
-        topbarPill.classList.toggle('is-idle', !isRunning);
+      const tp = document.getElementById('topbar_status_pill');
+      const tt = document.getElementById('topbar_status_text');
+      if (tp && tt) {
+        tt.textContent = isRunning ? '运行中' : '空闲';
+        tp.classList.toggle('status-pill--running', !!isRunning);
+        tp.classList.toggle('status-pill--idle', !isRunning);
       }
 
       document.getElementById('stat_last_result').textContent = data.state.last_result || '';
       document.getElementById('stat_last_run_time').textContent = data.state.last_run_time || '暂无';
+      const bc = data.config?.twitter_blogger_list ? data.config.twitter_blogger_list.length : 0;
+      document.getElementById('stat_blogger_count').textContent = bc;
+      document.getElementById('stat_next_run').textContent = autoEnabled ? (data.config?.schedule_cron || '未知') : '未开启';
 
-      const bloggerCount = data.config?.twitter_blogger_list ? data.config.twitter_blogger_list.length : 0;
-      document.getElementById('stat_blogger_count').textContent = bloggerCount;
-
-      document.getElementById('stat_next_run').textContent = autoEnabled
-        ? (data.config?.schedule_cron || '未知')
-        : '未开启';
-
-      // Log panel
       const logEl = document.getElementById('logs');
       logEl.textContent = (data.logs || []).join('\n');
       logEl.scrollTop = logEl.scrollHeight;
 
-      // Update log status dot
       const dot = document.getElementById('log_status_dot');
-      if (isRunning) {
-        dot.classList.remove('idle');
-        dot.title = '正在运行';
-      } else {
-        dot.classList.add('idle');
-        dot.title = '空闲中';
-      }
+      if (isRunning) { dot.classList.remove('log-dot--idle'); dot.title = '正在运行'; }
+      else { dot.classList.add('log-dot--idle'); dot.title = '空闲中'; }
 
       if (data.config) {
         currentConfig = data.config;
-        if (!downloadRootDirty) {
-          downloadRootInput.value = currentConfig.download_root || '';
-          validateDirectory();
-        }
-        if (!tagSelectionDirty && Array.isArray(currentConfig.tag_codes)) {
-          selectedTagCodes = [...currentConfig.tag_codes];
-          updateTagDisplay();
-        }
+        if (!downloadRootDirty) { downloadRootInput.value = currentConfig.download_root || ''; validateDirectory(); }
+        if (!tagSelectionDirty && Array.isArray(currentConfig.tag_codes)) { selectedTagCodes = [...currentConfig.tag_codes]; updateTagDisplay(); }
         if (!settingsDirty) {
           document.getElementById('max_daily_downloads').value = currentConfig.max_daily_downloads || 30;
           document.getElementById('sort').value = currentConfig.sort || 'pv';
@@ -1802,21 +835,16 @@
 
     setInterval(refreshStatus, 5000);
 
-    function goToPoster() {
-      window.location.href = '/poster';
-    }
+    function goToPoster() { window.location.href = '/poster'; }
 
     async function goToWaterfall() {
-      const quickSaved = await flushQuickConfigSave();
-      if (!quickSaved) {
-        alert('当前配置自动保存失败，请检查后重试');
-        return;
-      }
+      const ok = await flushQuickConfigSave();
+      if (!ok) { alert('配置自动保存失败，请检查后重试'); return; }
       window.location.href = '/waterfall';
     }
 
     // ══════════════════════════════════════════
-    //  Blogger Management (preserved)
+    // Blogger Management
     // ══════════════════════════════════════════
     const bloggerChipList = document.getElementById('blogger_chip_list');
     const bloggerAddInput = document.getElementById('blogger_add_input');
@@ -1824,13 +852,11 @@
 
     let bloggerList = {{ config.twitter_blogger_list | tojson }};
 
-    function bloggerInitial(name) {
-      return (name || '?').replace(/^@/, '').charAt(0).toUpperCase();
-    }
+    function bloggerInitial(name) { return (name || '?').replace(/^@/, '').charAt(0).toUpperCase(); }
 
     function buildAvatarEl(screenName, profileImageUrl) {
       const wrap = document.createElement('div');
-      wrap.className = 'blogger-chip-avatar';
+      wrap.className = 'blogger-avatar';
       wrap.textContent = bloggerInitial(screenName);
       if (profileImageUrl) {
         const img = document.createElement('img');
@@ -1838,15 +864,8 @@
         img.loading = 'lazy';
         img.referrerPolicy = 'no-referrer';
         img.src = profileImageUrl;
-        img.onload = () => {
-          // 头像加载成功后清除占位字母
-          wrap.textContent = '';
-          wrap.appendChild(img);
-        };
-        img.onerror = () => {
-          // 加载失败时保留首字母占位
-          if (img.parentNode) img.parentNode.removeChild(img);
-        };
+        img.onload = () => { wrap.textContent = ''; wrap.appendChild(img); };
+        img.onerror = () => { if (img.parentNode) img.parentNode.removeChild(img); };
       }
       return wrap;
     }
@@ -1858,47 +877,41 @@
       document.getElementById('stat_blogger_count').textContent = list.length;
       if (list.length === 0) {
         const empty = document.createElement('span');
-        empty.className = 'blogger-chip-empty';
+        empty.className = 'blogger-empty';
         empty.textContent = '暂无收藏博主，请在下方输入用户名添加';
         bloggerChipList.appendChild(empty);
         return;
       }
       list.forEach(b => {
-        const screenName = b.screen_name || b;
+        const sn = b.screen_name || b;
         const chip = document.createElement('div');
         chip.className = 'blogger-chip';
-
-        chip.appendChild(buildAvatarEl(screenName, b.profile_image_url));
+        chip.appendChild(buildAvatarEl(sn, b.profile_image_url));
 
         const body = document.createElement('div');
-        body.className = 'blogger-chip-body';
+        body.className = 'blogger-body';
 
-        const nameRow = document.createElement('div');
-        nameRow.className = 'blogger-chip-name';
-        const displayName = document.createElement('span');
-        displayName.className = 'blogger-chip-display-name';
-        displayName.textContent = b.name && b.name !== screenName ? b.name : '@' + screenName;
-        const screenEl = document.createElement('span');
-        screenEl.className = 'blogger-chip-screen-name';
-        screenEl.textContent = '@' + screenName;
-        nameRow.appendChild(displayName);
-        nameRow.appendChild(screenEl);
-        body.appendChild(nameRow);
+        const nr = document.createElement('div');
+        nr.className = 'blogger-name-row';
+        const dn = document.createElement('span');
+        dn.className = 'blogger-display-name';
+        dn.textContent = b.name && b.name !== sn ? b.name : '@' + sn;
+        const se = document.createElement('span');
+        se.className = 'blogger-screen-name';
+        se.textContent = '@' + sn;
+        nr.appendChild(dn); nr.appendChild(se);
+        body.appendChild(nr);
 
         const desc = document.createElement('div');
-        desc.className = 'blogger-chip-desc';
-        const descText = (b.description || '').trim();
-        if (descText) {
-          desc.textContent = descText;
-        } else {
-          desc.classList.add('is-empty');
-          desc.textContent = '暂无简介';
-        }
+        desc.className = 'blogger-desc';
+        const dt = (b.description || '').trim();
+        if (dt) desc.textContent = dt;
+        else { desc.classList.add('blogger-desc--empty'); desc.textContent = '暂无简介'; }
         body.appendChild(desc);
 
         if (typeof b.file_count === 'number' && b.file_count > 0) {
           const meta = document.createElement('div');
-          meta.className = 'blogger-chip-meta';
+          meta.className = 'blogger-meta';
           meta.textContent = '已下载 ' + b.file_count + ' 个文件';
           body.appendChild(meta);
         }
@@ -1906,10 +919,10 @@
         chip.appendChild(body);
 
         const rmBtn = document.createElement('button');
-        rmBtn.className = 'blogger-chip-remove';
+        rmBtn.className = 'blogger-remove-btn';
         rmBtn.textContent = '×';
-        rmBtn.title = '移除 @' + screenName;
-        rmBtn.onclick = () => removeBlogger(screenName);
+        rmBtn.title = '移除 @' + sn;
+        rmBtn.onclick = () => removeBlogger(sn);
         chip.appendChild(rmBtn);
 
         bloggerChipList.appendChild(chip);
@@ -1919,59 +932,34 @@
     async function addBlogger() {
       const val = bloggerAddInput.value.trim().replace(/^@/, '').toLowerCase();
       if (!val) return;
-      if (!/^[a-zA-Z0-9_]+$/.test(val)) {
-        alert('用户名只能包含字母、数字和下划线');
-        return;
-      }
+      if (!/^[a-zA-Z0-9_]+$/.test(val)) { alert('用户名只能包含字母、数字和下划线'); return; }
       try {
-        const resp = await fetch('/api/blogger/add', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({screen_name: val}),
-        });
+        const resp = await fetch('/api/blogger/add', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({screen_name: val}) });
         const data = await resp.json();
-        if (!data.ok) {
-          alert('添加失败：' + (data.error || '未知错误'));
-          return;
-        }
+        if (!data.ok) { alert('添加失败：' + (data.error || '未知错误')); return; }
         bloggerAddInput.value = '';
         await refreshBloggerStatus();
-      } catch (e) {
-        alert('网络错误');
-      }
+      } catch (e) { alert('网络错误'); }
     }
 
     async function removeBlogger(name) {
       if (!confirm('确定移除 @' + name + ' 吗？\n（已下载的文件不会被删除）')) return;
       try {
-        const resp = await fetch('/api/blogger/remove', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({screen_name: name}),
-        });
+        const resp = await fetch('/api/blogger/remove', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({screen_name: name}) });
         const data = await resp.json();
-        if (!data.ok) {
-          alert('移除失败：' + (data.error || '未知错误'));
-          return;
-        }
+        if (!data.ok) { alert('移除失败：' + (data.error || '未知错误')); return; }
         await refreshBloggerStatus();
-      } catch (e) {
-        alert('网络错误');
-      }
+      } catch (e) { alert('网络错误'); }
     }
 
     async function crawlBloggerNow() {
       try {
         const resp = await fetch('/api/blogger/crawl-now', {method: 'POST'});
         const data = await resp.json();
-        if (!data.ok) {
-          alert(data.message || '启动失败');
-        }
+        if (!data.ok) alert(data.message || '启动失败');
         refreshBloggerStatus();
         refreshStatus();
-      } catch (e) {
-        alert('网络错误');
-      }
+      } catch (e) { alert('网络错误'); }
     }
 
     async function refreshBloggerStatus() {
@@ -1979,10 +967,8 @@
         const resp = await fetch('/api/blogger/list');
         const data = await resp.json();
         if (!data.ok) return;
-
         bloggerList = data.bloggers || [];
         renderBloggerChips();
-
         if (data.settings) {
           currentConfig.twitter_cookie = data.settings.twitter_cookie || '';
           currentConfig.twitter_blogger_enabled = data.settings.twitter_blogger_enabled !== false;
@@ -1990,19 +976,15 @@
           currentConfig.twitter_blogger_max_media = data.settings.twitter_blogger_max_media ?? -1;
           currentConfig.twitter_blogger_has_retweet = data.settings.twitter_blogger_has_retweet === true;
         }
-
         const st = data.state || {};
         document.getElementById('blogger_is_running').textContent = st.is_running ? '运行中' : '空闲';
         document.getElementById('blogger_last_run_time').textContent = st.last_run_time || '暂无';
         document.getElementById('blogger_last_result').textContent = st.last_result || '';
-      } catch (e) {
-        // ignore
-      }
+      } catch (e) { /* ignore */ }
     }
 
+    // Init
     renderBloggerChips();
-    refreshBloggerStatus();
-    setInterval(refreshBloggerStatus, 10000);
   </script>
 </body>
 </html>

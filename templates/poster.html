@@ -4,481 +4,56 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>视频海报墙</title>
-
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      color-scheme: dark;
-      --bg: #111111;
-      --ink: #EEEEEE;
-      --ink-secondary: #999999;
-      --muted: #777777;
-      --panel: #1A1A1A;
-      --line: #333333;
-      --line-hover: #555555;
-      --accent: #EEEEEE;
-      --danger: #C0392B;
-      --radius: 6px;
-    }
-    body {
-      min-height: 100vh;
-      font-family: -apple-system, BlinkMacSystemFont, "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
-      color: var(--ink);
-      background: var(--bg);
-      font-size: 14px;
-      line-height: 1.5;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
-    a { color: inherit; text-decoration: none; }
-    button { font: inherit; }
-
-    .shell {
-      max-width: 1360px;
-      margin: 0 auto;
-      padding: 24px 20px 48px;
-    }
-
-    /* ── Hero ── */
-    .hero {
-      display: flex;
-      justify-content: space-between;
-      gap: 20px;
-      padding: 20px 24px;
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      background: var(--panel);
-      margin-bottom: 16px;
-      flex-wrap: wrap;
-    }
-    .hero-top {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      border-radius: var(--radius);
-      background: rgba(255,255,255,0.06);
-      color: var(--ink-secondary);
-      font-size: 13px;
-    }
-    .hero h1 {
-      margin: 10px 0 8px;
-      font-size: 24px;
-      font-weight: 600;
-      line-height: 1.2;
-      color: var(--ink);
-    }
-    .hero p {
-      margin: 0;
-      max-width: 600px;
-      color: var(--ink-secondary);
-      line-height: 1.6;
-      font-size: 13px;
-    }
-    .hero-stats {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      align-items: flex-start;
-    }
-    .stat-card {
-      min-width: 120px;
-      padding: 14px 16px;
-      border-radius: var(--radius);
-      background: var(--bg);
-      border: 1px solid var(--line);
-    }
-    .stat-card .label {
-      color: var(--muted);
-      font-size: 11px;
-      margin-bottom: 4px;
-    }
-    .stat-card .value {
-      font-size: 20px;
-      font-weight: 600;
-      color: var(--ink);
-    }
-
-    /* ── Toolbar ── */
-    .toolbar {
-      position: sticky;
-      top: 0;
-      z-index: 50;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-      padding: 12px 16px;
-      border-radius: var(--radius);
-      background: var(--bg);
-      border: 1px solid var(--line);
-      margin-bottom: 16px;
-    }
-    .toolbar .spacer { flex: 1; }
-    .control {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      min-width: 150px;
-    }
-    .control label {
-      font-size: 11px;
-      color: var(--muted);
-    }
-    select {
-      height: 32px;
-      border-radius: var(--radius);
-      border: 1px solid var(--line);
-      background: var(--panel);
-      color: var(--ink);
-      padding: 0 10px;
-      font-size: 13px;
-      font-family: inherit;
-      outline: none;
-      cursor: pointer;
-    }
-    select:hover { border-color: var(--line-hover); }
-    :focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
-
-    .btn {
-      height: 32px;
-      padding: 0 12px;
-      border-radius: var(--radius);
-      border: 1px solid transparent;
-      color: var(--ink);
-      font-size: 13px;
-      font-weight: 500;
-      font-family: inherit;
-      cursor: pointer;
-      background: var(--panel);
-      border-color: var(--line);
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .btn:hover { border-color: var(--line-hover); }
-    .btn:disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
-    .btn-primary {
-      background: var(--accent);
-      color: var(--bg);
-      border-color: var(--accent);
-    }
-    .btn-primary:hover { opacity: 0.85; }
-    .btn-danger {
-      background: var(--danger);
-      color: #fff;
-      border-color: var(--danger);
-    }
-    .btn-danger:hover { opacity: 0.85; }
-
-    /* ── Status ── */
-    .status-row {
-      display: flex;
-      justify-content: space-between;
-      gap: 14px;
-      align-items: center;
-      color: var(--ink-secondary);
-      margin: 8px 0 14px;
-      flex-wrap: wrap;
-      font-size: 13px;
-    }
-    .status-row strong { color: var(--ink); font-weight: 600; }
-
-    /* ── Grid ── */
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 14px;
-    }
-
-    /* ── Skeleton ── */
-    .skeleton-card {
-      border-radius: var(--radius);
-      overflow: hidden;
-      background: var(--panel);
-      border: 1px solid var(--line);
-    }
-    .skeleton-cover {
-      aspect-ratio: 16 / 9;
-      background: #222;
-    }
-    .skeleton-body { padding: 14px; }
-    .skeleton-line {
-      height: 10px;
-      border-radius: 4px;
-      background: #222;
-      margin-bottom: 8px;
-    }
-    .skeleton-line.short { width: 55%; }
-
-    /* ── Card ── */
-    .card {
-      position: relative;
-      overflow: hidden;
-      border-radius: var(--radius);
-      background: var(--panel);
-      border: 1px solid var(--line);
-    }
-    .card:hover { border-color: var(--line-hover); }
-    .card.selected { border-color: var(--accent); }
-
-    .cover {
-      position: relative;
-      aspect-ratio: 16 / 9;
-      cursor: pointer;
-      background: #1A1A1A;
-      overflow: hidden;
-    }
-    .cover img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-    .cover .fallback {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--muted);
-      font-size: 36px;
-      font-weight: 700;
-    }
-    .play-badge {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 42px;
-      height: 42px;
-      border-radius: 999px;
-      border: none;
-      background: rgba(0,0,0,0.6);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #fff;
-    }
-    .play-badge svg { width: 20px; height: 20px; margin-left: 2px; }
-    .date-badge, .duration-badge {
-      position: absolute;
-      border-radius: 4px;
-    }
-    .date-badge {
-      top: 8px;
-      left: 8px;
-      padding: 4px 8px;
-      background: rgba(0,0,0,0.7);
-      font-size: 11px;
-      color: var(--ink);
-    }
-    .duration-badge {
-      right: 8px;
-      bottom: 8px;
-      padding: 4px 8px;
-      background: rgba(0,0,0,0.7);
-      color: var(--ink);
-      font-size: 11px;
-      font-weight: 500;
-    }
-    .selector {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      z-index: 2;
-      width: 16px;
-      height: 16px;
-      accent-color: var(--accent);
-      cursor: pointer;
-    }
-
-    .card-body { padding: 14px; }
-    .file-name {
-      font-size: 13px;
-      font-weight: 500;
-      line-height: 1.4;
-      word-break: break-word;
-      margin-bottom: 8px;
-    }
-    .meta-row {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-      margin-bottom: 10px;
-    }
-    .meta-chip {
-      padding: 3px 8px;
-      border-radius: 4px;
-      background: rgba(255,255,255,0.06);
-      color: var(--ink-secondary);
-      font-size: 11px;
-    }
-    .card-actions {
-      display: flex;
-      gap: 8px;
-    }
-    .card-actions .btn { flex: 1; height: 30px; font-size: 12px; justify-content: center; }
-
-    /* ── Empty ── */
-    .empty {
-      display: none;
-      margin-top: 24px;
-      padding: 56px 20px;
-      text-align: center;
-      color: var(--muted);
-      border: 1px dashed var(--line);
-      border-radius: var(--radius);
-    }
-
-    /* ── Pagination ── */
-    .pagination {
-      display: none;
-      justify-content: space-between;
-      align-items: center;
-      gap: 14px;
-      margin-top: 16px;
-      padding: 14px 16px;
-      border-radius: var(--radius);
-      border: 1px solid var(--line);
-      background: var(--panel);
-    }
-    .pagination-info { color: var(--ink-secondary); font-size: 13px; }
-    .pagination-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-    .pagination-actions .btn { min-width: 60px; height: 30px; font-size: 12px; justify-content: center; }
-
-    /* ── Modal ── */
-    .modal {
-      position: fixed;
-      inset: 0;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      background: rgba(0,0,0,0.7);
-      z-index: 200;
-    }
-    .modal.open { display: flex; }
-    .modal-card {
-      width: min(900px, 100%);
-      max-height: calc(100vh - 40px);
-      overflow: auto;
-      border-radius: var(--radius);
-      background: var(--panel);
-      border: 1px solid var(--line);
-    }
-    .modal-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 14px;
-      padding: 14px 18px;
-      border-bottom: 1px solid var(--line);
-    }
-    .modal-head h3 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
-    .modal-head p { margin: 0; color: var(--ink-secondary); font-size: 12px; }
-    .close-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 32px;
-      height: 32px;
-      border-radius: var(--radius);
-      border: 1px solid var(--line);
-      background: transparent;
-      color: var(--ink);
-      cursor: pointer;
-      font-size: 18px;
-    }
-    .close-btn:hover { border-color: var(--line-hover); }
-    .close-btn svg { width: 16px; height: 16px; }
-    .preview-wrap { padding: 16px 18px 18px; }
-    .preview-wrap video {
-      width: 100%;
-      max-height: 72vh;
-      border-radius: var(--radius);
-      background: #000;
-      outline: none;
-    }
-    .replace-box { width: min(380px, 100%); padding: 20px; }
-    .replace-box h3 { margin: 0 0 6px; font-size: 16px; }
-    .replace-box p { margin: 0 0 14px; color: var(--ink-secondary); font-size: 13px; line-height: 1.5; }
-    .replace-box input[type="file"] {
-      width: 100%;
-      margin-bottom: 14px;
-      padding: 10px;
-      border-radius: var(--radius);
-      border: 1px solid var(--line);
-      background: var(--bg);
-      color: var(--ink);
-      font-family: inherit;
-      font-size: 13px;
-    }
-    .replace-actions { display: flex; gap: 8px; justify-content: flex-end; }
-
-    /* ── Responsive ── */
-    @media (max-width: 800px) {
-      .hero h1 { font-size: 20px; }
-      .grid { grid-template-columns: 1fr; }
-      .control { width: 100%; min-width: 0; }
-      .toolbar .spacer { display: none; }
-      .toolbar .btn { width: calc(50% - 5px); justify-content: center; }
-      .card-actions { flex-direction: column; }
-      .replace-actions { flex-direction: column-reverse; }
-      .pagination { flex-direction: column; align-items: stretch; }
-      .pagination-actions .btn { width: calc(50% - 4px); }
-    }
-    @media (max-width: 540px) {
-      .shell { padding: 16px 12px 32px; }
-      .hero, .toolbar { padding: 14px; }
-    }
-  </style>
+  <link rel="stylesheet" href="{{ url_for('static', path='css/design-system.css') }}" />
 </head>
 <body>
-  <div class="shell">
-    <section class="hero">
+  <div class="shell shell--narrow">
+    <!-- ═══════════ Hero ═══════════ -->
+    <section class="hero" style="margin-top: var(--ds-space-6);">
       <div>
-        <div class="hero-top">
-          <a href="/">&larr; 返回首页</a>
-        </div>
+        <a class="hero-nav" href="/">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          返回首页
+        </a>
         <h1 id="pageTitle">全部视频海报墙</h1>
         <p>点击海报即可直接预览视频；顶部筛选栏可按文件夹快速过滤内容，卡片同时展示时长、大小和所属文件夹。</p>
       </div>
       <div class="hero-stats">
-        <div class="stat-card">
-          <div class="label">筛选结果</div>
-          <div class="value" id="statVisible">0</div>
+        <div class="hero-stat">
+          <div class="hero-stat-label">筛选结果</div>
+          <div class="hero-stat-value" id="statVisible">0</div>
         </div>
-        <div class="stat-card">
-          <div class="label">全部视频</div>
-          <div class="value" id="statTotal">0</div>
+        <div class="hero-stat">
+          <div class="hero-stat-label">全部视频</div>
+          <div class="hero-stat-value" id="statTotal">0</div>
         </div>
-        <div class="stat-card">
-          <div class="label">文件夹数</div>
-          <div class="value" id="statFolders">0</div>
+        <div class="hero-stat">
+          <div class="hero-stat-label">文件夹</div>
+          <div class="hero-stat-value" id="statFolders">0</div>
         </div>
       </div>
     </section>
 
-    <section class="toolbar">
-      <div class="control">
+    <!-- ═══════════ Toolbar ═══════════ -->
+    <section class="toolbar" style="margin-top: var(--ds-space-4);">
+      <div class="toolbar-select">
         <label for="folderFilter">文件夹筛选</label>
         <select id="folderFilter" onchange="applyFilters()">
           <option value="">全部文件夹</option>
         </select>
       </div>
-      <div class="control">
+      <div class="toolbar-select">
         <label for="sortSelect">排序方式</label>
         <select id="sortSelect" onchange="applyFilters(false)">
           <option value="time_desc">按名称降序</option>
           <option value="time_asc">按名称升序</option>
-          <option value="size_desc">文件大小从大到小</option>
-          <option value="size_asc">文件大小从小到大</option>
+          <option value="size_desc">大小从大到小</option>
+          <option value="size_asc">大小从小到大</option>
           <option value="duration_desc">时长从长到短</option>
           <option value="duration_asc">时长从短到长</option>
         </select>
       </div>
-      <div class="control">
+      <div class="toolbar-select">
         <label for="pageSizeSelect">每页数量</label>
         <select id="pageSizeSelect" onchange="changePageSize()">
           <option value="10" selected>10</option>
@@ -488,54 +63,68 @@
           <option value="30">30</option>
         </select>
       </div>
-      <div class="spacer"></div>
-      <button class="btn" type="button" onclick="reloadData()">刷新数据</button>
-      <button class="btn" type="button" onclick="toggleSelectAll()" id="btnSelectAll">全选当前筛选</button>
+      <div class="toolbar-spacer"></div>
+      <button class="btn btn-ghost" type="button" onclick="reloadData()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        刷新
+      </button>
+      <button class="btn btn-ghost" type="button" onclick="toggleSelectAll()" id="btnSelectAll">全选当前筛选</button>
       <button class="btn btn-danger" type="button" id="btnBatchDelete" onclick="batchDelete()" disabled>批量删除</button>
     </section>
 
-    <div class="status-row">
+    <!-- ═══════════ Status Bar ═══════════ -->
+    <div class="status-bar" style="margin-bottom: var(--ds-space-4);">
       <div id="statusText">正在加载海报墙数据...</div>
       <div>已选 <strong id="selectedCount">0</strong> 个</div>
     </div>
 
-    <div id="grid" class="grid"></div>
-    <div id="emptyMsg" class="empty">当前筛选条件下暂无视频。</div>
-    <div id="pagination" class="pagination">
+    <!-- ═══════════ Grid ═══════════ -->
+    <div id="grid" class="media-grid"></div>
+    <div id="emptyMsg" class="empty-state">当前筛选条件下暂无视频。</div>
+
+    <!-- ═══════════ Pagination ═══════════ -->
+    <div id="pagination" class="pagination-block hidden">
       <div id="paginationInfo" class="pagination-info">第 1 / 1 页</div>
       <div class="pagination-actions">
-        <button class="btn" type="button" id="btnFirstPage" onclick="setPage(1)">首页</button>
-        <button class="btn" type="button" id="btnPrevPage" onclick="changePage(-1)">上一页</button>
-        <button class="btn" type="button" id="btnNextPage" onclick="changePage(1)">下一页</button>
-        <button class="btn" type="button" id="btnLastPage" onclick="setPage(getTotalPages())">末页</button>
+        <button class="btn btn-secondary btn-sm" type="button" id="btnFirstPage" onclick="setPage(1)">首页</button>
+        <button class="btn btn-secondary btn-sm" type="button" id="btnPrevPage" onclick="changePage(-1)">上一页</button>
+        <button class="btn btn-secondary btn-sm" type="button" id="btnNextPage" onclick="changePage(1)">下一页</button>
+        <button class="btn btn-secondary btn-sm" type="button" id="btnLastPage" onclick="setPage(getTotalPages())">末页</button>
       </div>
     </div>
   </div>
 
-  <div id="previewModal" class="modal" onclick="closePreviewOnMask(event)" role="dialog" aria-modal="true" aria-labelledby="previewTitle">
-    <div class="modal-card">
-      <div class="modal-head">
+  <!-- ═══════════ Preview Modal ═══════════ -->
+  <div id="previewModal" class="player-modal" onclick="closePreviewOnMask(event)" role="dialog" aria-modal="true" aria-labelledby="previewTitle">
+    <div class="player-container">
+      <div class="player-header">
         <div>
-          <h3 id="previewTitle">视频预览</h3>
-          <p id="previewMeta">--</p>
+          <div class="player-title" id="previewTitle">视频预览</div>
+          <div class="muted-darker text-xs" id="previewMeta" style="margin-top: 2px;">--</div>
         </div>
-        <button class="close-btn" type="button" onclick="closePreview()" aria-label="关闭预览">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        <button class="player-close" type="button" onclick="closePreview()" aria-label="关闭预览">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
-      <div class="preview-wrap">
-        <video id="previewVideo" controls preload="metadata"></video>
-      </div>
+      <video id="previewVideo" class="player-video" controls preload="metadata"></video>
     </div>
   </div>
 
-  <div id="replaceModal" class="modal" onclick="closeReplaceOnMask(event)" role="dialog" aria-modal="true" aria-labelledby="replaceTitle">
-    <div class="modal-card replace-box">
-      <h3 id="replaceTitle">替换封面</h3>
-      <p id="replaceMeta">请选择新的图片文件，支持 jpg、png、webp 等常见格式。</p>
-      <input type="file" id="replaceFileInput" accept="image/*" />
-      <div class="replace-actions">
-        <button class="btn" type="button" onclick="closeReplaceModal()">取消</button>
+  <!-- ═══════════ Replace Cover Modal ═══════════ -->
+  <div id="replaceModal" class="modal" onclick="closeReplaceOnMask(event)" role="dialog" aria-modal="true">
+    <div class="modal-dialog" style="max-width: 420px;">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">替换封面</h2>
+          <p class="modal-subtitle" id="replaceMeta">请选择新的封面图片文件。</p>
+        </div>
+        <button type="button" class="drawer-close" onclick="closeReplaceModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="file" id="replaceFileInput" accept="image/*" style="padding: 8px 0; border: none; background: transparent;" />
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" type="button" onclick="closeReplaceModal()">取消</button>
         <button class="btn btn-primary" type="button" onclick="doReplaceCover()">确认替换</button>
       </div>
     </div>
@@ -554,140 +143,92 @@
     let replaceTarget = null;
     let currentPage = 1;
 
-    function itemKey(item) {
-      return `${item.folder}::${item.stem}`;
-    }
+    function itemKey(item) { return item.folder + '::' + item.stem; }
 
-    function escapeHtml(value) {
-      return String(value || '')
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;');
+    function escapeHtml(v) {
+      return String(v || '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
     }
 
     function fmtSize(bytes) {
-      if (bytes >= 1073741824) return `${(bytes / 1073741824).toFixed(2)} GB`;
-      if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(1)} MB`;
-      if (bytes >= 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-      return `${bytes} B`;
+      if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(2) + ' GB';
+      if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
+      if (bytes >= 1024) return (bytes / 1024).toFixed(0) + ' KB';
+      return bytes + ' B';
     }
 
-    function durationLabel(item) {
-      return item.duration || durationCache.get(itemKey(item)) || '--:--';
-    }
+    function durationLabel(item) { return item.duration || durationCache.get(itemKey(item)) || '--:--'; }
 
     function durationSeconds(item) {
       const raw = item.duration || durationCache.get(itemKey(item)) || '';
       const parts = raw.split(':').map(Number);
-      if (!parts.length || parts.some(Number.isNaN)) return -1;
+      if (!parts.length || parts.some(isNaN)) return -1;
       if (parts.length === 2) return parts[0] * 60 + parts[1];
       if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
       return -1;
     }
 
-    function buildSortValue(item) {
-      return item.stem;
-    }
+    function getPageSize() { return Number(document.getElementById('pageSizeSelect').value) || 10; }
+    function getTotalPages() { return Math.max(1, Math.ceil(visibleItems.length / getPageSize())); }
 
-    function getPageSize() {
-      return Number(document.getElementById('pageSizeSelect').value) || 10;
-    }
-
-    function getTotalPages() {
-      return Math.max(1, Math.ceil(visibleItems.length / getPageSize()));
-    }
-
-    function clampCurrentPage() {
-      currentPage = Math.min(Math.max(currentPage, 1), getTotalPages());
-    }
+    function clampCurrentPage() { currentPage = Math.min(Math.max(currentPage, 1), getTotalPages()); }
 
     function getCurrentPageItems() {
-      const pageSize = getPageSize();
-      const start = (currentPage - 1) * pageSize;
-      return visibleItems.slice(start, start + pageSize);
+      const ps = getPageSize();
+      const start = (currentPage - 1) * ps;
+      return visibleItems.slice(start, start + ps);
     }
 
     async function loadItems() {
-      const query = new URLSearchParams();
-      const folderValue = document.getElementById('folderFilter').value;
-      if (folderValue) query.set('folder', folderValue);
-
-      const url = query.toString() ? `/api/poster?${query.toString()}` : '/api/poster';
+      const q = new URLSearchParams();
+      const fv = document.getElementById('folderFilter').value;
+      if (fv) q.set('folder', fv);
+      const url = q.toString() ? '/api/poster?' + q.toString() : '/api/poster';
       const resp = await fetch(url);
       const data = await resp.json();
-      if (!data.ok) {
-        throw new Error(data.error || '加载失败');
-      }
+      if (!data.ok) throw new Error(data.error || '加载失败');
       allItems = data.items || [];
-      (data.items || []).forEach(item => {
-        if (item.duration) {
-          durationCache.set(itemKey(item), item.duration);
-        }
-      });
+      (data.items || []).forEach(item => { if (item.duration) durationCache.set(itemKey(item), item.duration); });
       renderFolderOptions(data.folders || []);
       updateStats(data.folders || []);
       applyFilters(false);
     }
 
     function renderFolderOptions(folders) {
-      const select = document.getElementById('folderFilter');
-      const currentValue = select.value || INITIAL_FOLDER;
-      const options = ['<option value="">全部文件夹</option>'];
-      folders.forEach(f => {
-        const label = f.folder ? `${f.folder} (${f.count})` : `根目录 (${f.count})`;
-        options.push(`<option value="${f.folder}">${label}</option>`);
-      });
-      select.innerHTML = options.join('');
-      if (currentValue && folders.some(f => f.folder === currentValue)) {
-        select.value = currentValue;
-      } else {
-        select.value = '';
-      }
+      const sel = document.getElementById('folderFilter');
+      const cv = sel.value || INITIAL_FOLDER;
+      let opts = ['<option value="">全部文件夹</option>'];
+      folders.forEach(f => { opts.push('<option value="' + f.folder + '">' + (f.folder || '根目录') + ' (' + f.count + ')</option>'); });
+      sel.innerHTML = opts.join('');
+      if (cv && folders.some(f => f.folder === cv)) sel.value = cv; else sel.value = '';
       syncPageTitle();
     }
 
     function updateStats(folders) {
-      document.getElementById('statTotal').textContent = String(allItems.length);
-      document.getElementById('statFolders').textContent = String(folders.length);
+      document.getElementById('statTotal').textContent = '' + allItems.length;
+      document.getElementById('statFolders').textContent = '' + folders.length;
     }
 
     function syncPageTitle() {
-      const folderValue = document.getElementById('folderFilter').value;
-      document.getElementById('pageTitle').textContent = folderValue
-        ? `${folderValue} 的视频海报墙`
-        : '全部视频海报墙';
-
-      const nextUrl = folderValue ? `/poster?folder=${encodeURIComponent(folderValue)}` : '/poster';
-      history.replaceState(null, '', nextUrl);
+      const fv = document.getElementById('folderFilter').value;
+      document.getElementById('pageTitle').textContent = fv ? fv + ' 的视频海报墙' : '全部视频海报墙';
+      history.replaceState(null, '', fv ? '/poster?folder=' + encodeURIComponent(fv) : '/poster');
     }
 
-    function applyFilters(needReload = true) {
-      if (needReload) {
-        reloadData();
-        return;
-      }
-
-      const folderValue = document.getElementById('folderFilter').value;
-      const sortValue = document.getElementById('sortSelect').value;
-
-      visibleItems = allItems.filter(item => !folderValue || item.folder === folderValue);
-
+    function applyFilters(needReload) {
+      if (needReload) { reloadData(); return; }
+      const fv = document.getElementById('folderFilter').value;
+      const sv = document.getElementById('sortSelect').value;
+      visibleItems = allItems.filter(item => !fv || item.folder === fv);
       visibleItems.sort((a, b) => {
-        if (sortValue === 'time_asc') return buildSortValue(a).localeCompare(buildSortValue(b));
-        if (sortValue === 'time_desc') return buildSortValue(b).localeCompare(buildSortValue(a));
-        if (sortValue === 'size_asc') return a.size - b.size;
-        if (sortValue === 'size_desc') return b.size - a.size;
-        if (sortValue === 'duration_asc') return durationSeconds(a) - durationSeconds(b);
-        if (sortValue === 'duration_desc') return durationSeconds(b) - durationSeconds(a);
+        if (sv === 'time_asc') return a.stem.localeCompare(b.stem);
+        if (sv === 'time_desc') return b.stem.localeCompare(a.stem);
+        if (sv === 'size_asc') return a.size - b.size;
+        if (sv === 'size_desc') return b.size - a.size;
+        if (sv === 'duration_asc') return durationSeconds(a) - durationSeconds(b);
+        if (sv === 'duration_desc') return durationSeconds(b) - durationSeconds(a);
         return 0;
       });
-
-      selectedKeys = new Set(
-        [...selectedKeys].filter(key => visibleItems.some(item => itemKey(item) === key))
-      );
-
+      selectedKeys = new Set([...selectedKeys].filter(k => visibleItems.some(item => itemKey(item) === k)));
       currentPage = 1;
       syncPageTitle();
       renderGrid();
@@ -695,35 +236,22 @@
     }
 
     function updateStatusText() {
-      const folderValue = document.getElementById('folderFilter').value;
-      const prefix = folderValue ? `${folderValue} · ` : '全部文件夹 · ';
-      document.getElementById('statusText').innerHTML =
-        `${prefix}共 <strong>${visibleItems.length}</strong> 个视频，当前第 <strong>${currentPage}</strong> / <strong>${getTotalPages()}</strong> 页`;
-      document.getElementById('selectedCount').textContent = String(selectedKeys.size);
-      document.getElementById('statVisible').textContent = String(visibleItems.length);
+      const fv = document.getElementById('folderFilter').value;
+      const prefix = fv ? fv + ' · ' : '全部文件夹 · ';
+      document.getElementById('statusText').innerHTML = prefix + '共 <strong>' + visibleItems.length + '</strong> 个视频，当前第 <strong>' + currentPage + '</strong> / <strong>' + getTotalPages() + '</strong> 页';
+      document.getElementById('selectedCount').textContent = '' + selectedKeys.size;
+      document.getElementById('statVisible').textContent = '' + visibleItems.length;
       document.getElementById('btnBatchDelete').disabled = selectedKeys.size === 0;
-      document.getElementById('btnSelectAll').textContent =
-        visibleItems.length > 0 && visibleItems.every(item => selectedKeys.has(itemKey(item)))
-          ? '取消全选'
-          : '全选当前筛选';
+      document.getElementById('btnSelectAll').textContent = visibleItems.length > 0 && visibleItems.every(item => selectedKeys.has(itemKey(item))) ? '取消全选' : '全选当前筛选';
     }
 
     function renderPagination() {
       const pagination = document.getElementById('pagination');
       const totalPages = getTotalPages();
       const totalItems = visibleItems.length;
-      const pageSize = getPageSize();
-      const start = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-      const end = Math.min(currentPage * pageSize, totalItems);
-
-      if (totalItems === 0) {
-        pagination.style.display = 'none';
-        return;
-      }
-
-      pagination.style.display = 'flex';
-      document.getElementById('paginationInfo').textContent =
-        `第 ${currentPage} / ${totalPages} 页，显示 ${start}-${end} 项，共 ${totalItems} 项`;
+      if (totalItems === 0) { pagination.classList.add('hidden'); return; }
+      pagination.classList.remove('hidden');
+      document.getElementById('paginationInfo').textContent = '第 ' + currentPage + ' / ' + totalPages + ' 页，共 ' + totalItems + ' 项';
       document.getElementById('btnFirstPage').disabled = currentPage === 1;
       document.getElementById('btnPrevPage').disabled = currentPage === 1;
       document.getElementById('btnNextPage').disabled = currentPage === totalPages;
@@ -733,23 +261,17 @@
     function renderSkeletons(count) {
       const grid = document.getElementById('grid');
       document.getElementById('emptyMsg').style.display = 'none';
-      document.getElementById('pagination').style.display = 'none';
-      const cards = Array.from({ length: count }, () => `
-        <div class="skeleton-card" aria-hidden="true">
-          <div class="skeleton-cover"></div>
-          <div class="skeleton-body">
-            <div class="skeleton-line"></div>
-            <div class="skeleton-line short"></div>
-          </div>
-        </div>
-      `);
-      grid.innerHTML = cards.join('');
+      document.getElementById('pagination').classList.add('hidden');
+      let html = '';
+      for (let i = 0; i < count; i++) {
+        html += '<div class="skeleton" aria-hidden="true"><div class="skeleton-cover"></div><div class="skeleton-body"><div class="skeleton-line"></div><div class="skeleton-line" style="width:55%"></div></div></div>';
+      }
+      grid.innerHTML = html;
     }
 
     function renderGrid() {
       const grid = document.getElementById('grid');
       const empty = document.getElementById('emptyMsg');
-
       clampCurrentPage();
       const pageItems = getCurrentPageItems();
       updateStatusText();
@@ -759,105 +281,78 @@
         renderPagination();
         return;
       }
-
       empty.style.display = 'none';
       grid.innerHTML = pageItems.map(item => {
         const key = itemKey(item);
         const selected = selectedKeys.has(key);
         const thumbHtml = item.thumbnail_url
-          ? `<img src="${item.thumbnail_url}" alt="${escapeHtml(item.video)} 的封面" loading="lazy" />`
-          : `<div class="fallback">MV</div>`;
+          ? '<img src="' + item.thumbnail_url + '" alt="' + escapeHtml(item.video) + ' 的封面" loading="lazy" />'
+          : '<div class="fallback-icon">MV</div>';
         const folderLabel = item.folder || '根目录';
-        return `
-          <article class="card${selected ? ' selected' : ''}">
-            <input
-              class="selector"
-              type="checkbox"
-              ${selected ? 'checked' : ''}
-              onchange="toggleSelect('${key}')"
-              onclick="event.stopPropagation()"
-              aria-label="选择视频"
-            />
-            <div class="cover" role="button" tabindex="0" aria-label="预览 ${escapeHtml(item.video)}" onclick="openPreview('${key}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openPreview('${key}')}">
-              ${thumbHtml}
-              <div class="play-badge" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg>
-              </div>
-              <div class="duration-badge" data-duration-key="${key}">${durationLabel(item)}</div>
-            </div>
-            <div class="card-body">
-              <div class="file-name" title="${escapeHtml(item.video)}">${escapeHtml(item.video)}</div>
-              <div class="meta-row">
-                <span class="meta-chip">${fmtSize(item.size)}</span>
-                <span class="meta-chip">${escapeHtml(folderLabel)}</span>
-                <span class="meta-chip">时长 <span data-duration-key="${key}">${durationLabel(item)}</span></span>
-              </div>
-              <div class="card-actions">
-                <button class="btn" type="button" onclick="openReplaceModal('${key}')">替换封面</button>
-                <button class="btn btn-danger" type="button" onclick="deleteItem('${key}')">删除</button>
-              </div>
-            </div>
-          </article>
-        `;
+        return '<article class="media-card' + (selected ? ' selected' : '') + '">'
+          + '<input class="media-select" type="checkbox"' + (selected ? ' checked' : '') + ' onchange="toggleSelect(\'' + key + '\')" onclick="event.stopPropagation()" aria-label="选择视频" />'
+          + '<div class="media-cover" role="button" tabindex="0" aria-label="预览 ' + escapeHtml(item.video) + '" onclick="openPreview(\'' + key + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openPreview(\'' + key + '\')}">'
+          + thumbHtml
+          + '<div class="media-play-badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M8 5v14l11-7z"/></svg></div>'
+          + '<div class="media-duration">' + durationLabel(item) + '</div>'
+          + '</div>'
+          + '<div class="media-body">'
+          + '<div class="media-name" title="' + escapeHtml(item.video) + '">' + escapeHtml(item.video) + '</div>'
+          + '<div class="media-meta">'
+          + '<span class="media-pill">' + fmtSize(item.size) + '</span>'
+          + '<span class="media-pill">' + escapeHtml(folderLabel) + '</span>'
+          + '<span class="media-pill">时长 <span data-duration-key="' + key + '">' + durationLabel(item) + '</span></span>'
+          + '</div>'
+          + '<div class="media-actions">'
+          + '<button class="btn btn-secondary btn-sm" type="button" onclick="openReplaceModal(\'' + key + '\')">替换封面</button>'
+          + '<button class="btn btn-danger btn-sm" type="button" onclick="deleteItem(\'' + key + '\')">删除</button>'
+          + '</div>'
+          + '</div>'
+          + '</article>';
       }).join('');
       renderPagination();
     }
 
     function setPage(page) {
-      const nextPage = Math.min(Math.max(Number(page) || 1, 1), getTotalPages());
-      if (nextPage === currentPage) return;
-      currentPage = nextPage;
+      const next = Math.min(Math.max(Number(page) || 1, 1), getTotalPages());
+      if (next === currentPage) return;
+      currentPage = next;
       renderGrid();
       scheduleDurationProbe();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    function changePage(delta) {
-      setPage(currentPage + delta);
-    }
+    function changePage(delta) { setPage(currentPage + delta); }
 
-    function changePageSize() {
-      currentPage = 1;
-      renderGrid();
-      scheduleDurationProbe();
-    }
+    function changePageSize() { currentPage = 1; renderGrid(); scheduleDurationProbe(); }
 
-    function findItemByKey(key) {
-      return allItems.find(item => itemKey(item) === key) || null;
-    }
+    function findItemByKey(key) { return allItems.find(item => itemKey(item) === key) || null; }
 
     function toggleSelect(key) {
-      if (selectedKeys.has(key)) {
-        selectedKeys.delete(key);
-      } else {
-        selectedKeys.add(key);
-      }
+      if (selectedKeys.has(key)) selectedKeys.delete(key); else selectedKeys.add(key);
       renderGrid();
     }
 
     function toggleSelectAll() {
       if (visibleItems.length === 0) return;
-      const allSelected = visibleItems.every(item => selectedKeys.has(itemKey(item)));
-      if (allSelected) {
-        visibleItems.forEach(item => selectedKeys.delete(itemKey(item)));
-      } else {
-        visibleItems.forEach(item => selectedKeys.add(itemKey(item)));
-      }
+      const all = visibleItems.every(item => selectedKeys.has(itemKey(item)));
+      if (all) visibleItems.forEach(item => selectedKeys.delete(itemKey(item)));
+      else visibleItems.forEach(item => selectedKeys.add(itemKey(item)));
       renderGrid();
     }
 
     function openPreview(key) {
       const item = findItemByKey(key);
       if (!item) return;
-      const folderLabel = item.folder || '根目录';
+      const fl = item.folder || '根目录';
       document.getElementById('previewTitle').textContent = item.video;
-      document.getElementById('previewMeta').textContent =
-        `${folderLabel} · ${fmtSize(item.size)} · 时长 ${durationLabel(item)}`;
+      document.getElementById('previewMeta').textContent = fl + ' · ' + fmtSize(item.size) + ' · 时长 ' + durationLabel(item);
       const video = document.getElementById('previewVideo');
       video.poster = item.thumb_url || item.thumbnail_url || '';
       video.src = item.video_url;
-      video.play().catch(() => {});
+      video.play().catch(function(){});
       document.getElementById('previewModal').classList.add('open');
+      document.body.classList.add('modal-open');
     }
 
     function closePreview() {
@@ -866,61 +361,42 @@
       video.src = '';
       video.poster = '';
       document.getElementById('previewModal').classList.remove('open');
+      document.body.classList.remove('modal-open');
     }
 
-    function closePreviewOnMask(event) {
-      if (event.target.id === 'previewModal') {
-        closePreview();
-      }
-    }
+    function closePreviewOnMask(e) { if (e.target.id === 'previewModal') closePreview(); }
 
     function openReplaceModal(key) {
       const item = findItemByKey(key);
       if (!item) return;
       replaceTarget = item;
-      const folderLabel = item.folder || '根目录';
-      document.getElementById('replaceMeta').textContent = `${folderLabel} · ${item.video}`;
+      document.getElementById('replaceMeta').textContent = (item.folder || '根目录') + ' · ' + item.video;
       document.getElementById('replaceFileInput').value = '';
       document.getElementById('replaceModal').classList.add('open');
+      document.body.classList.add('modal-open');
     }
 
     function closeReplaceModal() {
       replaceTarget = null;
       document.getElementById('replaceModal').classList.remove('open');
+      document.body.classList.remove('modal-open');
     }
 
-    function closeReplaceOnMask(event) {
-      if (event.target.id === 'replaceModal') {
-        closeReplaceModal();
-      }
-    }
+    function closeReplaceOnMask(e) { if (e.target.id === 'replaceModal') closeReplaceModal(); }
 
     async function doReplaceCover() {
       const input = document.getElementById('replaceFileInput');
       if (!replaceTarget) return;
-      if (!input.files || !input.files[0]) {
-        alert('请选择图片文件');
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append('folder', replaceTarget.folder);
-      formData.append('stem', replaceTarget.stem);
-      formData.append('file', input.files[0]);
-
-      const resp = await fetch('/api/poster/replace-cover', {
-        method: 'POST',
-        body: formData,
-      });
+      if (!input.files || !input.files[0]) { alert('请选择图片文件'); return; }
+      const fd = new FormData();
+      fd.append('folder', replaceTarget.folder);
+      fd.append('stem', replaceTarget.stem);
+      fd.append('file', input.files[0]);
+      const resp = await fetch('/api/poster/replace-cover', { method: 'POST', body: fd });
       const data = await resp.json();
-      if (!data.ok) {
-        alert(data.error || '替换失败');
-        return;
-      }
-
+      if (!data.ok) { alert(data.error || '替换失败'); return; }
       replaceTarget.thumb = data.thumb;
-      const folderQ = encodeURIComponent(replaceTarget.folder);
-      replaceTarget.thumbnail_url = `/api/poster-thumb?folder=${folderQ}&name=${encodeURIComponent(data.thumb)}&t=${Date.now()}`;
+      replaceTarget.thumbnail_url = '/api/poster-thumb?folder=' + encodeURIComponent(replaceTarget.folder) + '&name=' + encodeURIComponent(data.thumb) + '&t=' + Date.now();
       closeReplaceModal();
       renderGrid();
     }
@@ -928,60 +404,39 @@
     async function deleteItem(key) {
       const item = findItemByKey(key);
       if (!item) return;
-      if (!confirm(`确认删除 ${item.video} 及其封面吗？`)) return;
-
+      if (!confirm('确认删除 ' + item.video + ' 及其封面吗？')) return;
       const resp = await fetch('/api/poster/delete', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ folder: item.folder, stems: [item.stem] }),
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({folder: item.folder, stems: [item.stem]}),
       });
       const data = await resp.json();
-      if (!data.ok) {
-        alert(data.error || '删除失败');
-        return;
-      }
-
-      allItems = allItems.filter(current => itemKey(current) !== key);
+      if (!data.ok) { alert(data.error || '删除失败'); return; }
+      allItems = allItems.filter(c => itemKey(c) !== key);
       selectedKeys.delete(key);
       applyFilters(false);
     }
 
     async function batchDelete() {
       if (selectedKeys.size === 0) return;
-      if (!confirm(`确认删除选中的 ${selectedKeys.size} 个视频吗？`)) return;
-
+      if (!confirm('确认删除选中的 ' + selectedKeys.size + ' 个视频吗？')) return;
       const groups = new Map();
-      visibleItems
-        .filter(item => selectedKeys.has(itemKey(item)))
-        .forEach(item => {
-          if (!groups.has(item.folder)) {
-            groups.set(item.folder, []);
-          }
-          groups.get(item.folder).push(item.stem);
-        });
-
+      visibleItems.filter(item => selectedKeys.has(itemKey(item))).forEach(item => {
+        if (!groups.has(item.folder)) groups.set(item.folder, []);
+        groups.get(item.folder).push(item.stem);
+      });
       for (const [folder, stems] of groups.entries()) {
-        const resp = await fetch('/api/poster/delete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ folder, stems }),
-        });
+        const resp = await fetch('/api/poster/delete', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({folder, stems}) });
         const data = await resp.json();
-        if (!data.ok) {
-          alert(data.error || `${folder || '根目录'} 删除失败`);
-          return;
-        }
+        if (!data.ok) { alert(data.error || folder + ' 删除失败'); return; }
       }
-
       allItems = allItems.filter(item => !selectedKeys.has(itemKey(item)));
       selectedKeys.clear();
       applyFilters(false);
     }
 
     function updateDurationView(key, label) {
-      document.querySelectorAll(`[data-duration-key="${CSS.escape(key)}"]`).forEach(node => {
-        node.textContent = label;
-      });
+      document.querySelectorAll('[data-duration-key="' + CSS.escape(key) + '"]').forEach(n => { n.textContent = label; });
     }
 
     function scheduleDurationProbe() {
@@ -997,35 +452,25 @@
       const nextKey = durationProbeQueue.shift();
       if (!nextKey) return;
       const item = findItemByKey(nextKey);
-      if (!item) {
-        runDurationProbe();
-        return;
-      }
-
+      if (!item) { runDurationProbe(); return; }
       durationProbeRunning += 1;
       const probe = document.createElement('video');
       probe.preload = 'metadata';
       probe.src = item.video_url;
-      probe.onloadedmetadata = () => {
+      probe.onloadedmetadata = function() {
         const total = Math.max(0, Math.round(probe.duration || 0));
-        const hours = Math.floor(total / 3600);
-        const minutes = Math.floor((total % 3600) / 60);
-        const seconds = total % 60;
-        const label = hours > 0
-          ? `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-          : `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        const h = Math.floor(total / 3600);
+        const m = Math.floor((total % 3600) / 60);
+        const s = total % 60;
+        const label = h > 0 ? pad2(h) + ':' + pad2(m) + ':' + pad2(s) : pad2(m) + ':' + pad2(s);
         durationCache.set(nextKey, label);
         updateDurationView(nextKey, label);
         cleanup();
       };
       probe.onerror = cleanup;
       probe.load();
-
-      function cleanup() {
-        probe.src = '';
-        durationProbeRunning -= 1;
-        runDurationProbe();
-      }
+      function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+      function cleanup() { probe.src = ''; durationProbeRunning -= 1; runDurationProbe(); }
     }
 
     async function reloadData() {
@@ -1040,11 +485,8 @@
       }
     }
 
-    document.addEventListener('keydown', event => {
-      if (event.key === 'Escape') {
-        closePreview();
-        closeReplaceModal();
-      }
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') { closePreview(); closeReplaceModal(); }
     });
 
     document.getElementById('folderFilter').value = INITIAL_FOLDER;
