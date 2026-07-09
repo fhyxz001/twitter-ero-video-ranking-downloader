@@ -48,7 +48,14 @@ APP_DIR = get_exe_dir()
 CONFIG_PATH = APP_DIR / "config.json"
 TEMPLATES_PATH = get_resource_path("templates")
 STATIC_PATH = get_resource_path("static")
-MEDIA_API_URL = "https://ttt.monsnode.com/"
+MEDIA_API_BASE = "https://pektino.com/zh-CN"
+RANKING_RANGE_SUFFIX = {
+    "daily": "",
+    "weekly": "/weekly",
+    "monthly": "/monthly",
+    "all": "/all",
+}
+RANKING_RANGE_OPTIONS = list(RANKING_RANGE_SUFFIX.keys())
 REQUEST_TIMEOUT = 30
 ALLOWED_WATERFALL_PAGE_SIZES = {10, 20, 30, 50, 100}
 
@@ -58,6 +65,7 @@ DEFAULT_CONFIG: Dict[str, object] = {
     "auto_download_enabled": True,
     "schedule_cron": "0 3 * * *",
     "max_daily_downloads": 10,
+    "ranking_range": "daily",
     "waterfall_per_page": 10,
     "twitter_cookie": "",
     "twitter_blogger_list": [],
@@ -123,29 +131,82 @@ def get_logs() -> List[str]:
         return list(log_lines)
 
 
-def parse_monsnode_html(html: str) -> List[dict]:
-    """Parse monsnode.com HTML to extract video URLs and thumbnails from div.listn blocks.
+def parse_pektino_rsc(text: str) -> List[dict]:
+    """Parse Next.js RSC payload from pektino.com to extract video items.
 
-    Expected structure:
-        <div class="listn" id="">
-          <a href="video_url" ...>
-            <img src="thumbnail_url" ...>
-          </a>
-        </div>
+    The RSC payload contains obfuscated component references (e.g. $L13) and
+    a JSON array under the key "initialItems". Each item has fields:
+      id, url_cd, mp4 URL, thumbnail, pv, favorite, tweet_url, etc.
+
+    We extract the initialItems JSON array using regex and parse it.
     """
     items: List[dict] = []
-    pattern = r'<div\s+class="listn"[^>]*>\s*<a\s+href="([^"]*)"[^>]*>\s*<img\s+src="([^"]*)"[^>]*>\s*</a>\s*</div>'
-    for match in re.finditer(pattern, html, re.DOTALL | re.IGNORECASE):
-        video_url = match.group(1).strip()
-        thumb_url = match.group(2).strip()
-        if not video_url:
+    # Find the initialItems JSON array in the RSC payload
+    # The pattern looks for "initialItems" followed by a JSON array
+    match = re.search(r'"initialItems"\s*:\s*(\[)', text)
+    if not match:
+        return items
+
+    start = match.start(1)
+    # Find the matching closing bracket by counting nesting depth
+    depth = 0
+    end = start
+    for i in range(start, len(text)):
+        ch = text[i]
+        if ch == '[':
+            depth += 1
+        elif ch == ']':
+            depth -= 1
+            if depth == 0:
+                end = i + 1
+                break
+
+    if end <= start:
+        return items
+
+    json_str = text[start:end]
+    try:
+        raw_items = json.loads(json_str)
+    except (json.JSONDecodeError, ValueError):
+        return items
+
+    if not isinstance(raw_items, list):
+        return items
+
+    for raw in raw_items:
+        if not isinstance(raw, dict):
             continue
-        video_id = _generate_video_id(video_url)
+        # Extract fields: id, url_cd, mp4 URL, thumbnail, pv, favorite, tweet_url
+        video_id = str(raw.get("id", "")).strip()
+        mp4_url = str(raw.get("mp4", "")).strip()
+        thumb_url = str(raw.get("thumbnail", "")).strip()
+        tweet_url = str(raw.get("tweet_url", "")).strip()
+        url_cd = str(raw.get("url_cd", "")).strip()
+
+        # Use mp4 as primary URL for downloading, fallback to url_cd
+        video_url = mp4_url or url_cd
+        if not video_url:
+            # Try to find any URL-like field
+            for key in ("url", "video_url", "src", "source"):
+                candidate = str(raw.get(key, "")).strip()
+                if candidate and candidate.startswith("http"):
+                    video_url = candidate
+                    break
+
+        if not video_id and video_url:
+            video_id = _generate_video_id(video_url)
+        if not video_id:
+            continue
+
         items.append({
             "id": video_id,
             "url": video_url,
             "thumbnail": thumb_url if thumb_url.startswith("http") else "",
-            "title": video_id,
+            "title": str(raw.get("title", "")).strip() or video_id,
+            "pv": raw.get("pv"),
+            "favorite": raw.get("favorite"),
+            "tweet_url": tweet_url,
+            "url_cd": url_cd,
         })
     return items
 
@@ -191,6 +252,11 @@ def validate_config(raw: Dict[str, object]) -> Dict[str, object]:
     if max_daily <= 0:
         raise ValueError("每次下载数必须大于0")
     cfg["max_daily_downloads"] = max_daily
+
+    ranking_range = str(cfg.get("ranking_range", "daily")).strip()
+    if ranking_range not in RANKING_RANGE_OPTIONS:
+        ranking_range = "daily"
+    cfg["ranking_range"] = ranking_range
 
     waterfall_per_page = int(cfg.get("waterfall_per_page", 10))
     if waterfall_per_page not in ALLOWED_WATERFALL_PAGE_SIZES:
@@ -342,18 +408,27 @@ def download_binary(session: requests.Session, url: str, target_path: Path, prox
         return False
 
 
-def _fetch_monsnode_media(session: requests.Session, proxies) -> List[dict]:
-    """从 monsnode.com 获取媒体列表，解析 HTML 返回 items 数组。"""
+def _fetch_pektino_media(session: requests.Session, proxies, ranking_range: str = "daily") -> List[dict]:
+    """从 pektino.com 获取排行榜视频列表，解析 Next.js RSC 负载返回 items 数组。"""
+    suffix = RANKING_RANGE_SUFFIX.get(ranking_range, "")
+    url = f"{MEDIA_API_BASE}{suffix}"
+    headers = {
+        "Accept": "text/x-component",
+        "RSC": "1",
+        "Next-Router-State-Tree": "%5B%22%22%2C%7B%22children%22%3A%5B%22zh-CN%22%2C%7B%22children%22%3A%5B%22__PAGE__%22%2C%7B%7D%5D%7D%5D%7D%2Cnull%2Cnull%2Ctrue%5D",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+    }
     resp = session.get(
-        MEDIA_API_URL,
+        url,
+        headers=headers,
         timeout=REQUEST_TIMEOUT,
         proxies=proxies,
     )
     resp.raise_for_status()
-    raw_text = resp.text.strip()
-    if not raw_text:
+    raw_text = resp.text
+    if not raw_text or not raw_text.strip():
         raise ValueError(f"API 返回空响应（HTTP {resp.status_code}），请检查接口或代理设置")
-    items = parse_monsnode_html(raw_text)
+    items = parse_pektino_rsc(raw_text)
     if not items:
         raise ValueError("未能从页面解析到任何视频")
     return items
@@ -430,6 +505,9 @@ def _normalize_waterfall_item(item: dict) -> Optional[dict]:
         "preview_url": video_url,
         "thumbnail": thumbnail_url if _is_safe_remote_media_url(thumbnail_url) else "",
         "title": str(item.get("title") or video_id),
+        "pv": item.get("pv"),
+        "favorite_count": item.get("favorite"),
+        "tweet_url": str(item.get("tweet_url", "")).strip() or None,
     }
 
 
@@ -456,8 +534,9 @@ def run_download_job() -> None:
 
         append_log(f"本次计划最多下载 {max_downloads} 个视频")
 
+        ranking_range = str(cfg.get("ranking_range", "daily")).strip()
         try:
-            items = _fetch_monsnode_media(session, proxies)
+            items = _fetch_pektino_media(session, proxies, ranking_range)
             s, k, f = _download_items(session, items, download_root, max_downloads, proxies)
         except Exception as exc:
             s, k, f = 0, 0, 1
@@ -1026,6 +1105,7 @@ async def save(request: Request):
                 "auto_download_enabled": auto_download_enabled,
                 "schedule_cron": schedule_cron,
                 "max_daily_downloads": max_daily_downloads,
+                "ranking_range": str(form.get("ranking_range", cfg.get("ranking_range", "daily"))).strip(),
                 "twitter_cookie": str(form.get("twitter_cookie", cfg.get("twitter_cookie", ""))).strip(),
                 "twitter_blogger_enabled": parse_bool(form.get("twitter_blogger_enabled", cfg.get("twitter_blogger_enabled", True))),
                 "twitter_blogger_cron": str(form.get("twitter_blogger_cron", cfg.get("twitter_blogger_cron", "0 4 * * *"))).strip(),
@@ -1115,14 +1195,17 @@ def status():
 
 
 @app.get("/api/waterfall")
-def api_waterfall(page: int = 1):
+def api_waterfall(page: int = 1, range: str = ""):
     cfg = get_current_config()
     per_page = int(cfg.get("waterfall_per_page", 10))
     safe_page = max(1, int(page))
+    ranking_range = str(range or cfg.get("ranking_range", "daily")).strip()
+    if ranking_range not in RANKING_RANGE_OPTIONS:
+        ranking_range = "daily"
     proxies = build_proxies(str(cfg.get("proxy", "")).strip())
     session = requests.Session()
     try:
-        all_items = _fetch_monsnode_media(session, proxies)
+        all_items = _fetch_pektino_media(session, proxies, ranking_range)
         # Client-side pagination: slice the full result set
         total = len(all_items)
         start = (safe_page - 1) * per_page

@@ -19,6 +19,10 @@
         <div id="configLine" class="mute-d text-sm" style="margin-top:var(--px);">每页 {{ config.per_page or 10 }} 个</div>
       </div>
       <div class="btn-grp">
+        <button class="btn btn-gho" id="rangeDaily" onclick="switchRange('daily')">日榜</button>
+        <button class="btn btn-gho" id="rangeWeekly" onclick="switchRange('weekly')">周榜</button>
+        <button class="btn btn-gho" id="rangeMonthly" onclick="switchRange('monthly')">月榜</button>
+        <button class="btn btn-gho" id="rangeAll" onclick="switchRange('all')">总榜</button>
         <button class="btn btn-gho" onclick="openSettings()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           设置
@@ -100,6 +104,7 @@
     const initialConfig={{config|tojson}};
     let tabs=[],currentConfig=Object.assign({},initialConfig);
     let currentTag=new URLSearchParams(location.search).get('tag')||'';
+    let currentRange=new URLSearchParams(location.search).get('range')||'daily';
     let currentPage=Math.max(1,parseInt(new URLSearchParams(location.search).get('page')||'1',10)||1);
     let pagination={page:currentPage,per_page:currentConfig.per_page||10,has_next:false};
     let items=[],loadError='',selectedIds=new Set(),loading=false;
@@ -122,7 +127,7 @@
       }catch(e){alert(e.message||'保存失败');}
     }
 
-    function updateURL(){const p=new URLSearchParams();if(currentTag)p.set('tag',currentTag);if(currentPage>1)p.set('page',''+currentPage);const q=p.toString();history.replaceState(null,'',q?'/waterfall?'+q:'/waterfall');}
+    function updateURL(){const p=new URLSearchParams();if(currentTag)p.set('tag',currentTag);if(currentRange&&currentRange!=='daily')p.set('range',currentRange);if(currentPage>1)p.set('page',''+currentPage);const q=p.toString();history.replaceState(null,'',q?'/waterfall?'+q:'/waterfall');}
     function renderTabs(){document.getElementById('tabs').innerHTML=tabs.map(t=>'<button class="dock-btn'+(t.code===currentTag?' active':'')+'" onclick="switchTab(\''+jsS(t.code)+'\')">'+esc(t.name)+'</button>').join('');}
     function renderStatus(){
       const st=document.getElementById('statusText'),sc=document.getElementById('selectedCount'),sa=document.getElementById('selectAllBtn'),db=document.getElementById('downloadBtn'),pp=document.getElementById('prevPageBtn'),np=document.getElementById('nextPageBtn'),pi=document.getElementById('pageInfo');
@@ -154,9 +159,9 @@
     }
     function renderSkeletons(c){const m=document.getElementById('masonry');document.getElementById('empty').style.display='none';let h='';for(let i=0;i<c;i++)h+='<div class="skeleton"><div class="sk-cover"></div><div class="sk-body"><div class="sk-line"></div><div class="sk-line"></div><div style="display:flex;gap:4px;margin-top:6px;"><div style="height:14px;width:36px;border-radius:4px;background:var(--bg-raised)"></div><div style="height:14px;width:36px;border-radius:4px;background:var(--bg-raised)"></div></div></div></div>';m.innerHTML=h;}
     async function loadData(){
-      loading=true;loadError='';selectedIds.clear();renderTabs();renderSkeletons(currentConfig.per_page||10);renderStatus();
+      loading=true;loadError='';selectedIds.clear();renderTabs();updateRangeBtns();renderSkeletons(currentConfig.per_page||10);renderStatus();
       try{
-        const p=new URLSearchParams();if(currentTag)p.set('tag',currentTag);if(currentPage>1)p.set('page',''+currentPage);
+        const p=new URLSearchParams();if(currentTag)p.set('tag',currentTag);if(currentRange&&currentRange!=='daily')p.set('range',currentRange);if(currentPage>1)p.set('page',''+currentPage);
         const q=p.toString(),r=await fetch(q?'/api/waterfall?'+q:'/api/waterfall'),d=await r.json();
         if(!d.ok)throw new Error(d.error||'加载失败');
         tabs=Array.isArray(d.tabs)?d.tabs:tabs;items=Array.isArray(d.items)?d.items:[];
@@ -168,6 +173,8 @@
       finally{loading=false;renderTabs();renderCards();}
     }
     function switchTab(c){if(c===currentTag||loading)return;currentTag=c;currentPage=1;pagination={page:1,per_page:currentConfig.per_page||10,has_next:false};updateURL();loadData();window.scrollTo({top:0,behavior:'smooth'});}
+    function switchRange(r){if(r===currentRange||loading)return;currentRange=r;currentPage=1;pagination={page:1,per_page:currentConfig.per_page||10,has_next:false};updateURL();loadData();window.scrollTo({top:0,behavior:'smooth'});}
+    function updateRangeBtns(){['daily','weekly','monthly','all'].forEach(r=>{const b=document.getElementById('range'+r.charAt(0).toUpperCase()+r.slice(1));if(b){if(r===currentRange)b.classList.add('btn-pri');b.classList.remove('btn-gho');b.classList.add(r===currentRange?'btn-pri':'btn-gho');}});}
     function changePage(d){if(loading)return;const n=currentPage+d;if(n<1||(d>0&&!pagination.has_next))return;currentPage=n;pagination.page=n;updateURL();loadData();window.scrollTo({top:0,behavior:'smooth'});}
     function reloadData(){if(!loading)loadData();}
     function updateCardSelected(id){const c=document.querySelector('.ma-card[data-id="'+CSS.escape(id)+'"]');if(!c)return;const cb=c.querySelector('.ma-sel');if(selectedIds.has(id)){c.classList.add('sel');if(cb)cb.checked=true;}else{c.classList.remove('sel');if(cb)cb.checked=false;}}

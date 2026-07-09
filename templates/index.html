@@ -188,6 +188,16 @@
           <input id="settings_schedule_cron" type="text" placeholder="0 3 * * *" value="{{ config.schedule_cron }}" />
           <span class="hint">标准 5 位 cron，如 0 3 * * * 为每天 3:00</span>
         </div>
+        <div class="field">
+          <label class="field-lbl" for="settings_ranking_range">排行榜范围</label>
+          <select id="settings_ranking_range">
+            <option value="daily" {% if config.ranking_range == "daily" %}selected{% endif %}>日榜</option>
+            <option value="weekly" {% if config.ranking_range == "weekly" %}selected{% endif %}>周榜</option>
+            <option value="monthly" {% if config.ranking_range == "monthly" %}selected{% endif %}>月榜</option>
+            <option value="all" {% if config.ranking_range == "all" %}selected{% endif %}>总榜</option>
+          </select>
+          <span class="hint">选择下载任务的排行榜类型。瀑布流页面可独立切换。</span>
+        </div>
         <div class="full mt-2">
           <div class="drawer-sec">Twitter 设置</div>
         </div>
@@ -272,6 +282,7 @@
       download_root:{{config.download_root|tojson}},proxy:{{config.proxy|tojson}},
       auto_download_enabled:{{'true'if config.auto_download_enabled else'false'}},
       schedule_cron:{{config.schedule_cron|tojson}},max_daily_downloads:{{config.max_daily_downloads}},
+      ranking_range:{{config.ranking_range|tojson}},
       twitter_cookie:{{config.twitter_cookie|tojson}},
       twitter_blogger_enabled:{{'true'if config.twitter_blogger_enabled else'false'}},
       twitter_blogger_cron:{{config.twitter_blogger_cron|tojson}},
@@ -302,6 +313,7 @@
       document.getElementById('settings_proxy').value=currentConfig.proxy||'';
       document.getElementById('settings_auto_download_enabled').checked=currentConfig.auto_download_enabled!==false;
       document.getElementById('settings_schedule_cron').value=currentConfig.schedule_cron||'0 3 * * *';
+      document.getElementById('settings_ranking_range').value=currentConfig.ranking_range||'daily';
       document.getElementById('settings_twitter_cookie').value=currentConfig.twitter_cookie||'';
       document.getElementById('settings_blogger_enabled').checked=currentConfig.twitter_blogger_enabled!==false;
       document.getElementById('settings_blogger_cron').value=currentConfig.twitter_blogger_cron||'0 4 * * *';
@@ -324,6 +336,7 @@
       fd.append('auto_download_enabled',document.getElementById('settings_auto_download_enabled').checked?'1':'0');
       fd.append('schedule_cron',document.getElementById('settings_schedule_cron').value);
       fd.append('max_daily_downloads',document.getElementById('max_daily_downloads').value);
+      fd.append('ranking_range',document.getElementById('settings_ranking_range').value);
       fd.append('twitter_cookie',document.getElementById('settings_twitter_cookie').value);
       fd.append('twitter_blogger_enabled',document.getElementById('settings_blogger_enabled').checked?'1':'0');
       fd.append('twitter_blogger_cron',document.getElementById('settings_blogger_cron').value);
@@ -336,6 +349,7 @@
         currentConfig.auto_download_enabled=document.getElementById('settings_auto_download_enabled').checked;
         currentConfig.schedule_cron=document.getElementById('settings_schedule_cron').value;
         currentConfig.max_daily_downloads=parseInt(document.getElementById('max_daily_downloads').value);
+        currentConfig.ranking_range=document.getElementById('settings_ranking_range').value;
         currentConfig.download_root=downloadRootInput.value;
         currentConfig.twitter_cookie=document.getElementById('settings_twitter_cookie').value;
         currentConfig.twitter_blogger_enabled=document.getElementById('settings_blogger_enabled').checked;
