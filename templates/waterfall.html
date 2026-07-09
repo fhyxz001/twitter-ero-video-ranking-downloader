@@ -3,47 +3,38 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>瀑布流预览</title>
+  <title>瀑布流</title>
   <link rel="stylesheet" href="{{ url_for('static', path='css/design-system.css') }}" />
 </head>
 <body>
-  <div class="shell shell--narrow">
-    <!-- ═════ Header ═════ -->
-    <header style="display:flex;justify-content:space-between;align-items:flex-end;gap:var(--p4);margin:var(--p6) 0 var(--p4);flex-wrap:wrap;">
+  <div class="shell">
+    <!-- Header -->
+    <header style="display:flex;justify-content:space-between;align-items:flex-end;gap:var(--s-4);margin:var(--s-6) 0 var(--s-4);flex-wrap:wrap;">
       <div>
         <a class="hero-nav" href="/">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-          返回首页
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          返回
         </a>
-        <h1 style="margin-top:var(--p2);font-size:var(--fs-2xl);font-weight:700;letter-spacing:var(--track-tight);">瀑布流</h1>
-        <div id="configLine" class="mute-d text-sm" style="margin-top:var(--px);">每页 {{ config.per_page or 10 }} 个</div>
+        <h1 style="margin-top:var(--s-2);font-size:var(--fs-2xl);font-weight:var(--fw-700)">瀑布流</h1>
+        <div id="configLine" class="mute-d text-sm" style="margin-top:2px">每页 {{ config.per_page or 10 }} 个</div>
       </div>
       <div class="btn-grp">
-        <button class="btn btn-gho" id="rangeDaily" onclick="switchRange('daily')">日榜</button>
-        <button class="btn btn-gho" id="rangeWeekly" onclick="switchRange('weekly')">周榜</button>
-        <button class="btn btn-gho" id="rangeMonthly" onclick="switchRange('monthly')">月榜</button>
-        <button class="btn btn-gho" id="rangeAll" onclick="switchRange('all')">总榜</button>
-        <button class="btn btn-gho" onclick="openSettings()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          设置
-        </button>
-        <button class="btn btn-gho" onclick="reloadData()">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-          刷新
-        </button>
-        <button class="btn btn-gho" id="selectAllBtn" onclick="toggleSelectAll()">全选当前页</button>
-        <button class="btn btn-pri" id="downloadBtn" onclick="downloadSelected()" disabled>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          下载选中
-        </button>
+        <button class="btn btn-gho btn-sm" id="rangeDaily" onclick="switchRange('daily')">日榜</button>
+        <button class="btn btn-gho btn-sm" id="rangeWeekly" onclick="switchRange('weekly')">周榜</button>
+        <button class="btn btn-gho btn-sm" id="rangeMonthly" onclick="switchRange('monthly')">月榜</button>
+        <button class="btn btn-gho btn-sm" id="rangeAll" onclick="switchRange('all')">总榜</button>
+        <button class="btn btn-gho btn-sm" onclick="openSettings()">设置</button>
+        <button class="btn btn-gho btn-sm" onclick="reloadData()">刷新</button>
+        <button class="btn btn-gho btn-sm" id="selectAllBtn" onclick="toggleSelectAll()">全选</button>
+        <button class="btn btn-pri btn-sm" id="downloadBtn" onclick="downloadSelected()" disabled>下载选中</button>
       </div>
     </header>
 
-    <!-- ═════ Sticky Dock ═════ -->
+    <!-- Dock -->
     <section class="dock">
       <nav id="tabs" class="dock-t" aria-label="标签"></nav>
-      <div class="sbar" style="margin-top:var(--p3);">
-        <div id="statusText">正在加载...</div>
+      <div class="sbar" style="margin-top:var(--s-3)">
+        <div id="statusText">正在加载…</div>
         <div class="sbar-s">
           <div>已选 <strong id="selectedCount">0</strong> 个</div>
           <div class="pager">
@@ -55,14 +46,14 @@
       </div>
     </section>
 
-    <!-- ═════ Masonry ═════ -->
+    <!-- Masonry -->
     <section id="masonry" class="mason"></section>
     <div id="empty" class="empty">当前配置下没有可预览的视频。</div>
   </div>
 
-  <!-- ═════ Settings Modal ═════ -->
+  <!-- Settings Modal -->
   <div id="settingsModal" class="modal" onclick="closeSettingsOnMask(event)">
-    <div class="modal-d" style="max-width:400px;">
+    <div class="modal-d">
       <div class="modal-h">
         <div>
           <h2 class="modal-t">瀑布流设置</h2>
@@ -87,13 +78,13 @@
     </div>
   </div>
 
-  <!-- ═════ Preview Modal ═════ -->
+  <!-- Preview Modal -->
   <div id="previewModal" class="ply" onclick="closePreviewOnMask(event)">
     <div class="ply-c">
       <div class="ply-h">
         <div id="previewTitle" class="ply-t">视频预览</div>
         <button class="ply-x" onclick="closePreview()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
       <video id="previewVideo" class="ply-v" controls preload="metadata"></video>
@@ -101,46 +92,45 @@
   </div>
 
   <script>
-    const initialConfig={{config|tojson}};
-    let tabs=[],currentConfig=Object.assign({},initialConfig);
-    let currentTag=new URLSearchParams(location.search).get('tag')||'';
-    let currentRange=new URLSearchParams(location.search).get('range')||'daily';
+    const initialConfig = {{ config|tojson }};
+    let tabs=[], currentConfig=Object.assign({}, initialConfig);
+    let currentTag='', currentRange=new URLSearchParams(location.search).get('range')||'daily';
     let currentPage=Math.max(1,parseInt(new URLSearchParams(location.search).get('page')||'1',10)||1);
     let pagination={page:currentPage,per_page:currentConfig.per_page||10,has_next:false};
-    let items=[],loadError='',selectedIds=new Set(),loading=false;
+    let items=[], loadError='', selectedIds=new Set(), loading=false;
 
-    function esc(v){return String(v||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');}
-    function jsS(v){return String(v||'').replaceAll('\\','\\\\').replaceAll("'","\\'").replaceAll('\n','\\n').replaceAll('\r','\\r');}
-    function byId(i){return items.find(x=>x.id===i)||null;}
-    function tName(c){const t=tabs.find(x=>x.code===c);return t?t.name:'全部';}
+    function esc(v){ return String(v||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;'); }
+    function jsS(v){ return String(v||'').replaceAll('\\','\\\\').replaceAll("'","\\'").replaceAll('\n','\\n').replaceAll('\r','\\r'); }
+    function byId(i){ return items.find(x=>x.id===i)||null; }
+    function tName(c){ const t=tabs.find(x=>x.code===c); return t?t.name:'全部'; }
 
-    function openSettings(){document.getElementById('settingsPerPage').value=''+(currentConfig.per_page||10);document.getElementById('settingsModal').classList.add('open');document.body.classList.add('modal-open');}
-    function closeSettings(){document.getElementById('settingsModal').classList.remove('open');document.body.classList.remove('modal-open');}
-    function closeSettingsOnMask(e){if(e.target===document.getElementById('settingsModal'))closeSettings();}
+    function openSettings(){ document.getElementById('settingsPerPage').value=''+(currentConfig.per_page||10); document.getElementById('settingsModal').classList.add('open'); document.body.classList.add('modal-open'); }
+    function closeSettings(){ document.getElementById('settingsModal').classList.remove('open'); document.body.classList.remove('modal-open'); }
+    function closeSettingsOnMask(e){ if(e.target===document.getElementById('settingsModal'))closeSettings(); }
 
     async function saveSettings(){
       const payload={per_page:parseInt(document.getElementById('settingsPerPage').value,10)};
       try{
-        const r=await fetch('/api/waterfall/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}),d=await r.json();
+        const r=await fetch('/api/waterfall/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}), d=await r.json();
         if(!d.ok)throw new Error(d.error||'保存失败');
-        currentConfig=d.config||payload;currentPage=1;pagination={page:1,per_page:currentConfig.per_page||payload.per_page,has_next:false};closeSettings();updateURL();await loadData();
-      }catch(e){alert(e.message||'保存失败');}
+        currentConfig=d.config||payload; currentPage=1; pagination={page:1,per_page:currentConfig.per_page||payload.per_page,has_next:false}; closeSettings(); updateURL(); await loadData();
+      }catch(e){ alert(e.message||'保存失败'); }
     }
 
-    function updateURL(){const p=new URLSearchParams();if(currentTag)p.set('tag',currentTag);if(currentRange&&currentRange!=='daily')p.set('range',currentRange);if(currentPage>1)p.set('page',''+currentPage);const q=p.toString();history.replaceState(null,'',q?'/waterfall?'+q:'/waterfall');}
-    function renderTabs(){document.getElementById('tabs').innerHTML=tabs.map(t=>'<button class="dock-btn'+(t.code===currentTag?' active':'')+'" onclick="switchTab(\''+jsS(t.code)+'\')">'+esc(t.name)+'</button>').join('');}
+    function updateURL(){ const p=new URLSearchParams(); if(currentRange&&currentRange!=='daily')p.set('range',currentRange); if(currentPage>1)p.set('page',''+currentPage); const q=p.toString(); history.replaceState(null,'',q?'/waterfall?'+q:'/waterfall'); }
+    function renderTabs(){ document.getElementById('tabs').innerHTML=tabs.map(t=>'<button class="dock-btn'+(t.code===currentTag?' active':'')+'" onclick="switchTab(\''+jsS(t.code)+'\')">'+esc(t.name)+'</button>').join(''); }
     function renderStatus(){
-      const st=document.getElementById('statusText'),sc=document.getElementById('selectedCount'),sa=document.getElementById('selectAllBtn'),db=document.getElementById('downloadBtn'),pp=document.getElementById('prevPageBtn'),np=document.getElementById('nextPageBtn'),pi=document.getElementById('pageInfo');
-      sc.textContent=''+selectedIds.size;db.disabled=selectedIds.size===0||loading;sa.disabled=items.length===0||loading;
-      sa.textContent=items.length&&items.every(i=>selectedIds.has(i.id))?'取消全选':'全选当前页';
-      pp.disabled=loading||pagination.page<=1;np.disabled=loading||!pagination.has_next;pi.textContent='第 '+pagination.page+' 页';
-      if(loading){st.innerHTML='正在加载 <strong>'+esc(tName(currentTag))+'</strong> 第 '+pagination.page+' 页...';return;}
-      if(loadError){st.innerHTML='<strong>'+esc(loadError)+'</strong>';return;}
+      const st=document.getElementById('statusText'), sc=document.getElementById('selectedCount'), sa=document.getElementById('selectAllBtn'), db=document.getElementById('downloadBtn'), pp=document.getElementById('prevPageBtn'), np=document.getElementById('nextPageBtn'), pi=document.getElementById('pageInfo');
+      sc.textContent=''+selectedIds.size; db.disabled=selectedIds.size===0||loading; sa.disabled=items.length===0||loading;
+      sa.textContent=items.length&&items.every(i=>selectedIds.has(i.id))?'取消全选':'全选';
+      pp.disabled=loading||pagination.page<=1; np.disabled=loading||!pagination.has_next; pi.textContent='第 '+pagination.page+' 页';
+      if(loading){ st.innerHTML='正在加载 <strong>'+esc(tName(currentTag))+'</strong> 第 '+pagination.page+' 页…'; return; }
+      if(loadError){ st.innerHTML='<strong>'+esc(loadError)+'</strong>'; return; }
       st.innerHTML='<strong>'+esc(tName(currentTag))+'</strong> 当前页共 '+items.length+' 个视频';
     }
     function renderCards(){
-      const m=document.getElementById('masonry'),e=document.getElementById('empty');
-      if(!items.length){m.innerHTML='';e.style.display=loading?'none':'block';renderStatus();return;}
+      const m=document.getElementById('masonry'), e=document.getElementById('empty');
+      if(!items.length){ m.innerHTML=''; e.style.display=loading?'none':'block'; renderStatus(); return; }
       e.style.display='none';
       m.innerHTML=items.map(i=>{
         const sel=selectedIds.has(i.id);
@@ -157,37 +147,37 @@
       }).join('');
       renderStatus();
     }
-    function renderSkeletons(c){const m=document.getElementById('masonry');document.getElementById('empty').style.display='none';let h='';for(let i=0;i<c;i++)h+='<div class="skeleton"><div class="sk-cover"></div><div class="sk-body"><div class="sk-line"></div><div class="sk-line"></div><div style="display:flex;gap:4px;margin-top:6px;"><div style="height:14px;width:36px;border-radius:4px;background:var(--bg-raised)"></div><div style="height:14px;width:36px;border-radius:4px;background:var(--bg-raised)"></div></div></div></div>';m.innerHTML=h;}
+    function renderSkeletons(c){ const m=document.getElementById('masonry'); document.getElementById('empty').style.display='none'; let h=''; for(let i=0;i<c;i++)h+='<div class="skeleton"><div class="sk-cover"></div><div class="sk-body"><div class="sk-line"></div><div class="sk-line"></div><div style="display:flex;gap:4px;margin-top:6px;"><div style="height:12px;width:32px;border-radius:4px;background:var(--c-hover)"></div><div style="height:12px;width:32px;border-radius:4px;background:var(--c-hover)"></div></div></div></div>'; m.innerHTML=h; }
     async function loadData(){
-      loading=true;loadError='';selectedIds.clear();renderTabs();updateRangeBtns();renderSkeletons(currentConfig.per_page||10);renderStatus();
+      loading=true; loadError=''; selectedIds.clear(); renderTabs(); updateRangeBtns(); renderSkeletons(currentConfig.per_page||10); renderStatus();
       try{
-        const p=new URLSearchParams();if(currentTag)p.set('tag',currentTag);if(currentRange&&currentRange!=='daily')p.set('range',currentRange);if(currentPage>1)p.set('page',''+currentPage);
-        const q=p.toString(),r=await fetch(q?'/api/waterfall?'+q:'/api/waterfall'),d=await r.json();
+        const p=new URLSearchParams(); if(currentTag)p.set('tag',currentTag); if(currentRange&&currentRange!=='daily')p.set('range',currentRange); if(currentPage>1)p.set('page',''+currentPage);
+        const q=p.toString(), r=await fetch(q?'/api/waterfall?'+q:'/api/waterfall'), d=await r.json();
         if(!d.ok)throw new Error(d.error||'加载失败');
-        tabs=Array.isArray(d.tabs)?d.tabs:tabs;items=Array.isArray(d.items)?d.items:[];
+        tabs=Array.isArray(d.tabs)?d.tabs:tabs; items=Array.isArray(d.items)?d.items:[];
         if(d.config)currentConfig=d.config;
-        if(d.pagination){pagination={page:d.pagination.page||currentPage,per_page:d.pagination.per_page||currentConfig.per_page||10,has_next:Boolean(d.pagination.has_next)};currentPage=pagination.page;}
-        else{pagination={page:currentPage,per_page:currentConfig.per_page||10,has_next:false};}
+        if(d.pagination){ pagination={page:d.pagination.page||currentPage,per_page:d.pagination.per_page||currentConfig.per_page||10,has_next:Boolean(d.pagination.has_next)}; currentPage=pagination.page; }
+        else{ pagination={page:currentPage,per_page:currentConfig.per_page||10,has_next:false}; }
         updateURL();
-      }catch(e){items=[];loadError=e.message||'加载失败';pagination={page:currentPage,per_page:currentConfig.per_page||10,has_next:false};}
-      finally{loading=false;renderTabs();renderCards();}
+      }catch(e){ items=[]; loadError=e.message||'加载失败'; pagination={page:currentPage,per_page:currentConfig.per_page||10,has_next:false}; }
+      finally{ loading=false; renderTabs(); renderCards(); }
     }
-    function switchTab(c){if(c===currentTag||loading)return;currentTag=c;currentPage=1;pagination={page:1,per_page:currentConfig.per_page||10,has_next:false};updateURL();loadData();window.scrollTo({top:0,behavior:'smooth'});}
-    function switchRange(r){if(r===currentRange||loading)return;currentRange=r;currentPage=1;pagination={page:1,per_page:currentConfig.per_page||10,has_next:false};updateURL();loadData();window.scrollTo({top:0,behavior:'smooth'});}
-    function updateRangeBtns(){['daily','weekly','monthly','all'].forEach(r=>{const b=document.getElementById('range'+r.charAt(0).toUpperCase()+r.slice(1));if(b){if(r===currentRange)b.classList.add('btn-pri');b.classList.remove('btn-gho');b.classList.add(r===currentRange?'btn-pri':'btn-gho');}});}
-    function changePage(d){if(loading)return;const n=currentPage+d;if(n<1||(d>0&&!pagination.has_next))return;currentPage=n;pagination.page=n;updateURL();loadData();window.scrollTo({top:0,behavior:'smooth'});}
-    function reloadData(){if(!loading)loadData();}
-    function updateCardSelected(id){const c=document.querySelector('.ma-card[data-id="'+CSS.escape(id)+'"]');if(!c)return;const cb=c.querySelector('.ma-sel');if(selectedIds.has(id)){c.classList.add('sel');if(cb)cb.checked=true;}else{c.classList.remove('sel');if(cb)cb.checked=false;}}
-    function toggleSelect(id){if(selectedIds.has(id))selectedIds.delete(id);else selectedIds.add(id);updateCardSelected(id);renderStatus();}
-    function toggleSelectAll(){if(!items.length)return;const a=items.every(i=>selectedIds.has(i.id));if(a)items.forEach(i=>selectedIds.delete(i.id));else items.forEach(i=>selectedIds.add(i.id));items.forEach(i=>updateCardSelected(i.id));renderStatus();}
-    function openPreview(id){const i=byId(id);if(!i)return;const u=i.preview_url||i.url;if(!u)return;document.getElementById('previewTitle').textContent=i.title||i.id;const v=document.getElementById('previewVideo');v.poster=i.thumbnail||'';v.src=u;v.play().catch(function(){});document.getElementById('previewModal').classList.add('open');document.body.classList.add('modal-open');}
-    function closePreview(){const v=document.getElementById('previewVideo');v.pause();v.src='';v.poster='';document.getElementById('previewModal').classList.remove('open');document.body.classList.remove('modal-open');}
-    function closePreviewOnMask(e){if(e.target.id==='previewModal')closePreview();}
-    async function downloadSelected(){const s=items.filter(i=>selectedIds.has(i.id));if(!s.length||loading)return;const b=document.getElementById('downloadBtn');b.disabled=true;b.textContent='下载中...';
-      try{const r=await fetch('/api/waterfall/download',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tag_code:currentTag,items:s})}),d=await r.json();if(!d.ok)throw new Error(d.error||'下载失败');alert('成功 '+d.success+'，跳过 '+d.skipped+'，失败 '+d.failed);selectedIds.clear();renderCards();}catch(e){alert(e.message||'下载失败');}finally{b.textContent='下载选中';renderStatus();}
+    function switchTab(c){ if(c===currentTag||loading)return; currentTag=c; currentPage=1; pagination={page:1,per_page:currentConfig.per_page||10,has_next:false}; updateURL(); loadData(); window.scrollTo({top:0,behavior:'smooth'}); }
+    function switchRange(r){ if(r===currentRange||loading)return; currentRange=r; currentPage=1; pagination={page:1,per_page:currentConfig.per_page||10,has_next:false}; updateURL(); loadData(); window.scrollTo({top:0,behavior:'smooth'}); }
+    function updateRangeBtns(){ ['daily','weekly','monthly','all'].forEach(r=>{ const b=document.getElementById('range'+r.charAt(0).toUpperCase()+r.slice(1)); if(b){ b.classList.remove('btn-pri','btn-gho'); b.classList.add(r===currentRange?'btn-pri':'btn-gho'); } }); }
+    function changePage(d){ if(loading)return; const n=currentPage+d; if(n<1||(d>0&&!pagination.has_next))return; currentPage=n; pagination.page=n; updateURL(); loadData(); window.scrollTo({top:0,behavior:'smooth'}); }
+    function reloadData(){ if(!loading)loadData(); }
+    function updateCardSelected(id){ const c=document.querySelector('.ma-card[data-id="'+CSS.escape(id)+'"]'); if(!c)return; const cb=c.querySelector('.ma-sel'); if(selectedIds.has(id)){ c.classList.add('sel'); if(cb)cb.checked=true; } else{ c.classList.remove('sel'); if(cb)cb.checked=false; } }
+    function toggleSelect(id){ if(selectedIds.has(id))selectedIds.delete(id); else selectedIds.add(id); updateCardSelected(id); renderStatus(); }
+    function toggleSelectAll(){ if(!items.length)return; const a=items.every(i=>selectedIds.has(i.id)); if(a)items.forEach(i=>selectedIds.delete(i.id)); else items.forEach(i=>selectedIds.add(i.id)); items.forEach(i=>updateCardSelected(i.id)); renderStatus(); }
+    function openPreview(id){ const i=byId(id); if(!i)return; const u=i.preview_url||i.url; if(!u)return; document.getElementById('previewTitle').textContent=i.title||i.id; const v=document.getElementById('previewVideo'); v.poster=i.thumbnail||''; v.src=u; v.play().catch(function(){}); document.getElementById('previewModal').classList.add('open'); document.body.classList.add('modal-open'); }
+    function closePreview(){ const v=document.getElementById('previewVideo'); v.pause(); v.src=''; v.poster=''; document.getElementById('previewModal').classList.remove('open'); document.body.classList.remove('modal-open'); }
+    function closePreviewOnMask(e){ if(e.target.id==='previewModal')closePreview(); }
+    async function downloadSelected(){ const s=items.filter(i=>selectedIds.has(i.id)); if(!s.length||loading)return; const b=document.getElementById('downloadBtn'); b.disabled=true; b.textContent='下载中…';
+      try{ const r=await fetch('/api/waterfall/download',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:s})}), d=await r.json(); if(!d.ok)throw new Error(d.error||'下载失败'); alert('成功 '+d.success+'，跳过 '+d.skipped+'，失败 '+d.failed); selectedIds.clear(); renderCards(); }catch(e){ alert(e.message||'下载失败'); }finally{ b.textContent='下载选中'; renderStatus(); }
     }
-    document.addEventListener('keydown',function(e){if(e.key==='Escape'){closePreview();closeSettings();}});
-    renderTabs();updateURL();loadData();
+    document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ closePreview(); closeSettings(); } });
+    renderTabs(); updateURL(); loadData();
   </script>
 </body>
 </html>

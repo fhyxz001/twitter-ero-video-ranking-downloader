@@ -7,17 +7,15 @@
   <link rel="stylesheet" href="{{ url_for('static', path='css/design-system.css') }}" />
 </head>
 <body>
-  <div class="shell shell--narrow">
-    <!-- ═════ Hero ═════ -->
+  <div class="shell">
+    <!-- Hero -->
     <section class="hero">
-      <div>
-        <a class="hero-nav" href="/">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-          返回首页
-        </a>
-        <h1 id="pageTitle">全部视频海报墙</h1>
-        <p>点击海报即可预览视频；顶部筛选栏可按文件夹筛选，卡片展示时长、大小和文件夹信息。</p>
-      </div>
+      <a class="hero-nav" href="/">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        返回
+      </a>
+      <h1 id="pageTitle">视频海报墙</h1>
+      <p>点击海报即可预览视频，可按文件夹筛选、排序和批量操作。</p>
       <div class="hero-st">
         <div class="hero-it">
           <div class="hero-l">筛选结果</div>
@@ -34,8 +32,8 @@
       </div>
     </section>
 
-    <!-- ═════ Toolbar ═════ -->
-    <section class="tbar" style="margin-top:var(--p4);">
+    <!-- Toolbar -->
+    <section class="tbar">
       <div class="tbar-sel">
         <label for="folderFilter">文件夹筛选</label>
         <select id="folderFilter" onchange="applyFilters()">
@@ -43,7 +41,7 @@
         </select>
       </div>
       <div class="tbar-sel">
-        <label for="sortSelect">排序方式</label>
+        <label for="sortSelect">排序</label>
         <select id="sortSelect" onchange="applyFilters(false)">
           <option value="time_desc">按名称降序</option>
           <option value="time_asc">按名称升序</option>
@@ -54,34 +52,30 @@
         </select>
       </div>
       <div class="tbar-sel">
-        <label for="pageSizeSelect">每页数量</label>
+        <label for="pageSizeSelect">每页</label>
         <select id="pageSizeSelect" onchange="changePageSize()">
-          <option value="10" selected>10</option>
-          <option value="15">15</option><option value="20">20</option>
+          <option value="10">10</option><option value="15">15</option><option value="20">20</option>
           <option value="25">25</option><option value="30">30</option>
         </select>
       </div>
       <div class="tbar-sp"></div>
-      <button class="btn btn-gho" onclick="reloadData()">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-        刷新
-      </button>
-      <button class="btn btn-gho" onclick="toggleSelectAll()" id="btnSelectAll">全选当前筛选</button>
-      <button class="btn btn-dgr" id="btnBatchDelete" onclick="batchDelete()" disabled>批量删除</button>
+      <button class="btn btn-gho btn-sm" onclick="reloadData()">刷新</button>
+      <button class="btn btn-gho btn-sm" onclick="toggleSelectAll()" id="btnSelectAll">全选</button>
+      <button class="btn btn-dgr btn-sm" id="btnBatchDelete" onclick="batchDelete()" disabled>批量删除</button>
     </section>
 
-    <!-- ═════ Status Bar ═════ -->
-    <div class="sbar" style="margin-bottom:var(--p4);">
-      <div id="statusText">正在加载海报墙数据...</div>
+    <!-- Status Bar -->
+    <div class="sbar" style="margin-bottom:var(--s-3)">
+      <div id="statusText">正在加载…</div>
       <div>已选 <strong id="selectedCount">0</strong> 个</div>
     </div>
 
-    <!-- ═════ Grid ═════ -->
+    <!-- Grid -->
     <div id="grid" class="mgrid"></div>
     <div id="emptyMsg" class="empty">当前筛选条件下暂无视频。</div>
 
-    <!-- ═════ Pagination ═════ -->
-    <div id="pagination" class="pag hidden">
+    <!-- Pagination -->
+    <div id="pagination" class="pag hidden" style="margin-top:var(--s-4)">
       <div id="paginationInfo" class="pag-i">第 1 / 1 页</div>
       <div class="pag-a">
         <button class="btn btn-sec btn-sm" id="btnFirstPage" onclick="setPage(1)">首页</button>
@@ -92,34 +86,34 @@
     </div>
   </div>
 
-  <!-- ═════ Player Modal ═════ -->
+  <!-- Player Modal -->
   <div id="previewModal" class="ply" onclick="closePreviewOnMask(event)" role="dialog" aria-modal="true">
     <div class="ply-c">
       <div class="ply-h">
         <div>
           <div class="ply-t" id="previewTitle">视频预览</div>
-          <div class="mute-d text-xs" id="previewMeta" style="margin-top:2px;">--</div>
+          <div class="mute-d text-xs" id="previewMeta" style="margin-top:2px"></div>
         </div>
         <button class="ply-x" onclick="closePreview()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
       <video id="previewVideo" class="ply-v" controls preload="metadata"></video>
     </div>
   </div>
 
-  <!-- ═════ Replace Cover Modal ═════ -->
+  <!-- Replace Cover Modal -->
   <div id="replaceModal" class="modal" onclick="closeReplaceOnMask(event)" role="dialog" aria-modal="true">
-    <div class="modal-d" style="max-width:400px;">
+    <div class="modal-d">
       <div class="modal-h">
         <div>
           <h2 class="modal-t">替换封面</h2>
-          <p class="modal-s" id="replaceMeta">选择新的封面图片文件</p>
+          <p class="modal-s" id="replaceMeta">选择新的封面图片</p>
         </div>
         <button type="button" class="dclose" onclick="closeReplaceModal()">&times;</button>
       </div>
       <div class="modal-b">
-        <input type="file" id="replaceFileInput" accept="image/*" style="padding:8px 0;border:none;background:transparent;width:100%;color:var(--text-primary);" />
+        <input type="file" id="replaceFileInput" accept="image/*" style="padding:8px 0;border:none;background:transparent;width:100%" />
       </div>
       <div class="modal-f">
         <button type="button" class="btn btn-sec" onclick="closeReplaceModal()">取消</button>
@@ -129,71 +123,72 @@
   </div>
 
   <script>
-    const params=new URLSearchParams(location.search),INITIAL_FOLDER=params.get('folder')||'';
-    let allItems=[],visibleItems=[],selectedKeys=new Set(),durationCache=new Map(),durationProbeQueue=[],durationProbeRunning=0,replaceTarget=null,currentPage=1;
+    const params = new URLSearchParams(location.search), INITIAL_FOLDER = params.get('folder')||'';
+    let allItems=[], visibleItems=[], selectedKeys=new Set(), durationCache=new Map(), durationProbeQueue=[], durationProbeRunning=0, replaceTarget=null, currentPage=1;
 
-    function itemKey(i){return i.folder+'::'+i.stem;}
-    function esc(v){return String(v||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');}
-    function fmtSize(b){if(b>=1073741824)return(b/1073741824).toFixed(2)+' GB';if(b>=1048576)return(b/1048576).toFixed(1)+' MB';if(b>=1024)return(b/1024).toFixed(0)+' KB';return b+' B';}
-    function durL(i){return i.duration||durationCache.get(itemKey(i))||'--:--';}
-    function durS(i){
-      const r=i.duration||durationCache.get(itemKey(i))||'',p=r.split(':').map(Number);if(!p.length||p.some(isNaN))return-1;
-      if(p.length===2)return p[0]*60+p[1];if(p.length===3)return p[0]*3600+p[1]*60+p[2];return-1;
-    }
-    function getPS(){return Number(document.getElementById('pageSizeSelect').value)||10;}
-    function getTP(){return Math.max(1,Math.ceil(visibleItems.length/getPS()));}
-    function clampCP(){currentPage=Math.min(Math.max(currentPage,1),getTP());}
-    function getCPI(){const ps=getPS(),s=(currentPage-1)*ps;return visibleItems.slice(s,s+ps);}
+    function itemKey(i){ return i.folder+'::'+i.stem; }
+    function esc(v){ return String(v||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;'); }
+    function fmtSize(b){ if(b>=1073741824)return(b/1073741824).toFixed(2)+' GB'; if(b>=1048576)return(b/1048576).toFixed(1)+' MB'; if(b>=1024)return(b/1024).toFixed(0)+' KB'; return b+' B'; }
+    function durL(i){ return i.duration||durationCache.get(itemKey(i))||'--:--'; }
+    function durS(i){ const r=i.duration||durationCache.get(itemKey(i))||'',p=r.split(':').map(Number); if(!p.length||p.some(isNaN))return -1; if(p.length===2)return p[0]*60+p[1]; if(p.length===3)return p[0]*3600+p[1]*60+p[2]; return -1; }
+    function getPS(){ return Number(document.getElementById('pageSizeSelect').value)||10; }
+    function getTP(){ return Math.max(1,Math.ceil(visibleItems.length/getPS())); }
+    function clampCP(){ currentPage=Math.min(Math.max(currentPage,1),getTP()); }
+    function getCPI(){ const ps=getPS(),s=(currentPage-1)*ps; return visibleItems.slice(s,s+ps); }
 
     async function loadItems(){
-      const q=new URLSearchParams(),fv=document.getElementById('folderFilter').value;if(fv)q.set('folder',fv);
-      const url=q.toString()?'/api/poster?'+q.toString():'/api/poster',r=await fetch(url),d=await r.json();
+      const q=new URLSearchParams(), fv=document.getElementById('folderFilter').value; if(fv)q.set('folder',fv);
+      const url=q.toString()?'/api/poster?'+q.toString():'/api/poster', r=await fetch(url), d=await r.json();
       if(!d.ok)throw new Error(d.error||'加载失败');
-      allItems=d.items||[];(d.items||[]).forEach(i=>{if(i.duration)durationCache.set(itemKey(i),i.duration);});
-      renderFolderOptions(d.folders||[]);updateStats(d.folders||[]);applyFilters(false);
+      allItems=d.items||[]; (d.items||[]).forEach(i=>{ if(i.duration)durationCache.set(itemKey(i),i.duration); });
+      renderFolderOptions(d.folders||[]); updateStats(d.folders||[]); applyFilters(false);
     }
     function renderFolderOptions(folders){
-      const s=document.getElementById('folderFilter'),cv=s.value||INITIAL_FOLDER;
+      const s=document.getElementById('folderFilter'), cv=s.value||INITIAL_FOLDER;
       let o='<option value="">全部文件夹</option>';
-      folders.forEach(f=>{o+='<option value="'+f.folder+'">'+(f.folder||'根目录')+' ('+f.count+')</option>';});
-      s.innerHTML=o;if(cv&&folders.some(f=>f.folder===cv))s.value=cv;else s.value='';syncPT();
+      folders.forEach(f=>{ o+='<option value="'+f.folder+'">'+(f.folder||'根目录')+' ('+f.count+')</option>'; });
+      s.innerHTML=o; if(cv&&folders.some(f=>f.folder===cv))s.value=cv; else s.value=''; syncPT();
     }
-    function updateStats(folders){document.getElementById('statTotal').textContent=''+allItems.length;document.getElementById('statFolders').textContent=''+folders.length;}
-    function syncPT(){const fv=document.getElementById('folderFilter').value;document.getElementById('pageTitle').textContent=fv?fv+' 的视频海报墙':'全部视频海报墙';history.replaceState(null,'',fv?'/poster?folder='+encodeURIComponent(fv):'/poster');}
+    function updateStats(folders){ document.getElementById('statTotal').textContent=''+allItems.length; document.getElementById('statFolders').textContent=''+folders.length; }
+    function syncPT(){ const fv=document.getElementById('folderFilter').value; document.getElementById('pageTitle').textContent=fv?fv+' · 海报墙':'视频海报墙'; history.replaceState(null,'',fv?'/poster?folder='+encodeURIComponent(fv):'/poster'); }
 
     function applyFilters(need){
-      if(need){reloadData();return;}
-      const fv=document.getElementById('folderFilter').value,sv=document.getElementById('sortSelect').value;
+      if(need){ reloadData(); return; }
+      const fv=document.getElementById('folderFilter').value, sv=document.getElementById('sortSelect').value;
       visibleItems=allItems.filter(i=>!fv||i.folder===fv);
       visibleItems.sort((a,b)=>{
-        if(sv==='time_asc')return a.stem.localeCompare(b.stem);if(sv==='time_desc')return b.stem.localeCompare(a.stem);
-        if(sv==='size_asc')return a.size-b.size;if(sv==='size_desc')return b.size-a.size;
-        if(sv==='duration_asc')return durS(a)-durS(b);if(sv==='duration_desc')return durS(b)-durS(a);return 0;
+        if(sv==='time_asc')return a.stem.localeCompare(b.stem); if(sv==='time_desc')return b.stem.localeCompare(a.stem);
+        if(sv==='size_asc')return a.size-b.size; if(sv==='size_desc')return b.size-a.size;
+        if(sv==='duration_asc')return durS(a)-durS(b); if(sv==='duration_desc')return durS(b)-durS(a); return 0;
       });
       selectedKeys=new Set([...selectedKeys].filter(k=>visibleItems.some(i=>itemKey(i)===k)));
-      currentPage=1;syncPT();renderGrid();scheduleDP();
+      currentPage=1; syncPT(); renderGrid(); scheduleDP();
     }
     function updateST(){
-      const fv=document.getElementById('folderFilter').value,p=fv?fv+' · ':'全部文件夹 · ';
-      document.getElementById('statusText').innerHTML=p+'共 <strong>'+visibleItems.length+'</strong> 个视频，第 <strong>'+currentPage+'</strong> / <strong>'+getTP()+'</strong> 页';
+      const fv=document.getElementById('folderFilter').value, p=fv?fv+' · ':'全部 · ';
+      document.getElementById('statusText').innerHTML=p+'共 <strong>'+visibleItems.length+'</strong> 个，第 <strong>'+currentPage+'</strong>/<strong>'+getTP()+'</strong> 页';
       document.getElementById('selectedCount').textContent=''+selectedKeys.size;
       document.getElementById('statVisible').textContent=''+visibleItems.length;
       document.getElementById('btnBatchDelete').disabled=selectedKeys.size===0;
-      document.getElementById('btnSelectAll').textContent=visibleItems.length>0&&visibleItems.every(i=>selectedKeys.has(itemKey(i)))?'取消全选':'全选当前筛选';
+      document.getElementById('btnSelectAll').textContent=visibleItems.length>0&&visibleItems.every(i=>selectedKeys.has(itemKey(i)))?'取消全选':'全选';
     }
     function renderPag(){
-      const p=document.getElementById('pagination'),tp=getTP();if(visibleItems.length===0){p.classList.add('hidden');return;}
-      p.classList.remove('hidden');document.getElementById('paginationInfo').textContent='第 '+currentPage+' / '+tp+' 页，共 '+visibleItems.length+' 项';
-      document.getElementById('btnFirstPage').disabled=currentPage===1;document.getElementById('btnPrevPage').disabled=currentPage===1;
-      document.getElementById('btnNextPage').disabled=currentPage===tp;document.getElementById('btnLastPage').disabled=currentPage===tp;
+      const p=document.getElementById('pagination'), tp=getTP(); if(visibleItems.length===0){ p.classList.add('hidden'); return; }
+      p.classList.remove('hidden');
+      document.getElementById('paginationInfo').textContent='第 '+currentPage+'/'+tp+' 页，共 '+visibleItems.length+' 项';
+      document.getElementById('btnFirstPage').disabled=currentPage===1; document.getElementById('btnPrevPage').disabled=currentPage===1;
+      document.getElementById('btnNextPage').disabled=currentPage===tp; document.getElementById('btnLastPage').disabled=currentPage===tp;
     }
-    function renderSkeletons(c){const g=document.getElementById('grid');document.getElementById('emptyMsg').style.display='none';document.getElementById('pagination').classList.add('hidden');let h='';for(let i=0;i<c;i++)h+='<div class="skeleton" aria-hidden="true"><div class="sk-cover"></div><div class="sk-body"><div class="sk-line"></div><div class="sk-line" style="width:55%"></div></div></div>';g.innerHTML=h;}
+    function renderSkeletons(c){
+      const g=document.getElementById('grid'); document.getElementById('emptyMsg').style.display='none'; document.getElementById('pagination').classList.add('hidden');
+      let h=''; for(let i=0;i<c;i++)h+='<div class="skeleton"><div class="sk-cover"></div><div class="sk-body"><div class="sk-line"></div><div class="sk-line" style="width:55%"></div></div></div>'; g.innerHTML=h;
+    }
     function renderGrid(){
-      const g=document.getElementById('grid'),e=document.getElementById('emptyMsg');clampCP();const pi=getCPI();updateST();
-      if(visibleItems.length===0){g.innerHTML='';e.style.display='block';renderPag();return;}
+      const g=document.getElementById('grid'), e=document.getElementById('emptyMsg'); clampCP(); const pi=getCPI(); updateST();
+      if(visibleItems.length===0){ g.innerHTML=''; e.style.display='block'; renderPag(); return; }
       e.style.display='none';
       g.innerHTML=pi.map(i=>{
-        const k=itemKey(i),sel=selectedKeys.has(k);
+        const k=itemKey(i), sel=selectedKeys.has(k);
         const th=i.thumbnail_url?'<img src="'+i.thumbnail_url+'" alt="'+esc(i.video)+'" loading="lazy" />':'<div class="fb">MV</div>';
         return '<article class="mcard'+(sel?' sel':'')+'">'
           +'<input class="msel" type="checkbox"'+(sel?' checked':'')+' onchange="toggleSelect(\''+k+'\')" onclick="event.stopPropagation()" aria-label="选择视频" />'
@@ -208,50 +203,50 @@
       }).join('');
       renderPag();
     }
-    function setPage(p){const n=Math.min(Math.max(Number(p)||1,1),getTP());if(n===currentPage)return;currentPage=n;renderGrid();scheduleDP();window.scrollTo({top:0,behavior:'smooth'});}
-    function changePage(d){setPage(currentPage+d);}
-    function changePageSize(){currentPage=1;renderGrid();scheduleDP();}
-    function findByKey(k){return allItems.find(i=>itemKey(i)===k)||null;}
-    function toggleSelect(k){if(selectedKeys.has(k))selectedKeys.delete(k);else selectedKeys.add(k);renderGrid();}
-    function toggleSelectAll(){if(visibleItems.length===0)return;const a=visibleItems.every(i=>selectedKeys.has(itemKey(i)));if(a)visibleItems.forEach(i=>selectedKeys.delete(itemKey(i)));else visibleItems.forEach(i=>selectedKeys.add(itemKey(i)));renderGrid();}
+    function setPage(p){ const n=Math.min(Math.max(Number(p)||1,1),getTP()); if(n===currentPage)return; currentPage=n; renderGrid(); scheduleDP(); window.scrollTo({top:0,behavior:'smooth'}); }
+    function changePage(d){ setPage(currentPage+d); }
+    function changePageSize(){ currentPage=1; renderGrid(); scheduleDP(); }
+    function findByKey(k){ return allItems.find(i=>itemKey(i)===k)||null; }
+    function toggleSelect(k){ if(selectedKeys.has(k))selectedKeys.delete(k); else selectedKeys.add(k); renderGrid(); }
+    function toggleSelectAll(){ if(visibleItems.length===0)return; const a=visibleItems.every(i=>selectedKeys.has(itemKey(i))); if(a)visibleItems.forEach(i=>selectedKeys.delete(itemKey(i))); else visibleItems.forEach(i=>selectedKeys.add(itemKey(i))); renderGrid(); }
     function openPreview(k){
-      const i=findByKey(k);if(!i)return;
+      const i=findByKey(k); if(!i)return;
       document.getElementById('previewTitle').textContent=i.video;
       document.getElementById('previewMeta').textContent=(i.folder||'根目录')+' · '+fmtSize(i.size)+' · 时长 '+durL(i);
-      const v=document.getElementById('previewVideo');v.poster=i.thumb_url||i.thumbnail_url||'';v.src=i.video_url;v.play().catch(function(){});document.getElementById('previewModal').classList.add('open');document.body.classList.add('modal-open');
+      const v=document.getElementById('previewVideo'); v.poster=i.thumb_url||i.thumbnail_url||''; v.src=i.video_url; v.play().catch(function(){}); document.getElementById('previewModal').classList.add('open'); document.body.classList.add('modal-open');
     }
-    function closePreview(){const v=document.getElementById('previewVideo');v.pause();v.src='';v.poster='';document.getElementById('previewModal').classList.remove('open');document.body.classList.remove('modal-open');}
-    function closePreviewOnMask(e){if(e.target.id==='previewModal')closePreview();}
-    function openReplaceModal(k){const i=findByKey(k);if(!i)return;replaceTarget=i;document.getElementById('replaceMeta').textContent=(i.folder||'根目录')+' · '+i.video;document.getElementById('replaceFileInput').value='';document.getElementById('replaceModal').classList.add('open');document.body.classList.add('modal-open');}
-    function closeReplaceModal(){replaceTarget=null;document.getElementById('replaceModal').classList.remove('open');document.body.classList.remove('modal-open');}
-    function closeReplaceOnMask(e){if(e.target.id==='replaceModal')closeReplaceModal();}
-    async function doReplaceCover(){const inp=document.getElementById('replaceFileInput');if(!replaceTarget)return;if(!inp.files||!inp.files[0]){alert('请选择图片文件');return;}
-      const fd=new FormData();fd.append('folder',replaceTarget.folder);fd.append('stem',replaceTarget.stem);fd.append('file',inp.files[0]);
+    function closePreview(){ const v=document.getElementById('previewVideo'); v.pause(); v.src=''; v.poster=''; document.getElementById('previewModal').classList.remove('open'); document.body.classList.remove('modal-open'); }
+    function closePreviewOnMask(e){ if(e.target.id==='previewModal')closePreview(); }
+    function openReplaceModal(k){ const i=findByKey(k); if(!i)return; replaceTarget=i; document.getElementById('replaceMeta').textContent=(i.folder||'根目录')+' · '+i.video; document.getElementById('replaceFileInput').value=''; document.getElementById('replaceModal').classList.add('open'); document.body.classList.add('modal-open'); }
+    function closeReplaceModal(){ replaceTarget=null; document.getElementById('replaceModal').classList.remove('open'); document.body.classList.remove('modal-open'); }
+    function closeReplaceOnMask(e){ if(e.target.id==='replaceModal')closeReplaceModal(); }
+    async function doReplaceCover(){ const inp=document.getElementById('replaceFileInput'); if(!replaceTarget)return; if(!inp.files||!inp.files[0]){ alert('请选择图片文件'); return; }
+      const fd=new FormData(); fd.append('folder',replaceTarget.folder); fd.append('stem',replaceTarget.stem); fd.append('file',inp.files[0]);
       const r=await fetch('/api/poster/replace-cover',{method:'POST',body:fd}),d=await r.json();
-      if(!d.ok){alert(d.error||'替换失败');return;}
-      replaceTarget.thumb=d.thumb;replaceTarget.thumbnail_url='/api/poster-thumb?folder='+encodeURIComponent(replaceTarget.folder)+'&name='+encodeURIComponent(d.thumb)+'&t='+Date.now();closeReplaceModal();renderGrid();
+      if(!d.ok){ alert(d.error||'替换失败'); return; }
+      replaceTarget.thumb=d.thumb; replaceTarget.thumbnail_url='/api/poster-thumb?folder='+encodeURIComponent(replaceTarget.folder)+'&name='+encodeURIComponent(d.thumb)+'&t='+Date.now(); closeReplaceModal(); renderGrid();
     }
-    async function deleteItem(k){const i=findByKey(k);if(!i||!confirm('确认删除 '+i.video+' 吗？'))return;
+    async function deleteItem(k){ const i=findByKey(k); if(!i||!confirm('确认删除 '+i.video+' 吗？'))return;
       const r=await fetch('/api/poster/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({folder:i.folder,stems:[i.stem]})}),d=await r.json();
-      if(!d.ok){alert(d.error||'删除失败');return;}allItems=allItems.filter(c=>itemKey(c)!==k);selectedKeys.delete(k);applyFilters(false);
+      if(!d.ok){ alert(d.error||'删除失败'); return; } allItems=allItems.filter(c=>itemKey(c)!==k); selectedKeys.delete(k); applyFilters(false);
     }
-    async function batchDelete(){if(selectedKeys.size===0||!confirm('确认删除选中的 '+selectedKeys.size+' 个视频吗？'))return;
-      const g=new Map();visibleItems.filter(i=>selectedKeys.has(itemKey(i))).forEach(i=>{if(!g.has(i.folder))g.set(i.folder,[]);g.get(i.folder).push(i.stem);});
-      for(const[f,ss]of g){const r=await fetch('/api/poster/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({folder:f,stems:ss})}),d=await r.json();if(!d.ok){alert(d.error||'删除失败');return;}}
-      allItems=allItems.filter(i=>!selectedKeys.has(itemKey(i)));selectedKeys.clear();applyFilters(false);
+    async function batchDelete(){ if(selectedKeys.size===0||!confirm('确认删除选中的 '+selectedKeys.size+' 个视频吗？'))return;
+      const g=new Map(); visibleItems.filter(i=>selectedKeys.has(itemKey(i))).forEach(i=>{ if(!g.has(i.folder))g.set(i.folder,[]); g.get(i.folder).push(i.stem); });
+      for(const[f,ss]of g){ const r=await fetch('/api/poster/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({folder:f,stems:ss})}),d=await r.json(); if(!d.ok){ alert(d.error||'删除失败'); return; } }
+      allItems=allItems.filter(i=>!selectedKeys.has(itemKey(i))); selectedKeys.clear(); applyFilters(false);
     }
-    function updateDK(k,l){document.querySelectorAll('[data-dk="'+CSS.escape(k)+'"]').forEach(n=>{n.textContent=l;});}
-    function scheduleDP(){const m=getCPI().filter(i=>!durationCache.get(itemKey(i))&&!i.duration);durationProbeQueue=m.map(i=>itemKey(i));if(durationProbeQueue.length===0)return;runDP();runDP();}
-    function runDP(){if(durationProbeRunning>=2)return;const nk=durationProbeQueue.shift();if(!nk)return;const i=findByKey(nk);if(!i){runDP();return;}
-      durationProbeRunning+=1;const p=document.createElement('video');p.preload='metadata';p.src=i.video_url;
-      p.onloadedmetadata=function(){const t=Math.max(0,Math.round(p.duration||0));const h=Math.floor(t/3600),m=Math.floor((t%3600)/60),s=t%60;const l=h>0?pad(h)+':'+pad(m)+':'+pad(s):pad(m)+':'+pad(s);durationCache.set(nk,l);updateDK(nk,l);cl();};
-      p.onerror=cl;p.load();
-      function pad(n){return n<10?'0'+n:''+n;}
-      function cl(){p.src='';durationProbeRunning-=1;runDP();}
+    function updateDK(k,l){ document.querySelectorAll('[data-dk="'+CSS.escape(k)+'"]').forEach(n=>{n.textContent=l;}); }
+    function scheduleDP(){ const m=getCPI().filter(i=>!durationCache.get(itemKey(i))&&!i.duration); durationProbeQueue=m.map(i=>itemKey(i)); if(durationProbeQueue.length===0)return; runDP(); runDP(); }
+    function runDP(){ if(durationProbeRunning>=2)return; const nk=durationProbeQueue.shift(); if(!nk)return; const i=findByKey(nk); if(!i){ runDP(); return; }
+      durationProbeRunning+=1; const p=document.createElement('video'); p.preload='metadata'; p.src=i.video_url;
+      p.onloadedmetadata=function(){ const t=Math.max(0,Math.round(p.duration||0)); const h=Math.floor(t/3600),m=Math.floor((t%3600)/60),s=t%60; const l=h>0?pad(h)+':'+pad(m)+':'+pad(s):pad(m)+':'+pad(s); durationCache.set(nk,l); updateDK(nk,l); cl(); };
+      p.onerror=cl; p.load();
+      function pad(n){ return n<10?'0'+n:''+n; }
+      function cl(){ p.src=''; durationProbeRunning-=1; runDP(); }
     }
-    async function reloadData(){document.getElementById('statusText').textContent='正在刷新...';renderSkeletons(getPS());try{await loadItems();}catch(e){document.getElementById('grid').innerHTML='';document.getElementById('emptyMsg').style.display='block';document.getElementById('statusText').textContent=e.message||'加载失败';}}
-    document.addEventListener('keydown',function(e){if(e.key==='Escape'){closePreview();closeReplaceModal();}});
-    document.getElementById('folderFilter').value=INITIAL_FOLDER;reloadData();
+    async function reloadData(){ document.getElementById('statusText').textContent='正在刷新…'; renderSkeletons(getPS()); try{ await loadItems(); } catch(e){ document.getElementById('grid').innerHTML=''; document.getElementById('emptyMsg').style.display='block'; document.getElementById('statusText').textContent=e.message||'加载失败'; } }
+    document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ closePreview(); closeReplaceModal(); } });
+    document.getElementById('folderFilter').value=INITIAL_FOLDER; reloadData();
   </script>
 </body>
 </html>
