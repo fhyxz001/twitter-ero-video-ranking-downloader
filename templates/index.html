@@ -120,7 +120,10 @@
             </div>
             <div class="field" style="margin-top:var(--s-3)">
               <label class="field-lbl" for="max_daily_downloads">每次下载数量上限</label>
-              <input id="max_daily_downloads" type="number" min="1" value="{{ config.max_daily_downloads }}" />
+              <div class="dir-r">
+                <input id="max_daily_downloads" type="number" min="1" value="{{ config.max_daily_downloads }}" />
+                <button class="btn btn-pri btn-sm" onclick="saveMaxDaily()">保存</button>
+              </div>
             </div>
           </div>
         </div>
@@ -333,6 +336,30 @@
         currentConfig.twitter_blogger_max_media = parseInt(document.getElementById('settings_blogger_max_media').value);
         currentConfig.twitter_blogger_has_retweet = document.getElementById('settings_blogger_has_retweet').checked;
         downloadRootDirty = false; settingsDirty = false; closeSettingsModal(); refreshStatus(); validateDirectory();
+      } catch(e) { alert('保存失败：网络错误'); }
+    }
+
+    async function saveMaxDaily() {
+      const val = parseInt(document.getElementById('max_daily_downloads').value, 10);
+      if (isNaN(val) || val < 1) { alert('每次下载数量上限必须大于等于 1'); return; }
+      const fd = new FormData();
+      fd.append('download_root', document.getElementById('download_root').value);
+      fd.append('proxy', currentConfig.proxy||'');
+      fd.append('auto_download_enabled', currentConfig.auto_download_enabled?'1':'0');
+      fd.append('schedule_cron', currentConfig.schedule_cron||'0 3 * * *');
+      fd.append('max_daily_downloads', String(val));
+      fd.append('ranking_range', currentConfig.ranking_range||'daily');
+      fd.append('twitter_cookie', currentConfig.twitter_cookie||'');
+      fd.append('twitter_blogger_enabled', currentConfig.twitter_blogger_enabled?'1':'0');
+      fd.append('twitter_blogger_cron', currentConfig.twitter_blogger_cron||'0 4 * * *');
+      fd.append('twitter_blogger_max_media', String(currentConfig.twitter_blogger_max_media??-1));
+      fd.append('twitter_blogger_has_retweet', currentConfig.twitter_blogger_has_retweet?'1':'0');
+      try {
+        const r = await fetch('/save', {method:'POST', body:fd}), d = await r.json();
+        if (!d.ok) { alert('保存失败：'+(d.error||'未知错误')); return; }
+        currentConfig.max_daily_downloads = val;
+        refreshStatus();
+        alert('保存成功');
       } catch(e) { alert('保存失败：网络错误'); }
     }
 
