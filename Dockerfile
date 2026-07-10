@@ -1,4 +1,4 @@
-FROM docker.m.daocloud.io/python:3.11-slim
+FROM ccr.ccs.tencentyun.com/library/python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
