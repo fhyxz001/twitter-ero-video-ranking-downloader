@@ -212,7 +212,7 @@ def _openlist_ensure_remote_dir(base_url: str, token: str, remote_dir: str, prox
     url = f"{base_url}{OPENLIST_MKDIR_ENDPOINT}"
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     try:
-        resp = requests.post(url, headers=headers, json={"path": remote_dir, "mkdir": True}, proxies=proxies, timeout=15)
+        resp = requests.post(url, headers=headers, json={"path": remote_dir}, proxies=proxies, timeout=15)
         return resp.status_code in (200, 201)
     except requests.RequestException as exc:
         append_log(f"[网盘] 创建远端目录失败 {remote_dir}：{exc}")
@@ -239,18 +239,12 @@ def _openlist_upload_file(local_path: Path, remote_path: str, cfg: dict, proxies
 
     # 如果不覆盖，先检查远端是否已存在
     if not overwrite:
-        list_url = f"{base_url}{OPENLIST_LIST_ENDPOINT}?path={urllib.parse.quote(remote_path.rsplit('/', 1)[0] if '/' in remote_path else '/')}"
-        list_headers = {"Authorization": f"Bearer {token}"}
-        try:
-            resp = requests.get(list_url, headers=list_headers, proxies=proxies, timeout=15)
-            if resp.status_code == 200:
-                data = resp.json()
-                remote_name = remote_path.rsplit("/", 1)[-1]
-                existing = data.get("files") or data.get("data") or []
-                if any(f.get("name") == remote_name for f in existing):
-                    return False, f"远端已存在（跳过）：{remote_name}"
-        except requests.RequestException:
-            pass  # 检查失败就继续尝试上传
+        remote_dir_path = remote_path.rsplit("/", 1)[0] if "/" in remote_path else "/"
+        existing = _openlist_list_dir(base_url, token, remote_dir_path, proxies)
+        if existing:
+            remote_name = remote_path.rsplit("/", 1)[-1]
+            if remote_name in existing:
+                return False, f"远端已存在（跳过）：{remote_name}"
 
     last_err = ""
     for attempt in range(max_retries + 1):
@@ -310,15 +304,49 @@ def _openlist_upload_media(video_path: Path, thumb_path: Optional[Path], folder:
     return result
 
 
+def _openlist_list_dir(base_url: str, token: str, dir_path: str, proxies) -> list:
+    """列出远端目录内容，返回文件名列表。失败返回空列表。"""
+    url = f"{base_url}{OPENLIST_LIST_ENDPOINT}"
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    try:
+        resp = requests.post(
+            url,
+            headers=headers,
+            json={"path": dir_path, "page": 1, "per_page": 0, "refresh": False},
+            proxies=proxies,
+            timeout=15,
+        )
+        if resp.status_code != 200:
+            return []
+        body = resp.json()
+        # AList 返回 {code, message, data: {content: [...], total}}
+        data = body.get("data") or {}
+        content = data.get("content") if isinstance(data, dict) else data
+        if not content:
+            return []
+        return [f.get("name", "") for f in content if isinstance(f, dict)]
+    except (requests.RequestException, ValueError):
+        return []
+
+
 def _openlist_test_connection(base_url: str, token: str, proxies) -> dict:
     """测试连接 OpenList 服务。"""
-    url = f"{base_url}{OPENLIST_LIST_ENDPOINT}?path=/"
-    headers = {"Authorization": f"Bearer {token}"}
+    url = f"{base_url}{OPENLIST_LIST_ENDPOINT}"
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     try:
-        resp = requests.get(url, headers=headers, proxies=proxies, timeout=15)
+        resp = requests.post(
+            url,
+            headers=headers,
+            json={"path": "/", "page": 1, "per_page": 0, "refresh": False},
+            proxies=proxies,
+            timeout=15,
+        )
         if resp.status_code == 200:
-            data = resp.json()
-            return {"ok": True, "message": "连接成功"}
+            body = resp.json()
+            code = body.get("code", 200)
+            if code == 200:
+                return {"ok": True, "message": "连接成功"}
+            return {"ok": False, "message": f"OpenList 返回错误：code={code} {body.get('message', '')}"}
         return {"ok": False, "message": f"HTTP {resp.status_code}：{resp.text[:200]}"}
     except requests.RequestException as exc:
         return {"ok": False, "message": f"连接失败：{exc}"}
@@ -356,21 +384,15 @@ def _openlist_upload_all_local(cfg: dict, download_root: Path, proxies) -> dict:
 
         # 检查已存在（不覆盖模式下）
         if not cfg["overwrite"]:
-            list_url = f"{base_url}{OPENLIST_LIST_ENDPOINT}?path={urllib.parse.quote(remote_path.rsplit('/', 1)[0] if '/' in remote_path else '/')}"
-            headers = {"Authorization": f"Bearer {token}"}
-            try:
-                resp = requests.get(list_url, headers=headers, proxies=proxies, timeout=15)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    remote_name = remote_path.rsplit("/", 1)[-1]
-                    existing = data.get("files") or data.get("data") or []
-                    if any(f.get("name") == remote_name for f in existing):
-                        skipped += 1
-                        append_log(f"[网盘] 批量跳过已存在：{rel}")
-                        results.append({"file": str(rel), "ok": True, "msg": "跳过（已存在）"})
-                        continue
-            except requests.RequestException:
-                pass
+            remote_dir_path = remote_path.rsplit("/", 1)[0] if "/" in remote_path else "/"
+            existing = _openlist_list_dir(base_url, token, remote_dir_path, proxies)
+            if existing:
+                remote_name = remote_path.rsplit("/", 1)[-1]
+                if remote_name in existing:
+                    skipped += 1
+                    append_log(f"[网盘] 批量跳过已存在：{rel}")
+                    results.append({"file": str(rel), "ok": True, "msg": "跳过（已存在）"})
+                    continue
 
         remote_dir = cfg["remote_root"].rstrip("/") + "/" + folder
         _openlist_ensure_remote_dir(base_url, token, remote_dir, proxies)
