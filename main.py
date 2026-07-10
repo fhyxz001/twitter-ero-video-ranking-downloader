@@ -233,7 +233,8 @@ def _openlist_upload_file(local_path: Path, remote_path: str, cfg: dict, proxies
     if content_length == 0:
         return False, f"文件大小为 0：{local_path.name}"
 
-    file_path_encoded = remote_path
+    # AList/OpenList 要求 File-Path 头部进行 URL 编码（含路径分隔符 /）
+    file_path_encoded = quote(remote_path, safe="")
     headers = _openlist_build_headers(token, file_path_encoded, content_length, overwrite)
     url = f"{base_url}{OPENLIST_UPLOAD_ENDPOINT}"
 
@@ -252,8 +253,18 @@ def _openlist_upload_file(local_path: Path, remote_path: str, cfg: dict, proxies
             with open(local_path, "rb") as f:
                 resp = requests.put(url, headers=headers, data=f, proxies=proxies, timeout=timeout)
             if resp.status_code in (200, 201):
-                return True, f"上传完成：{local_path.name} ({content_length / 1024 / 1024:.1f} MB)"
-            last_err = f"HTTP {resp.status_code} {resp.text[:200]}"
+                # AList 可能返回 HTTP 200 但 JSON body 中 code 非 200
+                try:
+                    body = resp.json()
+                    code = body.get("code", 200)
+                    if code == 200:
+                        return True, f"上传完成：{local_path.name} ({content_length / 1024 / 1024:.1f} MB)"
+                    last_err = f"code={code} {body.get('message', '')}"
+                except (ValueError, json.JSONDecodeError):
+                    # 非 JSON 响应，按 HTTP 状态码判定成功
+                    return True, f"上传完成：{local_path.name} ({content_length / 1024 / 1024:.1f} MB)"
+            else:
+                last_err = f"HTTP {resp.status_code} {resp.text[:200]}"
         except requests.RequestException as exc:
             last_err = str(exc)
 
@@ -820,14 +831,8 @@ def _download_items(session: requests.Session, items: list, target_dir: Path, ma
                         if result["ok"]:
                             append_log(f"[网盘] 自动上传完成：{video_path.name}")
                         else:
-                            video_msg = result.get("video", {}).get("msg", "")
+                            video_msg = (result.get("video") or {}).get("msg", "")
                             append_log(f"[网盘] 自动上传部分失败 {video_path.name}：{video_msg}")
-                        if result.get("video", {}).get("ok") and ol.get("delete_local_after_upload"):
-                            try:
-                                video_path.unlink()
-                                append_log(f"[网盘] 已删除本地文件：{video_path.name}")
-                            except OSError as exc:
-                                append_log(f"[网盘] 删除本地文件失败 {video_path.name}：{exc}")
                     except Exception as exc:
                         append_log(f"[网盘] 自动上传异常 {video_path.name}：{exc}")
         else:
@@ -1022,6 +1027,8 @@ def _get_highest_video_quality(variants: list) -> Optional[str]:
 
 
 def _msecs_to_label(msecs: int) -> str:
+    if not msecs or msecs <= 0:
+        msecs = 0
     t = time.localtime(msecs / 1000)
     return time.strftime("%Y-%m-%d %H-%M", t)
 
@@ -1170,7 +1177,7 @@ def twitter_fetch_tweets(
                         continue
 
                     msecs_str = edit_ctrl.get("editable_until_msecs", "0")
-                    tweet_msecs = int(msecs_str) - 3600000 if msecs_str else 0
+                    tweet_msecs = max(0, int(msecs_str) - 3600000) if msecs_str else 0
                     timestr = _msecs_to_label(tweet_msecs)
 
                     if "extended_entities" in legacy:
@@ -1186,8 +1193,8 @@ def twitter_fetch_tweets(
             # has_retweet 模式的媒体提取
             if "retweeted_status_result" in legacy:
                 rt_legacy = legacy["retweeted_status_result"]["result"]["legacy"]
-                rt_msecs_str = tweet_result.get("edit_control", {}).get("editable_until_msecs", "0") if "tweet" in tweet_result else tweet_result.get("edit_control", {}).get("editable_until_msecs", "0")
-                tweet_msecs = int(rt_msecs_str) - 3600000 if rt_msecs_str else 0
+                rt_msecs_str = tweet_result.get("edit_control", {}).get("editable_until_msecs", "0")
+                tweet_msecs = max(0, int(rt_msecs_str) - 3600000) if rt_msecs_str else 0
                 timestr = _msecs_to_label(tweet_msecs)
                 if "extended_entities" in rt_legacy:
                     for media in rt_legacy["extended_entities"]["media"]:
@@ -1199,7 +1206,7 @@ def twitter_fetch_tweets(
                             media_list.append((media["media_url_https"], f"{timestr}-img-rt", False))
             else:
                 msecs_str = edit_ctrl.get("editable_until_msecs", "0")
-                tweet_msecs = int(msecs_str) - 3600000 if msecs_str else 0
+                tweet_msecs = max(0, int(msecs_str) - 3600000) if msecs_str else 0
                 timestr = _msecs_to_label(tweet_msecs)
                 if "extended_entities" in legacy:
                     for media in legacy["extended_entities"]["media"]:
@@ -1356,16 +1363,15 @@ def twitter_crawl_blogger(
                 if ol.get("enabled") and ol.get("auto_upload_after_download") and is_video:
                     try:
                         folder = f"blogger/{screen_name}"
-                        ol_proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else {}
+                        ol_proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
                         result = _openlist_upload_media(
                             save_path, None, folder, ol, ol_proxies,
                         )
-                        if result.get("video", {}).get("ok") and ol.get("delete_local_after_upload"):
-                            try:
-                                save_path.unlink()
-                                append_log(f"[网盘] 已删除本地文件：{filename}")
-                            except OSError as exc:
-                                append_log(f"[网盘] 删除本地文件失败 {filename}：{exc}")
+                        if result["ok"]:
+                            append_log(f"[网盘] 自动上传完成：{filename}")
+                        else:
+                            video_msg = (result.get("video") or {}).get("msg", "")
+                            append_log(f"[网盘] 自动上传部分失败 {filename}：{video_msg}")
                     except Exception as exc:
                         append_log(f"[网盘] 自动上传异常 {filename}：{exc}")
             else:
@@ -1957,7 +1963,10 @@ def _format_duration(seconds: float) -> str:
 def _get_or_create_thumb(source_path: Path) -> Path:
     """生成或返回缓存的 WebP 缩略图。"""
     THUMB_CACHE_DIR.mkdir(exist_ok=True)
-    key = hashlib.md5(f"{source_path.stat().st_mtime_ns}::{source_path}".encode()).hexdigest()[:16]
+    try:
+        key = hashlib.md5(f"{source_path.stat().st_mtime_ns}::{source_path}".encode()).hexdigest()[:16]
+    except OSError:
+        return source_path
     cache_file = THUMB_CACHE_DIR / f"{key}.webp"
     if cache_file.exists():
         return cache_file
@@ -1975,7 +1984,10 @@ def _get_or_create_thumb(source_path: Path) -> Path:
 
 
 def _probe_video_duration(video_path: Path) -> Optional[str]:
-    key = f"{video_path.stat().st_mtime_ns}::{video_path}"
+    try:
+        key = f"{video_path.stat().st_mtime_ns}::{video_path}"
+    except OSError:
+        return None
     cached = _duration_cache.get(key)
     if cached is not None:
         expires_at, value = cached
@@ -2092,7 +2104,10 @@ def _batch_probe_durations(pending: List[tuple]) -> None:
     with ThreadPoolExecutor(max_workers=4) as ex:
         futures = [ex.submit(probe_one, f, s, v) for f, s, _, v in pending]
         for f in futures:
-            r = f.result()
+            try:
+                r = f.result()
+            except Exception:
+                continue
             if r:
                 results[r[0]] = r[1]
 
@@ -2188,10 +2203,11 @@ async def api_delete(request: Request):
         return JSONResponse({"ok": False, "error": "无效文件夹"}, status_code=400)
     deleted = []
     for stem in stems:
-        if "/" in str(stem) or "\\" in str(stem):
+        stem_str = str(stem)
+        if "/" in stem_str or "\\" in stem_str:
             continue
-        for p in list(directory.glob(f"{stem}.*")):
-            if p.suffix.lower() in VIDEO_EXTS | IMAGE_EXTS:
+        for p in list(directory.iterdir()):
+            if p.stem == stem_str and p.suffix.lower() in VIDEO_EXTS | IMAGE_EXTS:
                 p.unlink(missing_ok=True)
                 deleted.append(p.name)
     _invalidate_poster_cache()
@@ -2209,8 +2225,8 @@ async def api_replace_cover(folder: str = Form(""), stem: str = Form(...), file:
     if suffix not in IMAGE_EXTS:
         return JSONResponse({"ok": False, "error": "不支持的图片格式"}, status_code=400)
     # Remove old thumb files for this stem
-    for p in list(directory.glob(f"{stem}.*")):
-        if p.suffix.lower() in IMAGE_EXTS:
+    for p in list(directory.iterdir()):
+        if p.stem == stem and p.suffix.lower() in IMAGE_EXTS:
             p.unlink(missing_ok=True)
     new_path = directory / f"{stem}{suffix}"
     content = await file.read()

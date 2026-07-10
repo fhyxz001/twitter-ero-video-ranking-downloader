@@ -385,6 +385,25 @@ input,select,textarea{font:inherit}
   async function reloadData(){ document.getElementById('statusText').textContent='正在刷新…'; renderSkeletons(getPS()); try{ await loadItems(); } catch(e){ document.getElementById('grid').innerHTML=''; document.getElementById('emptyMsg').style.display='block'; document.getElementById('statusText').textContent=e.message||'加载失败'; } }
   document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ closePreview(); closeReplaceModal(); } });
   document.getElementById('folderFilter').value=INITIAL_FOLDER; reloadData();
+
+  // 暴露函数到全局作用域，供内联事件处理器（onclick/onchange）调用
+  window.applyFilters = applyFilters;
+  window.changePageSize = changePageSize;
+  window.reloadData = reloadData;
+  window.toggleSelectAll = toggleSelectAll;
+  window.batchDelete = batchDelete;
+  window.setPage = setPage;
+  window.changePage = changePage;
+  window.getTotalPages = getTP;
+  window.openPreview = openPreview;
+  window.closePreview = closePreview;
+  window.closePreviewOnMask = closePreviewOnMask;
+  window.openReplaceModal = openReplaceModal;
+  window.closeReplaceModal = closeReplaceModal;
+  window.closeReplaceOnMask = closeReplaceOnMask;
+  window.doReplaceCover = doReplaceCover;
+  window.uploadToDisk = uploadToDisk;
+  window.deleteItem = deleteItem;
 })();
 </script>
 </body>
