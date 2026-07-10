@@ -269,6 +269,7 @@ input,select,textarea{font:inherit}
       +'<div class="mmt"><span class="mpil">'+fmtSize(i.size)+'</span><span class="mpil">'+esc(i.folder||'根目录')+'</span>'
       +'<span class="mpil">时长 <span data-dk="'+k+'">'+durL(i)+'</span></span></div>'
       +'<div class="mac"><button class="btn btn-sec btn-sm" onclick="openReplaceModal(\''+k+'\')">替换封面</button>'
+      +'<button class="btn btn-sec btn-sm" onclick="uploadToDisk(\''+k+'\')">上传到网盘</button>'
       +'<button class="btn btn-dgr btn-sm" onclick="deleteItem(\''+k+'\')">删除</button></div>';
     card.appendChild(bd);
     return card;
@@ -372,6 +373,15 @@ input,select,textarea{font:inherit}
   setTimeout(function(){ pollDurations(); }, 12000);
 
   function pad(n){ return n<10?'0'+n:''+n; }
+  async function uploadToDisk(k){
+    const i=findByKey(k); if(!i)return;
+    if(!confirm('确认将 '+i.video+' 上传到网盘吗？'))return;
+    try{
+      const r=await fetch('/api/openlist/upload',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({folder:i.folder,stem:i.stem})});
+      const d=await r.json();
+      if(d.ok&&d.result&&d.result.ok){ alert('上传完成'); }else{ alert('上传失败：'+(d.result?.video?.msg||d.message||'未知错误')); }
+    }catch(e){ alert('网络错误'); }
+  }
   async function reloadData(){ document.getElementById('statusText').textContent='正在刷新…'; renderSkeletons(getPS()); try{ await loadItems(); } catch(e){ document.getElementById('grid').innerHTML=''; document.getElementById('emptyMsg').style.display='block'; document.getElementById('statusText').textContent=e.message||'加载失败'; } }
   document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ closePreview(); closeReplaceModal(); } });
   document.getElementById('folderFilter').value=INITIAL_FOLDER; reloadData();

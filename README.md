@@ -57,6 +57,72 @@
 
 ---
 
+## 网盘上传（OpenList）
+
+支持通过 [OpenList](https://github.com/rclone/rclone-webui) 接口将下载的视频自动上传到 115 等网盘。
+
+### 配置字段
+
+在 `config.json` 的 `openlist` 块中配置：
+
+```json
+{
+  "openlist": {
+    "enabled": false,
+    "base_url": "http://192.168.1.13:5244",
+    "token": "",
+    "remote_root": "/115/tw",
+    "overwrite": false,
+    "upload_video": true,
+    "upload_thumbnail": true,
+    "auto_upload_after_download": true,
+    "delete_local_after_upload": false,
+    "timeout": 300,
+    "max_retries": 2,
+    "path_template": "{folder}/{filename}"
+  }
+}
+```
+
+| 字段 | 说明 | 默认值 |
+|---|---|---|
+| `enabled` | 总开关 | `false` |
+| `base_url` | OpenList 服务地址 | `http://192.168.1.13:5244` |
+| `token` | Bearer Token | `""` |
+| `remote_root` | 远端根目录 | `/115/tw` |
+| `overwrite` | 同名是否覆盖（`false` 则跳过已存在） | `false` |
+| `upload_video` | 是否上传视频 | `true` |
+| `upload_thumbnail` | 是否上传封面 | `true` |
+| `auto_upload_after_download` | 下载完成后自动上传 | `true` |
+| `delete_local_after_upload` | 上传成功后删除本地文件 | `false` |
+| `timeout` | 单文件上传超时（秒） | `300` |
+| `max_retries` | 失败重试次数 | `2` |
+| `path_template` | 远端路径模板，支持 `{folder}` `{filename}` `{stem}` `{ext}` | `{folder}/{filename}` |
+
+### 上传接口
+
+使用 OpenList 的 `PUT /api/fs/put` 接口流式上传，支持：
+- 自动创建远端目录
+- 文件已存在跳过（`overwrite=false` 时）
+- 失败自动重试（指数退避）
+- 缩略图上传到 `_thumbnails/` 子目录
+
+### Web 界面操作
+
+- **设置** → 在设置面板中可配置所有上传参数
+- **测试连接** → 验证 OpenList 地址和 Token 是否有效
+- **批量上传** → 扫描本地所有已下载视频，一键上传
+- **海报墙上传** → 在海报墙每张卡片上点击「上传到网盘」
+
+### 注意事项
+
+- Token 明文存储在 `config.json`，注意文件权限
+- 大文件建议适当调高 `timeout`
+- OpenList 若部署在容器外，Docker 容器内通过 `base_url` 访问时注意网络连通性
+- 启用 `delete_local_after_upload` 后，文件上传成功即删除本地副本，操作不可逆
+
+---
+
 ## 部署方式
 
 ### 方式一：Windows 直接运行

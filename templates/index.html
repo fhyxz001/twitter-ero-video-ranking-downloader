@@ -60,6 +60,10 @@
         <span class="strip-lbl">下载目录</span>
         <span class="strip-val" id="stat_dir_status">检测中…</span>
       </div>
+      <div class="strip-item">
+        <span class="strip-lbl">网盘</span>
+        <span class="strip-val" id="stat_openlist_status"><span class="dot"></span>未启用</span>
+      </div>
     </div>
     <span id="stat_last_result" hidden></span>
 
@@ -215,6 +219,73 @@
             <span>包含转推</span>
           </label>
         </div>
+        <div class="full" style="margin-top:var(--s-3)"><div class="drawer-sec">网盘上传（OpenList）</div></div>
+        <div class="field">
+          <label for="settings_openlist_enabled" class="toggle">
+            <input id="settings_openlist_enabled" type="checkbox" {% if config.openlist and config.openlist.enabled %}checked{% endif %} />
+            <span>启用网盘上传</span>
+          </label>
+        </div>
+        <div class="field">
+          <label class="field-lbl" for="settings_openlist_base_url">OpenList 地址</label>
+          <input id="settings_openlist_base_url" type="text" placeholder="http://192.168.1.13:5244" value="{{ config.openlist.base_url if config.openlist else '' }}" />
+        </div>
+        <div class="field">
+          <label class="field-lbl" for="settings_openlist_token">Token</label>
+          <input id="settings_openlist_token" type="password" placeholder="Bearer Token" value="{{ config.openlist.token if config.openlist else '' }}" />
+        </div>
+        <div class="field">
+          <label class="field-lbl" for="settings_openlist_remote_root">远端根目录</label>
+          <input id="settings_openlist_remote_root" type="text" placeholder="/115/tw" value="{{ config.openlist.remote_root if config.openlist else '/115/tw' }}" />
+        </div>
+        <div class="field">
+          <label class="field-lbl" for="settings_openlist_overwrite">覆盖策略</label>
+          <select id="settings_openlist_overwrite">
+            <option value="false" {% if config.openlist and not config.openlist.overwrite %}selected{% endif %}>跳过已存在</option>
+            <option value="true" {% if config.openlist and config.openlist.overwrite %}selected{% endif %}>覆盖</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="settings_openlist_upload_video" class="toggle">
+            <input id="settings_openlist_upload_video" type="checkbox" {% if config.openlist and config.openlist.upload_video != False %}checked{% endif %} />
+            <span>上传视频</span>
+          </label>
+        </div>
+        <div class="field">
+          <label for="settings_openlist_upload_thumbnail" class="toggle">
+            <input id="settings_openlist_upload_thumbnail" type="checkbox" {% if config.openlist and config.openlist.upload_thumbnail != False %}checked{% endif %} />
+            <span>上传封面</span>
+          </label>
+        </div>
+        <div class="field">
+          <label for="settings_openlist_auto_upload" class="toggle">
+            <input id="settings_openlist_auto_upload" type="checkbox" {% if config.openlist and config.openlist.auto_upload_after_download != False %}checked{% endif %} />
+            <span>下载后自动上传</span>
+          </label>
+        </div>
+        <div class="field">
+          <label for="settings_openlist_delete_local" class="toggle">
+            <input id="settings_openlist_delete_local" type="checkbox" {% if config.openlist and config.openlist.delete_local_after_upload %}checked{% endif %} />
+            <span>上传后删除本地</span>
+          </label>
+        </div>
+        <div class="field">
+          <label class="field-lbl" for="settings_openlist_timeout">上传超时（秒）</label>
+          <input id="settings_openlist_timeout" type="number" min="30" max="3600" value="{{ config.openlist.timeout if config.openlist else 300 }}" />
+        </div>
+        <div class="field">
+          <label class="field-lbl" for="settings_openlist_max_retries">重试次数</label>
+          <input id="settings_openlist_max_retries" type="number" min="0" max="5" value="{{ config.openlist.max_retries if config.openlist else 2 }}" />
+        </div>
+        <div class="field">
+          <label class="field-lbl" for="settings_openlist_path_template">远端路径模板</label>
+          <input id="settings_openlist_path_template" type="text" value="{{ config.openlist.path_template if config.openlist else '{folder}/{filename}' }}" />
+          <span class="hint">可用：{folder} {filename} {stem} {ext}</span>
+        </div>
+        <div class="full" style="display:flex;gap:8px;margin-top:8px">
+          <button type="button" class="btn btn-sec btn-sm" onclick="testOpenlistConnection()">测试连接</button>
+          <button type="button" class="btn btn-sec btn-sm" onclick="openlistUploadAll()">批量上传本地</button>
+        </div>
       </div>
     </div>
     <div class="drawer-f">
@@ -271,6 +342,7 @@
       twitter_blogger_cron: {{ config.twitter_blogger_cron|tojson }},
       twitter_blogger_max_media: {{ config.twitter_blogger_max_media }},
       twitter_blogger_has_retweet: {{ 'true' if config.twitter_blogger_has_retweet else 'false' }},
+      openlist: {{ config.openlist|tojson if config.openlist else '{}' }},
     };
 
     async function saveQuickConfigNow() {
@@ -298,6 +370,20 @@
       document.getElementById('settings_blogger_cron').value = currentConfig.twitter_blogger_cron||'0 4 * * *';
       document.getElementById('settings_blogger_max_media').value = currentConfig.twitter_blogger_max_media??-1;
       document.getElementById('settings_blogger_has_retweet').checked = currentConfig.twitter_blogger_has_retweet===true;
+      // OpenList
+      const ol = currentConfig.openlist||{};
+      document.getElementById('settings_openlist_enabled').checked = ol.enabled===true;
+      document.getElementById('settings_openlist_base_url').value = ol.base_url||'';
+      document.getElementById('settings_openlist_token').value = ol.token||'';
+      document.getElementById('settings_openlist_remote_root').value = ol.remote_root||'/115/tw';
+      document.getElementById('settings_openlist_overwrite').value = ol.overwrite?'true':'false';
+      document.getElementById('settings_openlist_upload_video').checked = ol.upload_video!==false;
+      document.getElementById('settings_openlist_upload_thumbnail').checked = ol.upload_thumbnail!==false;
+      document.getElementById('settings_openlist_auto_upload').checked = ol.auto_upload_after_download!==false;
+      document.getElementById('settings_openlist_delete_local').checked = ol.delete_local_after_upload===true;
+      document.getElementById('settings_openlist_timeout').value = ol.timeout||300;
+      document.getElementById('settings_openlist_max_retries').value = ol.max_retries??2;
+      document.getElementById('settings_openlist_path_template').value = ol.path_template||'{folder}/{filename}';
       syncAutoDownloadFields();
       document.getElementById('settings_modal').classList.add('show'); document.getElementById('settings_modal').setAttribute('aria-hidden','false');
       document.getElementById('settings_backdrop').classList.add('show'); document.getElementById('settings_backdrop').setAttribute('aria-hidden','false');
@@ -321,6 +407,22 @@
       fd.append('twitter_blogger_cron', document.getElementById('settings_blogger_cron').value);
       fd.append('twitter_blogger_max_media', document.getElementById('settings_blogger_max_media').value);
       fd.append('twitter_blogger_has_retweet', document.getElementById('settings_blogger_has_retweet').checked?'1':'0');
+      // OpenList
+      const olSettings = {
+        enabled: document.getElementById('settings_openlist_enabled').checked,
+        base_url: document.getElementById('settings_openlist_base_url').value.trim(),
+        token: document.getElementById('settings_openlist_token').value.trim(),
+        remote_root: document.getElementById('settings_openlist_remote_root').value.trim(),
+        overwrite: document.getElementById('settings_openlist_overwrite').value==='true',
+        upload_video: document.getElementById('settings_openlist_upload_video').checked,
+        upload_thumbnail: document.getElementById('settings_openlist_upload_thumbnail').checked,
+        auto_upload_after_download: document.getElementById('settings_openlist_auto_upload').checked,
+        delete_local_after_upload: document.getElementById('settings_openlist_delete_local').checked,
+        timeout: parseInt(document.getElementById('settings_openlist_timeout').value)||300,
+        max_retries: parseInt(document.getElementById('settings_openlist_max_retries').value)??2,
+        path_template: document.getElementById('settings_openlist_path_template').value.trim()||'{folder}/{filename}',
+      };
+      fd.append('openlist', JSON.stringify(olSettings));
       try {
         const r = await fetch('/save', {method:'POST',body:fd}), d = await r.json();
         if (!d.ok) { alert('保存失败：'+(d.error||'未知错误')); return; }
@@ -335,6 +437,7 @@
         currentConfig.twitter_blogger_cron = document.getElementById('settings_blogger_cron').value;
         currentConfig.twitter_blogger_max_media = parseInt(document.getElementById('settings_blogger_max_media').value);
         currentConfig.twitter_blogger_has_retweet = document.getElementById('settings_blogger_has_retweet').checked;
+        currentConfig.openlist = olSettings;
         downloadRootDirty = false; settingsDirty = false; closeSettingsModal(); refreshStatus(); validateDirectory();
       } catch(e) { alert('保存失败：网络错误'); }
     }
@@ -354,6 +457,7 @@
       fd.append('twitter_blogger_cron', currentConfig.twitter_blogger_cron||'0 4 * * *');
       fd.append('twitter_blogger_max_media', String(currentConfig.twitter_blogger_max_media??-1));
       fd.append('twitter_blogger_has_retweet', currentConfig.twitter_blogger_has_retweet?'1':'0');
+      fd.append('openlist', JSON.stringify(currentConfig.openlist||{}));
       try {
         const r = await fetch('/save', {method:'POST', body:fd}), d = await r.json();
         if (!d.ok) { alert('保存失败：'+(d.error||'未知错误')); return; }
@@ -382,6 +486,17 @@
       const dot = document.getElementById('log_status_dot'); if (ir) { dot.classList.remove('idle'); dot.title='运行中'; } else { dot.classList.add('idle'); dot.title='空闲'; }
       if (d.config) { currentConfig = d.config; if (!downloadRootDirty) { downloadRootInput.value = currentConfig.download_root||''; validateDirectory(); } if (!settingsDirty) document.getElementById('max_daily_downloads').value = currentConfig.max_daily_downloads||10; }
       if (d.blogger_state) { document.getElementById('blogger_is_running').textContent = d.blogger_state.is_running?'运行中':'空闲'; document.getElementById('blogger_last_run_time').textContent = d.blogger_state.last_run_time||'暂无'; document.getElementById('blogger_last_result').textContent = d.blogger_state.last_result||''; }
+      // OpenList 状态
+      const olst = d.openlist_state;
+      const olCfg = d.config?.openlist;
+      const olEl = document.getElementById('stat_openlist_status');
+      if (olCfg?.enabled && olCfg?.base_url && olCfg?.token) {
+        const olRunning = olst?.is_running;
+        const dotColor = olRunning ? '#22c55e' : '#a8a29e';
+        olEl.innerHTML = '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:'+dotColor+';vertical-align:middle;margin-right:4px"></span>'+(olRunning?'上传中':'已启用')+' · 成功'+(olst?.total_uploaded||0)+' · 失败'+(olst?.total_failed||0);
+      } else {
+        olEl.innerHTML = '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#a8a29e;vertical-align:middle;margin-right:4px"></span>未启用';
+      }
     }
     setInterval(refreshStatus, 5000);
 
@@ -427,6 +542,27 @@
     async function refreshBloggerStatus() {
       try { const r = await fetch('/api/blogger/list'), d = await r.json(); if (!d.ok) return; bloggerList = d.bloggers||[]; renderBloggerChips(); const st = d.state||{}; document.getElementById('blogger_is_running').textContent = st.is_running?'运行中':'空闲'; document.getElementById('blogger_last_run_time').textContent = st.last_run_time||'暂无'; document.getElementById('blogger_last_result').textContent = st.last_result||''; } catch(e) {}
     }
+
+    /* OpenList */
+    async function testOpenlistConnection() {
+      const base_url = document.getElementById('settings_openlist_base_url').value.trim();
+      const token = document.getElementById('settings_openlist_token').value.trim();
+      if (!base_url || !token) { alert('请先填写 OpenList 地址和 Token'); return; }
+      try {
+        const r = await fetch('/api/openlist/test', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({base_url,token})});
+        const d = await r.json();
+        if (d.ok) { alert('连接成功：'+d.message); } else { alert('连接失败：'+d.message); }
+      } catch(e) { alert('网络错误：'+e.message); }
+    }
+    async function openlistUploadAll() {
+      if (!confirm('确认扫描本地所有已下载视频并上传到网盘吗？')) return;
+      try {
+        const r = await fetch('/api/openlist/upload-all', {method:'POST'});
+        const d = await r.json();
+        if (d.ok) { alert(d.message); refreshStatus(); } else { alert('启动失败：'+(d.error||d.message)); }
+      } catch(e) { alert('网络错误：'+e.message); }
+    }
+
     renderBloggerChips(); refreshBloggerStatus(); setInterval(refreshBloggerStatus, 10000);
   </script>
 </body>
