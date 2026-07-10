@@ -1250,7 +1250,6 @@ async def api_waterfall_download(request: Request):
 
     root = resolve_download_root(cfg["download_root"])
     target_dir = root
-    root.mkdir(parents=True, exist_ok=True)
     target_dir.mkdir(parents=True, exist_ok=True)
 
     proxies = build_proxies(str(cfg.get("proxy", "")).strip())
@@ -1491,7 +1490,7 @@ def _collect_poster_items(download_root: Path, folder: Optional[str] = None) -> 
             built["duration"] = _probe_video_duration(directory / item["video"])
             items.append(built)
 
-    items.sort(key=lambda x: (x["folder"], x["stem"]), reverse=True)
+    items.sort(key=lambda x: (x["folder"], x["stem"]))
     _scan_cache_set(cache_key, {"items": items})
     return items
 
@@ -1522,7 +1521,7 @@ def api_thumb(folder: str = "", name: str = ""):
     if not path.exists() or not path.is_file():
         return JSONResponse({"error": "文件不存在"}, status_code=404)
     resolved = path.resolve()
-    if not str(resolved).startswith(str(root.resolve())):
+    if not resolved.is_relative_to(root.resolve()):
         return JSONResponse({"error": "禁止访问"}, status_code=403)
     return FileResponse(str(resolved))
 
@@ -1540,7 +1539,7 @@ def api_video(folder: str = "", name: str = ""):
     if path.suffix.lower() not in VIDEO_EXTS:
         return JSONResponse({"error": "不是视频文件"}, status_code=400)
     resolved = path.resolve()
-    if not str(resolved).startswith(str(root.resolve())):
+    if not resolved.is_relative_to(root.resolve()):
         return JSONResponse({"error": "禁止访问"}, status_code=403)
     return FileResponse(str(resolved))
 
@@ -1651,7 +1650,6 @@ def api_blogger_list():
             "twitter_blogger_cron": cfg.get("twitter_blogger_cron", "0 4 * * *"),
             "twitter_blogger_max_media": cfg.get("twitter_blogger_max_media", -1),
             "twitter_blogger_has_retweet": cfg.get("twitter_blogger_has_retweet", False),
-            "twitter_cookie": cfg.get("twitter_cookie", ""),
             "twitter_cookie_set": bool(str(cfg.get("twitter_cookie", "")).strip()),
         },
     })

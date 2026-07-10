@@ -7,5 +7,6 @@ services:
       - "2617:2617"
     volumes:
       - /vol1/1000/AdultMedia/tw:/data/downloads
+      - ./config.json:/app/config.json
     environment:
       - TZ=Asia/Shanghai
