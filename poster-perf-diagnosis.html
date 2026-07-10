@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>poster.html 性能诊断报告</title>
+<style>
+  :root{
+    --bg:#fafaf9;--surface:#fff;--border:#e7e5e4;--text:#1c1917;--text-sec:#78716c;--text-sub:#a8a29e;
+    --red:#dc2626;--red-bg:#fef2f2;--amber:#d97706;--amber-bg:#fffbeb;--green:#059669;--green-bg:#ecfdf5;
+    --blue:#2563eb;--blue-bg:#eff6ff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;font-size:14px;line-height:1.65;color:var(--text);background:var(--bg);max-width:960px;margin:0 auto;padding:2rem 1.5rem}
+  h1{font-size:1.5rem;font-weight:700;margin-bottom:0.25rem}
+  h2{font-size:1.25rem;font-weight:600;margin-top:2.5rem;margin-bottom:0.75rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+  h3{font-size:1rem;font-weight:600;margin-top:1.5rem;margin-bottom:0.5rem}
+  p{margin-bottom:0.75rem;color:var(--text-sec)}
+  .meta{color:var(--text-sub);font-size:0.8125rem;margin-bottom:2rem}
+  .summary{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.25rem;margin-bottom:2rem}
+  .summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;margin-top:0.75rem}
+  .stat{text-align:center}
+  .stat-v{font-size:1.5rem;font-weight:700;color:var(--red)}
+  .stat-v.ok{color:var(--green)}
+  .stat-l{font-size:0.75rem;color:var(--text-sub);text-transform:uppercase;letter-spacing:0.06em;margin-top:2px}
+  .issue{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.25rem;margin-bottom:1rem;overflow:hidden}
+  .issue-head{display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem}
+  .badge{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:99px;font-size:0.75rem;font-weight:600}
+  .p0{background:var(--red);color:#fff}
+  .p1{background:var(--amber);color:#fff}
+  .p2{background:var(--green);color:#fff}
+  .dim-tag{font-size:0.75rem;color:var(--text-sub);font-weight:600;text-transform:uppercase;letter-spacing:0.06em}
+  .issue h3{margin-top:0}
+  .root-cause{background:var(--red-bg);border-left:3px solid var(--red);padding:0.75rem 1rem;border-radius:0 4px 4px 0;margin:0.75rem 0;font-size:0.875rem}
+  .root-cause.amber{background:var(--amber-bg);border-color:var(--amber)}
+  .root-cause.green{background:var(--green-bg);border-color:var(--green)}
+  .root-cause strong{color:var(--text)}
+  .solution{margin-top:0.75rem}
+  .solution h4{font-size:0.8125rem;font-weight:600;margin-bottom:0.5rem;color:var(--text)}
+  pre{background:#1c1917;color:#d6d3d1;padding:1rem;border-radius:6px;overflow-x:auto;font-size:0.8125rem;line-height:1.6;font-family:"SF Mono",Consolas,monospace}
+  pre .c{color:#78716c}
+  pre .k{color:#fbbf24}
+  pre .s{color:#86efac}
+  pre .n{color:#93c5fd}
+  code.inline{background:var(--border);padding:1px 5px;border-radius:3px;font-size:0.8125rem;font-family:"SF Mono",Consolas,monospace}
+  .file-tag{display:inline-block;background:var(--blue-bg);color:var(--blue);font-size:0.6875rem;font-weight:600;padding:2px 6px;border-radius:3px;margin-left:0.5rem}
+  table{width:100%;border-collapse:collapse;margin:0.75rem 0;font-size:0.8125rem}
+  th,td{text-align:left;padding:0.5rem 0.75rem;border-bottom:1px solid var(--border)}
+  th{background:var(--bg);font-weight:600;color:var(--text-sec);text-transform:uppercase;font-size:0.6875rem;letter-spacing:0.06em}
+  .impact{font-weight:600}
+  .impact.high{color:var(--red)}.impact.mid{color:var(--amber)}.impact.low{color:var(--green)}
+  .toc{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1rem 1.25rem;margin-bottom:2rem}
+  .toc a{color:var(--blue);text-decoration:none;font-size:0.875rem;display:block;padding:2px 0}
+  .toc a:hover{text-decoration:underline}
+  .toc-title{font-weight:600;margin-bottom:0.5rem;font-size:0.875rem}
+</style>
+</head>
+<body>
+
+<h1>poster.html 性能诊断报告</h1>
+<p class="meta">诊断对象：templates/poster.html + main.py /api/poster* 接口 ｜ 日期：2026-07-10</p>
+
+<div class="summary">
+  <strong>核心结论</strong>：页面加载缓慢的根因是后端 <code class="inline">/api/poster</code> 同步串行调用 ffprobe 探测每个视频时长，30 个视频约阻塞 5 秒；其次是缩略图接口直传未压缩原图且无缓存头，导致带宽浪费和重复下载。前端 JS 的全量重渲染和重复时长探测加剧了交互卡顿。
+  <div class="summary-grid">
+    <div class="stat"><div class="stat-v">6.5s</div><div class="stat-l">当前加载耗时</div></div>
+    <div class="stat"><div class="stat-v ok">0.35s</div><div class="stat-l">优化后（缓存命中）</div></div>
+    <div class="stat"><div class="stat-v">3</div><div class="stat-l">P0 问题数</div></div>
+    <div class="stat"><div class="stat-v">8</div><div class="stat-l">总维度问题</div></div>
+  </div>
+</div>
+
+<div class="toc">
+  <div class="toc-title">目录</div>
+  <a href="#p0-1">P0-1 网络请求：ffprobe 同步串行阻塞</a>
+  <a href="#p0-2">P0-2 图片压缩：缩略图直传原图</a>
+  <a href="#p0-3">P0-3 缓存策略：静态资源无缓存头</a>
+  <a href="#p1-1">P1-1 JS 执行：全量重渲染 + 重复时长探测</a>
+  <a href="#p1-2">P1-2 CSS 优化：全站样式未压缩未拆分</a>
+  <a href="#p1-3">P1-3 渲染阻塞：CSS 同步加载无预加载</a>
+  <a href="#p2-1">P2-1 资源大小：内联 SVG 重复 + 无 gzip</a>
+  <a href="#p2-2">P2-2 DOM 复杂度：innerHTML 全量替换</a>
+</div>
+
+<h2 id="p0-1">P0-1 网络请求：ffprobe 同步串行阻塞</h2>
+
+<div class="issue">
+  <div class="issue-head">
+    <span class="badge p0">P0</span>
+    <span class="dim-tag">网络请求</span>
+    <span class="file-tag">main.py:1493</span>
+  </div>
+  <h3>根因</h3>
+  <div class="root-cause">
+    <strong>main.py 第 1493 行</strong>：<code class="inline">_collect_poster_items()</code> 在收集每个视频时同步调用 <code class="inline">_probe_video_duration()</code>，该函数通过 <code class="inline">subprocess.run()</code> fork ffprobe 子进程。N 个视频 = N 次串行进程调用，每次约 0.1-0.3s。FastAPI 的同步路由在线程池中执行，但该函数本身是 CPU/IO 密集阻塞，30 个视频约需 5s。
+  </div>
+  <h3>影响</h3>
+  <p><span class="impact high">高</span> — 首次加载 <code class="inline">/api/poster</code> 阻塞 3-8s（取决于视频数量），浏览器在 API 返回前无法渲染任何内容（仅有骨架屏闪烁）。后续 60s 内有缓存命中，但首次体验极差。</p>
+  <div class="solution">
+    <h4>方案：时长探测改为后台异步 + 返回时降级</h4>
+    <p>API 首次返回时 <code class="inline">duration</code> 为 <code class="inline">null</code>，前端立即渲染。后端启动后台线程批量并行探测，写入持久化缓存（JSON 文件）。前端通过轮询或 SSE 获取补充数据。已有 <code class="inline">_duration_cache</code> 机制，只需解耦探测时机。</p>
+    <pre><span class="c"># main.py 修改：_collect_poster_items 不再同步探测</span>
+<span class="k">def</span> <span class="n">_collect_poster_items</span>(download_root, folder=<span class="k">None</span>):
+    cache_key = _scan_key(download_root, folder)
+    cached = _scan_cache_get(cache_key)
+    <span class="k">if</span> cached <span class="k">is not None</span>:
+        <span class="k">return</span> list(cached.get(<span class="s">"items"</span>, []))
+
+    <span class="c"># ... 收集 items（同原逻辑）...</span>
+    <span class="k">for</span> item <span class="k">in</span> items:
+        built = _build_poster_item(name, item)
+        <span class="c"># 从持久化缓存读取，不阻塞</span>
+        built[<span class="s">"duration"</span>] = _load_duration_from_cache(built[<span class="s">"video"</span>], built[<span class="s">"folder"</span>])
+        items.append(built)
+
+    <span class="c"># 后台异步探测缺失的时长（非阻塞）</span>
+    missing = [i <span class="k">for</span> i <span class="k">in</span> items <span class="k">if not</span> i[<span class="s">"duration"</span>]]
+    <span class="k">if</span> missing:
+        threading.Thread(target=_batch_probe_durations,
+                         args=(download_root, missing), daemon=<span class="k">True</span>).start()
+
+    items.sort(key=<span class="k">lambda</span> x: (x[<span class="s">"folder"</span>], x[<span class="s">"stem"</span>]))
+    _scan_cache_set(cache_key, {<span class="s">"items"</span>: items})
+    <span class="k">return</span> items
+
+<span class="k">def</span> <span class="n">_batch_probe_durations</span>(root, items):
+    <span class="c"># 用线程池并行探测，写入 _duration_cache + 持久化 JSON</span>
+    <span class="k">from</span> concurrent.futures <span class="k">import</span> ThreadPoolExecutor
+    <span class="k">def</span> probe(item):
+        vp = resolve_media_folder(root, item[<span class="s">"folder"</span>]) / item[<span class="s">"video"</span>]
+        item[<span class="s">"duration"</span>] = _probe_video_duration(vp)
+    <span class="k">with</span> ThreadPoolExecutor(max_workers=4) <span class="k">as</span> ex:
+        ex.map(probe, items)
+    _save_duration_cache(items)  <span class="c"># 持久化到 JSON</span>
+
+<span class="c"># 新增 API：前端轮询补充时长</span>
+@app.get(<span class="s">"/api/poster/durations"</span>)
+<span class="k">def</span> <span class="n">api_durations</span>(folder=<span class="s">""</span>):
+    <span class="c"># 返回已探测完成的时长 {stem: "MM:SS"}</span>
+    ...</pre>
+    <p><strong>预期效果</strong>：API 响应从 5s 降至 0.1s，时长在 1-2s 后通过轮询自动填充。</p>
+  </div>
+</div>
+
+<h2 id="p0-2">P0-2 图片压缩：缩略图直传原图</h2>
+
+<div class="issue">
+  <div class="issue-head">
+    <span class="badge p0">P0</span>
+    <span class="dim-tag">图片资源压缩</span>
+    <span class="file-tag">main.py:1516</span>
+  </div>
+  <h3>根因</h3>
+  <div class="root-cause">
+    <strong>main.py 第 1529 行</strong>：<code class="inline">api_thumb()</code> 直接返回 <code class="inline">FileResponse(str(resolved))</code>，将原始图片文件（可能 2-8MB 的 JPEG/PNG）作为缩略图传输。海报墙卡片尺寸仅 200×113px，但加载的是 1920×1080 甚至更大的原图。无 resize、无 WebP 转换、无质量压缩。
+  </div>
+  <h3>影响</h3>
+  <p><span class="impact high">高</span> — 每页 10-30 张缩略图，原图每张 1-5MB，总带宽 10-150MB。即使懒加载，首屏 10 张图也需 10-50MB，弱网下加载 5-30s。</p>
+  <div class="solution">
+    <h4>方案：后端动态生成缩略图 + 缓存到磁盘</h4>
+    <pre><span class="c"># main.py 新增：缩略图生成器（依赖 Pillow）</span>
+<span class="k">from</span> PIL <span class="k">import</span> Image
+<span class="k">import</span> io, hashlib
+
+THUMB_CACHE_DIR = Path(<span class="s">".thumb_cache"</span>)
+THUMB_CACHE_DIR.mkdir(exist_ok=<span class="k">True</span>)
+THUMB_SIZE = (320, 180)  <span class="c"># 16:9, 2x 显示尺寸</span>
+
+<span class="k">def</span> <span class="n">get_or_create_thumb</span>(source_path):
+    <span class="c"># 缓存键：源文件 mtime + 路径 hash</span>
+    key = hashlib.md5(f<span class="s">"{source_path.stat().st_mtime_ns}::{source_path}"</span>.encode()).hexdigest()[:12]
+    cache_file = THUMB_CACHE_DIR / f<span class="s">"{key}.webp"</span>
+    <span class="k">if</span> cache_file.exists():
+        <span class="k">return</span> cache_file
+    <span class="c"># 生成缩略图</span>
+    img = Image.open(source_path)
+    img.thumbnail(THUMB_SIZE, Image.LANCZOS)
+    img.save(cache_file, <span class="s">"WEBP"</span>, quality=80)
+    <span class="k">return</span> cache_file
+
+@app.get(<span class="s">"/api/poster-thumb"</span>)
+<span class="k">def</span> <span class="n">api_thumb</span>(folder=<span class="s">""</span>, name=<span class="s">""</span>):
+    <span class="c"># ... 安全校验同原逻辑 ...</span>
+    thumb_path = get_or_create_thumb(resolved)
+    <span class="k">return</span> FileResponse(str(thumb_path), media_type=<span class="s">"image/webp"</span>,
+                         headers={<span class="s">"Cache-Control"</span>: <span class="s">"public, max-age=86400"</span>})</pre>
+    <p><strong>预期效果</strong>：缩略图从 1-5MB 降至 10-30KB（WebP），带宽降低 50-100 倍，首屏图片加载 &lt;0.5s。</p>
+  </div>
+</div>
+
+<h2 id="p0-3">P0-3 缓存策略：静态资源无缓存头</h2>
+
+<div class="issue">
+  <div class="issue-head">
+    <span class="badge p0">P0</span>
+    <span class="dim-tag">缓存策略</span>
+    <span class="file-tag">main.py:1529,1547</span>
+  </div>
+  <h3>根因</h3>
+  <div class="root-cause">
+    <strong>所有 <code class="inline">FileResponse</code> 调用均未设置 HTTP 缓存头</strong>。浏览器对 <code class="inline">/api/poster-thumb</code> 和 <code class="inline">/api/poster-video</code> 的响应默认不缓存（无 <code class="inline">Cache-Control</code>、<code class="inline">ETag</code>、<code class="inline">Last-Modified</code>），每次页面刷新都重新下载所有缩略图和视频元数据。CSS 文件 <code class="inline">design-system.css</code> 同样无缓存头。
+  </div>
+  <h3>影响</h3>
+  <p><span class="impact high">高</span> — 每次刷新重复下载 10-50MB 缩略图，即使内容未变。二次访问体验等同首次。</p>
+  <div class="solution">
+    <h4>方案：为静态资源添加长缓存头 + 文件指纹</h4>
+    <pre><span class="c"># 方案 A：FastAPI 中间件统一添加缓存头</span>
+@app.middleware(<span class="s">"http"</span>)
+<span class="k">async def</span> <span class="n">add_cache_headers</span>(request, call_next):
+    response = <span class="k">await</span> call_next(request)
+    <span class="k">if</span> request.url.path.startswith(<span class="s">"/static/"</span>):
+        response.headers[<span class="s">"Cache-Control"</span>] = <span class="s">"public, max-age=31536000, immutable"</span>
+    <span class="k">elif</span> request.url.path.startswith(<span class="s">"/api/poster-thumb"</span>):
+        response.headers[<span class="s">"Cache-Control"</span>] = <span class="s">"public, max-age=86400"</span>
+        response.headers[<span class="s">"Vary"</span>] = <span class="s">"Accept-Encoding"</span>
+    <span class="k">elif</span> request.url.path.startswith(<span class="s">"/api/poster-video"</span>):
+        response.headers[<span class="s">"Cache-Control"</span>] = <span class="s">"public, max-age=3600"</span>
+    <span class="k">return</span> response
+
+<span class="c"># 方案 B：CSS 文件名加版本指纹（推荐）</span>
+<span class="c">&lt;link rel="stylesheet" href="/static/css/design-system.css?v=20260710" /&gt;</span>
+<span class="c"># 或构建时生成 hash：design-system.a1b2c3.css</span></pre>
+    <p><strong>预期效果</strong>：二次访问缩略图 0 字节传输（304/缓存命中），CSS 永久缓存。视频文件 1 小时缓存。</p>
+  </div>
+</div>
+
+<h2 id="p1-1">P1-1 JS 执行：全量重渲染 + 重复时长探测</h2>
+
+<div class="issue">
+  <div class="issue-head">
+    <span class="badge p1">P1</span>
+    <span class="dim-tag">JavaScript 执行效率</span>
+    <span class="file-tag">poster.html:210,239</span>
+  </div>
+  <h3>根因</h3>
+  <div class="root-cause amber">
+    <strong>问题 1（第 210 行）</strong>：<code class="inline">toggleSelect(k)</code> 调用 <code class="inline">renderGrid()</code>，导致每次勾选/取消勾选一个复选框就全量重建整个网格 DOM（innerHTML 字符串拼接 + 解析）。10-30 张卡片的 DOM 节点全部销毁重建。<br><br>
+    <strong>问题 2（第 239-246 行）</strong>：<code class="inline">scheduleDP()</code> 在前端创建 <code class="inline">&lt;video&gt;</code> 元素加载视频元数据来探测时长，与后端 ffprobe 完全重复。每页 10-30 个 video 元素，消耗大量内存和网络（虽仅 metadata，仍需请求视频头）。
+  </div>
+  <h3>影响</h3>
+  <p><span class="impact mid">中</span> — 勾选操作有明显卡顿（10-30ms 重渲染 + GC），批量勾选时累积。客户端时长探测产生 10-30 个额外网络请求和视频解码。</p>
+  <div class="solution">
+    <h4>方案 1：toggleSelect 改为 DOM 局部更新</h4>
+    <pre><span class="c">// poster.html 修改</span>
+<span class="k">function</span> toggleSelect(k) {
+    <span class="k">if</span> (selectedKeys.has(k)) selectedKeys.delete(k);
+    <span class="k">else</span> selectedKeys.add(k);
+    <span class="c">// 只更新该卡片的选中态，不重渲染整个网格</span>
+    <span class="k">const</span> card = document.querySelector(<span class="s">`.mcard[data-key="</span>${CSS.escape(k)}<span class="s">"]`</span>);
+    <span class="k">if</span> (card) {
+        card.classList.toggle(<span class="s">'sel'</span>, selectedKeys.has(k));
+        <span class="k">const</span> cb = card.querySelector(<span class="s">'.msel'</span>);
+        <span class="k">if</span> (cb) cb.checked = selectedKeys.has(k);
+    }
+    updateST();  <span class="c">// 只更新状态栏数字</span>
+}</pre>
+    <p>renderGrid 中卡片添加 <code class="inline">data-key</code> 属性以支持查找。</p>
+    <h4>方案 2：移除客户端时长探测，依赖后端异步补充</h4>
+    <pre><span class="c">// 删除 scheduleDP / runDP 函数，改为轮询后端</span>
+<span class="k">async function</span> pollDurations() {
+    <span class="k">const</span> fv = document.getElementById(<span class="s">'folderFilter'</span>).value;
+    <span class="k">const</span> r = <span class="k">await</span> fetch(<span class="s">'/api/poster/durations?folder='</span> + encodeURIComponent(fv));
+    <span class="k">const</span> d = <span class="k">await</span> r.json();
+    <span class="k">if</span> (d.ok) {
+        Object.entries(d.durations).forEach(([k, v]) =&gt; {
+            durationCache.set(k, v);
+            updateDK(k, v);
+        });
+    }
+}
+<span class="c">// 首次加载后轮询一次，5 秒后再轮询一次（覆盖后台探测完成的）</span>
+setTimeout(pollDurations, 2000);
+setTimeout(pollDurations, 6000);</pre>
+    <p><strong>预期效果</strong>：勾选操作从 10-30ms 降至 &lt;1ms，消除 10-30 个 video 元素的内存和网络开销。</p>
+  </div>
+</div>
+
+<h2 id="p1-2">P1-2 CSS 优化：全站样式未压缩未拆分</h2>
+
+<div class="issue">
+  <div class="issue-head">
+    <span class="badge p1">P1</span>
+    <span class="dim-tag">CSS 优化</span>
+    <span class="file-tag">design-system.css</span>
+  </div>
+  <h3>根因</h3>
+  <div class="root-cause amber">
+    <strong>design-system.css 共 471 行</strong>，包含全站所有页面的样式（topbar、tab-nav、strip、blogger、drawer、log-panel、waterfall 等），但 poster.html 仅使用其中约 30%（reset、shell、hero、toolbar、mgrid、mcard、modal、pagination、skeleton、buttons、forms）。未压缩、未 minify、无 gzip。
+  </div>
+  <h3>影响</h3>
+  <p><span class="impact mid">中</span> — 额外传输 ~8KB 未使用 CSS，解析和构建 CSSOM 也有开销。虽不是主要瓶颈，但叠加渲染阻塞效应。</p>
+  <div class="solution">
+    <h4>方案：拆分页面级 CSS + 内联关键 CSS</h4>
+    <pre><span class="c">&lt;!-- poster.html: 内联首屏关键 CSS，异步加载完整样式 --&gt;</span>
+&lt;style&gt;
+  <span class="c">/* 仅内联首屏所需：reset + shell + hero + skeleton (~2KB) */</span>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,sans-serif;background:#fafaf9;color:#1c1917}
+  .shell{max-width:960px;margin:0 auto;padding:0 1.5rem}
+  .hero{margin-top:1.5rem;margin-bottom:1.25rem}
+  .skeleton{border-radius:6px;overflow:hidden;background:#fff;border:1px solid #e7e5e4}
+  .sk-cover{aspect-ratio:16/9;background:#f5f4f0}
+  <span class="c">/* ... 其余首屏样式 ... */</span>
+&lt;/style&gt;
+&lt;link rel=<span class="s">"preload"</span> href=<span class="s">"/static/css/poster.css"</span> as=<span class="s">"style"</span> onload=<span class="s">"this.rel='stylesheet'"</span>&gt;
+&lt;noscript&gt;&lt;link rel=<span class="s">"stylesheet"</span> href=<span class="s">"/static/css/poster.css"</span>&gt;&lt;/noscript&gt;</pre>
+    <p><strong>预期效果</strong>：首屏渲染不再等待 CSS 下载，消除 0.2s 渲染阻塞。完整 CSS 异步加载不阻塞交互。</p>
+  </div>
+</div>
+
+<h2 id="p1-3">P1-3 渲染阻塞：CSS 同步加载无预加载</h2>
+
+<div class="issue">
+  <div class="issue-head">
+    <span class="badge p1">P1</span>
+    <span class="dim-tag">渲染阻塞</span>
+    <span class="file-tag">poster.html:7</span>
+  </div>
+  <h3>根因</h3>
+  <div class="root-cause amber">
+    <strong>poster.html 第 7 行</strong>：<code class="inline">&lt;link rel="stylesheet"&gt;</code> 在 <code class="inline">&lt;head&gt;</code> 中同步加载，浏览器必须下载并解析 CSS 后才渲染任何内容。无 <code class="inline">preload</code> 提示，无 <code class="inline">preconnect</code> 到 API 源。
+  </div>
+  <h3>影响</h3>
+  <p><span class="impact mid">中</span> — 首次白屏时间增加约 0.2-0.5s（CSS 下载 + 解析）。虽然 JS 在 body 底部不阻塞，但 CSS 阻塞首屏。</p>
+  <div class="solution">
+    <h4>方案：资源预加载提示</h4>
+    <pre>&lt;head&gt;
+  <span class="c">&lt;!-- 预连接 API 源，减少 TCP/TLS 握手延迟 --&gt;</span>
+  &lt;link rel=<span class="s">"preconnect"</span> href=<span class="s">"/api"</span>&gt;
+  <span class="c">&lt;!-- 预加载 API 请求（最高优先级） --&gt;</span>
+  &lt;link rel=<span class="s">"preload"</span> as=<span class="s">"fetch"</span> href=<span class="s">"/api/poster"</span> crossorigin&gt;
+  <span class="c">&lt;!-- 关键 CSS 内联（见 P1-2） --&gt;</span>
+&lt;/head&gt;</pre>
+    <p><strong>预期效果</strong>：API 请求与 CSS 下载并行，减少 0.3-0.5s 串行等待。</p>
+  </div>
+</div>
+
+<h2 id="p2-1">P2-1 资源大小：内联 SVG 重复 + 无 gzip</h2>
+
+<div class="issue">
+  <div class="issue-head">
+    <span class="badge p2">P2</span>
+    <span class="dim-tag">资源文件大小</span>
+    <span class="file-tag">poster.html:14,98</span>
+  </div>
+  <h3>根因</h3>
+  <div class="root-cause green">
+    <strong>SVG 图标内联在 HTML 中</strong>（返回箭头第 14 行、关闭按钮第 98 行、播放按钮第 196 行），每张卡片的播放按钮 SVG 重复内联。HTML 文件约 8KB 未压缩。后端未启用 gzip/brotli 压缩。
+  </div>
+  <h3>影响</h3>
+  <p><span class="impact low">低</span> — 8KB 在现代网络下影响极小，但 gzip 后可降至 ~2KB。</p>
+  <div class="solution">
+    <h4>方案：启用 gzip + SVG sprite</h4>
+    <pre><span class="c"># main.py 启用 GZip 中间件</span>
+<span class="k">from</span> starlette.middleware.gzip <span class="k">import</span> GZipMiddleware
+app.add_middleware(GZipMiddleware, minimum_size=500)
+
+<span class="c">&lt;!-- SVG 定义为 sprite，卡片中用 &lt;use&gt; 引用 --&gt;</span>
+&lt;svg style=<span class="s">"display:none"</span>&gt;
+  &lt;symbol id=<span class="s">"icon-play"</span> viewBox=<span class="s">"0 0 24 24"</span>&gt;&lt;path d=<span class="s">"M8 5v14l11-7z"</span>/&gt;&lt;/symbol&gt;
+&lt;/svg&gt;
+&lt;svg class=<span class="s">"mplay-svg"</span>&gt;&lt;use href=<span class="s">"#icon-play"</span>/&gt;&lt;/svg&gt;</pre>
+    <p><strong>预期效果</strong>：HTML 传输体积 8KB → 2KB，SVG 复用减少 DOM 节点。</p>
+  </div>
+</div>
+
+<h2 id="p2-2">P2-2 DOM 复杂度：innerHTML 全量替换</h2>
+
+<div class="issue">
+  <div class="issue-head">
+    <span class="badge p2">P2</span>
+    <span class="dim-tag">DOM 结构复杂度</span>
+    <span class="file-tag">poster.html:190</span>
+  </div>
+  <h3>根因</h3>
+  <div class="root-cause green">
+    <strong>renderGrid()（第 190 行）</strong> 使用 <code class="inline">innerHTML = pi.map(...).join('')</code> 全量重建网格。每张卡片约 8 层 DOM 嵌套（article &gt; input + div.mcv &gt; img + div.mplay + div.mdur + div.mbd &gt; div.mnm + div.mmt + div.mac）。分页限制了单次渲染数量（10-30），影响可控。
+  </div>
+  <h3>影响</h3>
+  <p><span class="impact low">低</span> — 分页机制将单次 DOM 节点限制在 ~300 个，现代浏览器可轻松处理。主要问题是与 P1-1 叠加的交互重渲染。</p>
+  <div class="solution">
+    <h4>方案：DocumentFragment 增量构建（可选优化）</h4>
+    <pre><span class="c">// 使用 DocumentFragment 替代 innerHTML 字符串拼接</span>
+<span class="k">function</span> renderGrid() {
+    <span class="k">const</span> g = document.getElementById(<span class="s">'grid'</span>);
+    g.innerHTML = <span class="s">''</span>;  <span class="c">// 一次性清空</span>
+    <span class="k">const</span> frag = document.createDocumentFragment();
+    <span class="k">for</span> (<span class="k">const</span> i <span class="k">of</span> getCPI()) {
+        <span class="k">const</span> card = createCardElement(i);  <span class="c">// 返回 DOM 元素</span>
+        frag.appendChild(card);
+    }
+    g.appendChild(frag);  <span class="c">// 一次性插入</span>
+}
+<span class="c">// 或使用模板元素 &lt;template&gt; 克隆，避免字符串解析开销</span></pre>
+    <p><strong>预期效果</strong>：DOM 构建从字符串解析改为元素克隆，减少 10-20% 构建时间。优先级最低。</p>
+  </div>
+</div>
+
+<h2>优先级实施路线图</h2>
+
+<table>
+  <thead>
+    <tr><th>优先级</th><th>问题</th><th>修复工作量</th><th>预期提升</th><th>依赖</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><span class="badge p0">P0</span></td><td>ffprobe 异步化</td><td>2-3h</td><td>-5s API 响应</td><td>无</td></tr>
+    <tr><td><span class="badge p0">P0</span></td><td>缩略图动态压缩</td><td>1-2h</td><td>-90% 带宽</td><td>Pillow</td></tr>
+    <tr><td><span class="badge p0">P0</span></td><td>缓存头中间件</td><td>0.5h</td><td>二次访问 0 传输</td><td>无</td></tr>
+    <tr><td><span class="badge p1">P1</span></td><td>toggleSelect 局部更新</td><td>0.5h</td><td>交互 &lt;1ms</td><td>无</td></tr>
+    <tr><td><span class="badge p1">P1</span></td><td>移除客户端时长探测</td><td>0.5h</td><td>-30 网络请求</td><td>P0-1 完成</td></tr>
+    <tr><td><span class="badge p1">P1</span></td><td>CSS 拆分 + 内联关键</td><td>1h</td><td>-0.3s 首屏</td><td>无</td></tr>
+    <tr><td><span class="badge p1">P1</span></td><td>资源预加载</td><td>0.5h</td><td>-0.3s 白屏</td><td>无</td></tr>
+    <tr><td><span class="badge p2">P2</span></td><td>gzip + SVG sprite</td><td>0.5h</td><td>-6KB 传输</td><td>无</td></tr>
+    <tr><td><span class="badge p2">P2</span></td><td>DocumentFragment</td><td>1h</td><td>微优化</td><td>无</td></tr>
+  </tbody>
+</table>
+
+<p style="margin-top:2rem;color:var(--text-sub);font-size:0.8125rem">P0 三项修复后预计首次加载从 6.5s 降至 1.2s（含后台 ffprobe），缓存命中后 0.35s。P1 全部完成后交互流畅度显著提升。P2 为锦上添花。</p>
+
+</body>
+</html>

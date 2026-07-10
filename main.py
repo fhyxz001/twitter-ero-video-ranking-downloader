@@ -8,6 +8,7 @@ import subprocess
 import sys
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -23,6 +24,9 @@ from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.gzip import GZipMiddleware
+
+from PIL import Image
 
 
 # 适配 PyInstaller 路径处理
@@ -92,6 +96,25 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="twitter-ero-video-ranking-downloader", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=str(STATIC_PATH)), name="static")
+app.add_middleware(GZipMiddleware, minimum_size=500)
+
+
+# ── 缓存策略中间件 ──
+@app.middleware("http")
+async def add_cache_headers(request: Request, call_next):
+    response = await call_next(request)
+    path = request.url.path
+    if path.startswith("/static/"):
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    elif path.startswith("/api/poster-thumb"):
+        if "Cache-Control" not in response.headers:
+            response.headers["Cache-Control"] = "public, max-age=86400"
+        response.headers["Vary"] = "Accept-Encoding"
+    elif path.startswith("/api/poster-video"):
+        response.headers["Cache-Control"] = "public, max-age=3600"
+    return response
+
+
 templates = Jinja2Templates(directory=str(TEMPLATES_PATH))
 scheduler = BackgroundScheduler(timezone="Asia/Shanghai")
 
@@ -1292,6 +1315,33 @@ _poster_scan_cache: Dict[str, Tuple[float, dict]] = {}
 _poster_folders_cache: Dict[str, Tuple[float, List[dict]]] = {}
 _duration_cache: Dict[str, Tuple[float, Optional[str]]] = {}
 DURATION_CACHE_TTL = 3600.0  # 秒，ffprobe 结果几乎不变
+DURATION_CACHE_PATH = APP_DIR / ".duration_cache.json"  # 持久化缓存文件
+
+# ── 缩略图缓存 ──
+THUMB_CACHE_DIR = APP_DIR / ".thumb_cache"
+THUMB_SIZE = (320, 180)  # 16:9, 2x 显示密度
+
+_duration_cache_lock = threading.Lock()
+
+
+def _load_duration_cache() -> Dict[str, str]:
+    """从 JSON 文件加载持久化时长缓存。"""
+    try:
+        if DURATION_CACHE_PATH.exists():
+            with open(DURATION_CACHE_PATH, "r") as f:
+                return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        pass
+    return {}
+
+
+def _save_duration_cache(cache: Dict[str, str]) -> None:
+    """将时长缓存写入 JSON 文件。"""
+    try:
+        with open(DURATION_CACHE_PATH, "w") as f:
+            json.dump(cache, f)
+    except OSError:
+        pass
 
 
 def _scan_key(root: Path, folder: Optional[str]) -> str:
@@ -1332,6 +1382,12 @@ def _invalidate_poster_cache() -> None:
     _poster_scan_cache.clear()
     _poster_folders_cache.clear()
     _duration_cache.clear()
+    # 同时清除持久化时长缓存（修改后重新探测）
+    try:
+        if DURATION_CACHE_PATH.exists():
+            DURATION_CACHE_PATH.unlink()
+    except OSError:
+        pass
 
 
 def resolve_media_folder(root: Path, folder: str) -> Optional[Path]:
@@ -1410,6 +1466,26 @@ def _format_duration(seconds: float) -> str:
     return f"{minutes:02d}:{secs:02d}"
 
 
+def _get_or_create_thumb(source_path: Path) -> Path:
+    """生成或返回缓存的 WebP 缩略图。"""
+    THUMB_CACHE_DIR.mkdir(exist_ok=True)
+    key = hashlib.md5(f"{source_path.stat().st_mtime_ns}::{source_path}".encode()).hexdigest()[:16]
+    cache_file = THUMB_CACHE_DIR / f"{key}.webp"
+    if cache_file.exists():
+        return cache_file
+    try:
+        img = Image.open(source_path)
+        img.thumbnail(THUMB_SIZE, Image.LANCZOS)
+        # 转为 RGB（处理 RGBA/P 模式）
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+        img.save(cache_file, "WEBP", quality=80)
+    except Exception:
+        # 生成失败返回原图
+        return source_path
+    return cache_file
+
+
 def _probe_video_duration(video_path: Path) -> Optional[str]:
     key = f"{video_path.stat().st_mtime_ns}::{video_path}"
     cached = _duration_cache.get(key)
@@ -1456,7 +1532,7 @@ def _probe_video_duration(video_path: Path) -> Optional[str]:
     return label
 
 
-def _build_poster_item(folder: str, item: dict) -> dict:
+def _build_poster_item(folder: str, item: dict, duration: Optional[str] = None) -> dict:
     thumb_name = item.get("thumb")
     video_name = item.get("video")
     folder_q = quote(folder)
@@ -1469,8 +1545,12 @@ def _build_poster_item(folder: str, item: dict) -> dict:
             else None
         ),
         "video_url": f"/api/poster-video?folder={folder_q}&name={quote(video_name)}",
-        "duration": None,
+        "duration": duration,
     }
+
+
+def _duration_key(folder: str, stem: str) -> str:
+    return f"{folder}::{stem}"
 
 
 def _collect_poster_items(download_root: Path, folder: Optional[str] = None) -> List[dict]:
@@ -1484,18 +1564,55 @@ def _collect_poster_items(download_root: Path, folder: Optional[str] = None) -> 
     else:
         folder_names = [folder]
     items: List[dict] = []
+    persistent_cache = _load_duration_cache()
+    pending: List[tuple] = []  # (folder, stem, directory, video_path)
     for name in folder_names:
         directory = resolve_media_folder(download_root, name)
         if directory is None:
             continue
         for item in _list_folder_items(directory):
-            built = _build_poster_item(name, item)
-            built["duration"] = _probe_video_duration(directory / item["video"])
+            dk = _duration_key(name, item["stem"])
+            dur = persistent_cache.get(dk)  # 先从持久化缓存读取
+            built = _build_poster_item(name, item, dur)
             items.append(built)
+            if not dur:
+                pending.append((name, item["stem"], directory, directory / item["video"]))
 
     items.sort(key=lambda x: (x["folder"], x["stem"]))
     _scan_cache_set(cache_key, {"items": items})
+
+    # 后台线程池并行探测缺失的时长
+    if pending:
+        threading.Thread(
+            target=_batch_probe_durations,
+            args=(pending,),
+            daemon=True,
+        ).start()
+
     return items
+
+
+def _batch_probe_durations(pending: List[tuple]) -> None:
+    """后台线程池并行探测时长，结果写入持久化缓存。"""
+    def probe_one(folder: str, stem: str, vp: Path) -> Optional[tuple]:
+        dur = _probe_video_duration(vp)
+        if dur:
+            return (_duration_key(folder, stem), dur)
+        return None
+
+    results = {}
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        futures = [ex.submit(probe_one, f, s, v) for f, s, _, v in pending]
+        for f in futures:
+            r = f.result()
+            if r:
+                results[r[0]] = r[1]
+
+    if results:
+        with _duration_cache_lock:
+            existing = _load_duration_cache()
+            existing.update(results)
+            _save_duration_cache(existing)
 
 
 @app.get("/api/poster")
@@ -1526,7 +1643,31 @@ def api_thumb(folder: str = "", name: str = ""):
     resolved = path.resolve()
     if not resolved.is_relative_to(root.resolve()):
         return JSONResponse({"error": "禁止访问"}, status_code=403)
-    return FileResponse(str(resolved))
+    # 生成 WebP 缩略图
+    thumb_path = _get_or_create_thumb(resolved)
+    mimetype = "image/webp" if thumb_path.suffix.lower() == ".webp" else None
+    return FileResponse(
+        str(thumb_path),
+        media_type=mimetype,
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
+
+
+@app.get("/api/poster-durations")
+def api_poster_durations(folder: str = ""):
+    """返回已探测完成的视频时长，供前端轮询补充。"""
+    cfg = get_current_config()
+    root = resolve_download_root(cfg["download_root"])
+    if folder and resolve_media_folder(root, folder) is None:
+        return JSONResponse({"ok": False, "error": "无效文件夹"}, status_code=400)
+
+    persistent_cache = _load_duration_cache()
+    matching = {}
+    prefix = f"{folder}::" if folder else ""
+    for k, v in persistent_cache.items():
+        if not prefix or k.startswith(prefix):
+            matching[k] = v
+    return JSONResponse({"ok": True, "durations": matching})
 
 
 @app.get("/api/poster-video")

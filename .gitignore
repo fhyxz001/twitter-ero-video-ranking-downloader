@@ -17,6 +17,10 @@ dist/
 # Configuration
 config.json
 
+# Runtime caches
+.thumb_cache/
+.duration_cache.json
+
 # Local IDE
 .vscode/
 .idea/
