@@ -183,17 +183,20 @@ def parse_pektino_rsc(text: str) -> List[dict]:
         tweet_url = str(raw.get("tweet_url", "")).strip()
         url_cd = str(raw.get("url_cd", "")).strip()
 
-        # Use mp4 as primary URL for downloading, fallback to url_cd
-        video_url = mp4_url or url_cd
+        # Only real http/https URLs are valid for downloading.
+        # url_cd is a short code (e.g. "Edz_jXxp39QO7Y4f"), not a download URL.
+        video_url = mp4_url if mp4_url.startswith("http") else ""
         if not video_url:
-            # Try to find any URL-like field
             for key in ("url", "video_url", "src", "source"):
                 candidate = str(raw.get(key, "")).strip()
-                if candidate and candidate.startswith("http"):
+                if candidate.startswith("http"):
                     video_url = candidate
                     break
 
-        if not video_id and video_url:
+        if not video_url:
+            continue
+
+        if not video_id:
             video_id = _generate_video_id(video_url)
         if not video_id:
             continue
