@@ -21,9 +21,9 @@ import requests
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from starlette.middleware.gzip import GZipMiddleware
 
 from PIL import Image
@@ -50,8 +50,8 @@ def get_exe_dir() -> Path:
 
 APP_DIR = get_exe_dir()
 CONFIG_PATH = APP_DIR / "config.json"
-TEMPLATES_PATH = get_resource_path("templates")
 STATIC_PATH = get_resource_path("static")
+VUE_DIST = STATIC_PATH / "dist"
 MEDIA_API_BASE = "https://pektino.com/zh-CN"
 RANKING_RANGE_SUFFIX = {
     "daily": "",
@@ -77,22 +77,6 @@ DEFAULT_CONFIG: Dict[str, object] = {
     "twitter_blogger_cron": "0 4 * * *",
     "twitter_blogger_max_media": -1,
     "twitter_blogger_has_retweet": False,
-
-    # --- OpenList 网盘上传 ---
-    "openlist": {
-        "enabled": False,
-        "base_url": "http://192.168.1.13:5244",
-        "token": "",
-        "remote_root": "/115/tw",
-        "overwrite": False,
-        "upload_video": True,
-        "upload_thumbnail": True,
-        "auto_upload_after_download": True,
-        "delete_local_after_upload": False,
-        "timeout": 300,
-        "max_retries": 2,
-        "path_template": "{folder}/{filename}",
-    },
 }
 
 @asynccontextmanager
@@ -113,6 +97,13 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="twitter-ero-video-ranking-downloader", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=str(STATIC_PATH)), name="static")
 app.add_middleware(GZipMiddleware, minimum_size=500)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # ── 缓存策略中间件 ──
@@ -131,8 +122,8 @@ async def add_cache_headers(request: Request, call_next):
     return response
 
 
-templates = Jinja2Templates(directory=str(TEMPLATES_PATH))
 scheduler = BackgroundScheduler(timezone="Asia/Shanghai")
+
 
 config_lock = threading.Lock()
 log_lock = threading.Lock()
@@ -149,18 +140,6 @@ blogger_state = {
     "last_result": "尚未执行",
 }
 log_lines: List[str] = []
-
-# ── OpenList 网盘上传状态 ──
-openlist_state = {
-    "is_running": False,
-    "last_run_time": None,
-    "last_result": "尚未执行",
-    "total_uploaded": 0,
-    "total_failed": 0,
-}
-OPENLIST_UPLOAD_ENDPOINT = "/api/fs/put"
-OPENLIST_LIST_ENDPOINT = "/api/fs/list"
-OPENLIST_MKDIR_ENDPOINT = "/api/fs/mkdir"
 
 
 def parse_bool(value: object) -> bool:
@@ -180,238 +159,6 @@ def append_log(message: str) -> None:
 def get_logs() -> List[str]:
     with log_lock:
         return list(log_lines)
-
-
-# ── OpenList 网盘上传模块 ──
-
-def _openlist_build_headers(token: str, file_path: str, content_length: int, overwrite: bool) -> Dict[str, str]:
-    return {
-        "Authorization": f"Bearer {token}",
-        "File-Path": file_path,
-        "Content-Length": str(content_length),
-        "Overwrite": "true" if overwrite else "false",
-    }
-
-
-def _openlist_resolve_remote_path(template: str, remote_root: str, folder: str, filename: str) -> str:
-    stem, ext = os.path.splitext(filename)
-    path = template.format(folder=folder, filename=filename, stem=stem, ext=ext)
-    # 确保以 remote_root 开头且不含 ..
-    full = remote_root.rstrip("/") + "/" + path.lstrip("/")
-    parts = full.replace("\\", "/").split("/")
-    clean = []
-    for p in parts:
-        if p == "..":
-            raise ValueError(f"路径包含 '..'：{full}")
-        clean.append(p)
-    return "/".join(clean)
-
-
-def _openlist_ensure_remote_dir(base_url: str, token: str, remote_dir: str, proxies) -> bool:
-    """确保远端目录存在，不存在则递归创建。"""
-    url = f"{base_url}{OPENLIST_MKDIR_ENDPOINT}"
-    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-    try:
-        resp = requests.post(url, headers=headers, json={"path": remote_dir}, proxies=proxies, timeout=15)
-        return resp.status_code in (200, 201)
-    except requests.RequestException as exc:
-        append_log(f"[网盘] 创建远端目录失败 {remote_dir}：{exc}")
-        return False
-
-
-def _openlist_upload_file(local_path: Path, remote_path: str, cfg: dict, proxies) -> tuple[bool, str]:
-    """上传单个文件，返回 (success, message)。"""
-    token = cfg["token"]
-    base_url = cfg["base_url"]
-    overwrite = cfg["overwrite"]
-    timeout = cfg["timeout"]
-    max_retries = cfg["max_retries"]
-    if not local_path.exists():
-        return False, f"本地文件不存在：{local_path}"
-
-    content_length = local_path.stat().st_size
-    if content_length == 0:
-        return False, f"文件大小为 0：{local_path.name}"
-
-    file_path_encoded = remote_path
-    headers = _openlist_build_headers(token, file_path_encoded, content_length, overwrite)
-    url = f"{base_url}{OPENLIST_UPLOAD_ENDPOINT}"
-
-    # 如果不覆盖，先检查远端是否已存在
-    if not overwrite:
-        remote_dir_path = remote_path.rsplit("/", 1)[0] if "/" in remote_path else "/"
-        existing = _openlist_list_dir(base_url, token, remote_dir_path, proxies)
-        if existing:
-            remote_name = remote_path.rsplit("/", 1)[-1]
-            if remote_name in existing:
-                return False, f"远端已存在（跳过）：{remote_name}"
-
-    last_err = ""
-    for attempt in range(max_retries + 1):
-        try:
-            with open(local_path, "rb") as f:
-                resp = requests.put(url, headers=headers, data=f, proxies=proxies, timeout=timeout)
-            if resp.status_code in (200, 201):
-                return True, f"上传完成：{local_path.name} ({content_length / 1024 / 1024:.1f} MB)"
-            last_err = f"HTTP {resp.status_code} {resp.text[:200]}"
-        except requests.RequestException as exc:
-            last_err = str(exc)
-
-        if attempt < max_retries:
-            import time as _time
-            _time.sleep(2 ** attempt)
-            append_log(f"[网盘] {local_path.name} 重试 {attempt + 1}/{max_retries}：{last_err}")
-
-    return False, f"上传失败：{last_err}"
-
-
-def _openlist_upload_media(video_path: Path, thumb_path: Optional[Path], folder: str, cfg: dict, proxies) -> dict:
-    """上传视频和封面，返回结果 dict。"""
-    token = cfg["token"]
-    base_url = cfg["base_url"]
-    remote_root = cfg["remote_root"]
-    remote_dir = remote_root.rstrip("/") + "/" + folder.lstrip("/")
-
-    # 确保远端目录存在
-    _openlist_ensure_remote_dir(base_url, token, remote_dir, proxies)
-
-    result = {"video": None, "thumbnail": None, "ok": True}
-
-    if cfg["upload_video"] and video_path:
-        remote_path = _openlist_resolve_remote_path(
-            cfg["path_template"], remote_root, folder, video_path.name
-        )
-        ok, msg = _openlist_upload_file(video_path, remote_path, cfg, proxies)
-        result["video"] = {"path": remote_path, "ok": ok, "msg": msg}
-        if not ok:
-            result["ok"] = False
-        if ok and cfg["delete_local_after_upload"]:
-            try:
-                video_path.unlink()
-                append_log(f"[网盘] 已删除本地文件：{video_path.name}")
-            except OSError as exc:
-                append_log(f"[网盘] 删除本地文件失败 {video_path.name}：{exc}")
-
-    if cfg["upload_thumbnail"] and thumb_path and thumb_path.exists():
-        remote_thumb_root = remote_root.rstrip("/") + "/_thumbnails/" + folder.lstrip("/")
-        _openlist_ensure_remote_dir(base_url, token, remote_thumb_root, proxies)
-        remote_thumb_path = _openlist_resolve_remote_path(
-            "{folder}/{filename}", remote_root, "_thumbnails/" + folder, thumb_path.name
-        )
-        ok, msg = _openlist_upload_file(thumb_path, remote_thumb_path, cfg, proxies)
-        result["thumbnail"] = {"path": remote_thumb_path, "ok": ok, "msg": msg}
-
-    return result
-
-
-def _openlist_list_dir(base_url: str, token: str, dir_path: str, proxies) -> list:
-    """列出远端目录内容，返回文件名列表。失败返回空列表。"""
-    url = f"{base_url}{OPENLIST_LIST_ENDPOINT}"
-    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-    try:
-        resp = requests.post(
-            url,
-            headers=headers,
-            json={"path": dir_path, "page": 1, "per_page": 0, "refresh": False},
-            proxies=proxies,
-            timeout=15,
-        )
-        if resp.status_code != 200:
-            return []
-        body = resp.json()
-        # AList 返回 {code, message, data: {content: [...], total}}
-        data = body.get("data") or {}
-        content = data.get("content") if isinstance(data, dict) else data
-        if not content:
-            return []
-        return [f.get("name", "") for f in content if isinstance(f, dict)]
-    except (requests.RequestException, ValueError):
-        return []
-
-
-def _openlist_test_connection(base_url: str, token: str, proxies) -> dict:
-    """测试连接 OpenList 服务。"""
-    url = f"{base_url}{OPENLIST_LIST_ENDPOINT}"
-    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-    try:
-        resp = requests.post(
-            url,
-            headers=headers,
-            json={"path": "/", "page": 1, "per_page": 0, "refresh": False},
-            proxies=proxies,
-            timeout=15,
-        )
-        if resp.status_code == 200:
-            body = resp.json()
-            code = body.get("code", 200)
-            if code == 200:
-                return {"ok": True, "message": "连接成功"}
-            return {"ok": False, "message": f"OpenList 返回错误：code={code} {body.get('message', '')}"}
-        return {"ok": False, "message": f"HTTP {resp.status_code}：{resp.text[:200]}"}
-    except requests.RequestException as exc:
-        return {"ok": False, "message": f"连接失败：{exc}"}
-
-
-def _openlist_upload_all_local(cfg: dict, download_root: Path, proxies) -> dict:
-    """扫描本地所有视频，批量上传。"""
-    token = cfg["token"]
-    base_url = cfg["base_url"]
-    if not token or not base_url:
-        return {"ok": False, "message": "网盘 Token 或地址未配置"}
-
-    video_exts = {".mp4", ".mkv", ".avi", ".mov", ".flv", ".wmv"}
-    total = 0
-    success = 0
-    failed = 0
-    skipped = 0
-    results = []
-
-    for video_path in download_root.rglob("*"):
-        if video_path.suffix.lower() not in video_exts:
-            continue
-        # 跳过 blogger 目录
-        rel = video_path.relative_to(download_root)
-        parts = rel.parts
-        if len(parts) >= 1 and parts[0] == "blogger":
-            folder = "/".join(parts[:-1])
-        else:
-            folder = "/".join(parts[:-1]) if len(parts) > 1 else ""
-
-        total += 1
-        remote_path = _openlist_resolve_remote_path(
-            cfg["path_template"], cfg["remote_root"], folder, video_path.name
-        )
-
-        # 检查已存在（不覆盖模式下）
-        if not cfg["overwrite"]:
-            remote_dir_path = remote_path.rsplit("/", 1)[0] if "/" in remote_path else "/"
-            existing = _openlist_list_dir(base_url, token, remote_dir_path, proxies)
-            if existing:
-                remote_name = remote_path.rsplit("/", 1)[-1]
-                if remote_name in existing:
-                    skipped += 1
-                    append_log(f"[网盘] 批量跳过已存在：{rel}")
-                    results.append({"file": str(rel), "ok": True, "msg": "跳过（已存在）"})
-                    continue
-
-        remote_dir = cfg["remote_root"].rstrip("/") + "/" + folder
-        _openlist_ensure_remote_dir(base_url, token, remote_dir, proxies)
-        ok, msg = _openlist_upload_file(video_path, remote_path, cfg, proxies)
-        if ok:
-            success += 1
-        else:
-            failed += 1
-        results.append({"file": str(rel), "ok": ok, "msg": msg})
-
-    return {
-        "ok": failed == 0,
-        "total": total,
-        "success": success,
-        "failed": failed,
-        "skipped": skipped,
-        "results": results,
-        "message": f"批量上传：总计 {total}，成功 {success}，跳过 {skipped}，失败 {failed}",
-    }
 
 
 def parse_pektino_rsc(text: str) -> List[dict]:
@@ -590,43 +337,6 @@ def validate_config(raw: Dict[str, object]) -> Dict[str, object]:
 
     cfg["twitter_blogger_has_retweet"] = parse_bool(cfg.get("twitter_blogger_has_retweet", False))
 
-    # --- OpenList 网盘上传配置校验 ---
-    openlist_raw = cfg.get("openlist", {})
-    if not isinstance(openlist_raw, dict):
-        openlist_raw = {}
-    ol = dict(openlist_raw)
-    ol["enabled"] = parse_bool(ol.get("enabled", False))
-    base_url = str(ol.get("base_url", "")).strip().rstrip("/")
-    if ol["enabled"] and not base_url:
-        raise ValueError("网盘上传已启用，但 base_url 为空")
-    if base_url and not base_url.startswith("http"):
-        raise ValueError(f"网盘 base_url 格式无效：{base_url}，须以 http:// 或 https:// 开头")
-    ol["base_url"] = base_url
-    ol["token"] = str(ol.get("token", "")).strip()
-    remote_root = str(ol.get("remote_root", "")).strip()
-    if ol["enabled"] and not remote_root:
-        raise ValueError("网盘上传已启用，但 remote_root 为空")
-    if remote_root and not remote_root.startswith("/"):
-        remote_root = "/" + remote_root
-    ol["remote_root"] = remote_root
-    ol["overwrite"] = parse_bool(ol.get("overwrite", False))
-    ol["upload_video"] = parse_bool(ol.get("upload_video", True))
-    ol["upload_thumbnail"] = parse_bool(ol.get("upload_thumbnail", True))
-    ol["auto_upload_after_download"] = parse_bool(ol.get("auto_upload_after_download", True))
-    ol["delete_local_after_upload"] = parse_bool(ol.get("delete_local_after_upload", False))
-    ol["timeout"] = max(30, min(3600, int(ol.get("timeout", 300))))
-    ol["max_retries"] = max(0, min(5, int(ol.get("max_retries", 2))))
-    ol["path_template"] = str(ol.get("path_template", "{folder}/{filename}"))
-    # 校验 path_template 中只允许安全占位符，禁止 ..
-    allowed_placeholders = {"{folder}", "{filename}", "{stem}", "{ext}"}
-    import re as _re
-    for ph in _re.findall(r"\{[^}]+\}", ol["path_template"]):
-        if ph not in allowed_placeholders:
-            raise ValueError(f"path_template 包含不支持的占位符：{ph}")
-    if ".." in ol["path_template"]:
-        raise ValueError("path_template 不允许包含 ..")
-    cfg["openlist"] = ol
-
     return cfg
 
 
@@ -757,7 +467,7 @@ def _fetch_pektino_media(session: requests.Session, proxies, ranking_range: str 
     return items
 
 
-def _download_items(session: requests.Session, items: list, target_dir: Path, max_count: int, proxies, cfg: Optional[dict] = None) -> tuple:
+def _download_items(session: requests.Session, items: list, target_dir: Path, max_count: int, proxies) -> tuple:
     """下载指定列表中的视频，返回 (success_count, skip_count, fail_count)。"""
     success_count = 0
     skip_count = 0
@@ -803,33 +513,6 @@ def _download_items(session: requests.Session, items: list, target_dir: Path, ma
         if ok_video and ok_thumb:
             success_count += 1
             append_log(f"下载完成：{target_dir.name}/{video_path.name}")
-            # 自动上传到网盘
-            if cfg:
-                ol = cfg.get("openlist", {})
-                if ol.get("enabled") and ol.get("auto_upload_after_download"):
-                    folder = target_dir.name
-                    ol_proxies = proxies
-                    try:
-                        result = _openlist_upload_media(
-                            video_path,
-                            thumb_path if ok_thumb and thumb_path.exists() else None,
-                            folder,
-                            ol,
-                            ol_proxies,
-                        )
-                        if result["ok"]:
-                            append_log(f"[网盘] 自动上传完成：{video_path.name}")
-                        else:
-                            video_msg = result.get("video", {}).get("msg", "")
-                            append_log(f"[网盘] 自动上传部分失败 {video_path.name}：{video_msg}")
-                        if result.get("video", {}).get("ok") and ol.get("delete_local_after_upload"):
-                            try:
-                                video_path.unlink()
-                                append_log(f"[网盘] 已删除本地文件：{video_path.name}")
-                            except OSError as exc:
-                                append_log(f"[网盘] 删除本地文件失败 {video_path.name}：{exc}")
-                    except Exception as exc:
-                        append_log(f"[网盘] 自动上传异常 {video_path.name}：{exc}")
         else:
             fail_count += 1
 
@@ -887,7 +570,7 @@ def run_download_job() -> None:
         ranking_range = str(cfg.get("ranking_range", "daily")).strip()
         try:
             items = _fetch_pektino_media(session, proxies, ranking_range)
-            s, k, f = _download_items(session, items, download_root, max_downloads, proxies, cfg)
+            s, k, f = _download_items(session, items, download_root, max_downloads, proxies)
         except Exception as exc:
             s, k, f = 0, 0, 1
             append_log(f"下载任务失败：{exc}")
@@ -1351,23 +1034,6 @@ def twitter_crawl_blogger(
                 success_count += 1
                 cache.add(media_url)
                 append_log(f"[博主] @{screen_name} 下载完成：{filename}")
-                # 自动上传到网盘
-                ol = cfg.get("openlist", {})
-                if ol.get("enabled") and ol.get("auto_upload_after_download") and is_video:
-                    try:
-                        folder = f"blogger/{screen_name}"
-                        ol_proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else {}
-                        result = _openlist_upload_media(
-                            save_path, None, folder, ol, ol_proxies,
-                        )
-                        if result.get("video", {}).get("ok") and ol.get("delete_local_after_upload"):
-                            try:
-                                save_path.unlink()
-                                append_log(f"[网盘] 已删除本地文件：{filename}")
-                            except OSError as exc:
-                                append_log(f"[网盘] 删除本地文件失败 {filename}：{exc}")
-                    except Exception as exc:
-                        append_log(f"[网盘] 自动上传异常 {filename}：{exc}")
             else:
                 fail_count += 1
 
@@ -1438,151 +1104,6 @@ def run_blogger_crawl_job() -> None:
         blogger_state["is_running"] = False
 
 
-# ── OpenList 网盘上传 API ──
-
-@app.get("/api/openlist/status")
-def api_openlist_status():
-    return JSONResponse({
-        "ok": True,
-        "state": openlist_state,
-    })
-
-
-@app.post("/api/openlist/test")
-async def api_openlist_test(request: Request):
-    try:
-        body = await request.json()
-    except Exception:
-        body = {}
-    cfg = get_current_config()
-    ol = cfg.get("openlist", {})
-    base_url = body.get("base_url", ol.get("base_url", ""))
-    token = body.get("token", ol.get("token", ""))
-    proxy = str(cfg.get("proxy", "")).strip()
-    proxies = build_proxies(proxy)
-
-    if not base_url or not token:
-        return JSONResponse({"ok": False, "message": "base_url 和 token 不能为空"})
-
-    result = _openlist_test_connection(base_url, token, proxies)
-    return JSONResponse(result)
-
-
-@app.post("/api/openlist/upload")
-async def api_openlist_upload(request: Request):
-    try:
-        body = await request.json()
-    except Exception:
-        body = {}
-    folder = str(body.get("folder", "")).strip()
-    stem = str(body.get("stem", "")).strip()
-    if not folder or not stem:
-        return JSONResponse({"ok": False, "message": "folder 和 stem 不能为空"})
-    cfg = get_current_config()
-    download_root = resolve_download_root(cfg["download_root"])
-    # 查找视频文件
-    video_file = None
-    thumb_file = None
-    for ext in {".mp4", ".mkv", ".avi", ".mov", ".flv", ".wmv"}:
-        p = download_root / folder / f"{stem}{ext}"
-        if p.exists():
-            video_file = p
-            break
-    for ext in {".jpg", ".jpeg", ".png", ".webp"}:
-        p = download_root / folder / f"{stem}{ext}"
-        if p.exists():
-            thumb_file = p
-            break
-    if not video_file:
-        return JSONResponse({"ok": False, "message": f"未找到本地视频文件：{folder}/{stem}"})
-
-    ol = cfg.get("openlist", {})
-    if not ol.get("token") or not ol.get("base_url"):
-        return JSONResponse({"ok": False, "message": "网盘未配置 Token 或地址"})
-
-    proxy = str(cfg.get("proxy", "")).strip()
-    proxies = build_proxies(proxy)
-    result = _openlist_upload_media(video_file, thumb_file, folder, ol, proxies)
-    append_log(f"[网盘] 手动上传 {video_file.name}：{'成功' if result['ok'] else '部分失败'}")
-    return JSONResponse({"ok": result["ok"], "result": result})
-
-
-@app.post("/api/openlist/upload-all")
-def api_openlist_upload_all(request: Request):
-    cfg = get_current_config()
-    ol = cfg.get("openlist", {})
-    if not ol.get("token") or not ol.get("base_url"):
-        return JSONResponse({"ok": False, "message": "网盘未配置 Token 或地址"})
-
-    if openlist_state["is_running"]:
-        return JSONResponse({"ok": False, "message": "批量上传正在进行中"})
-
-    openlist_state["is_running"] = True
-    started = datetime.now()
-    openlist_state["last_run_time"] = started.strftime("%Y-%m-%d %H:%M:%S")
-
-    def _run():
-        try:
-            download_root = resolve_download_root(cfg["download_root"])
-            proxy = str(cfg.get("proxy", "")).strip()
-            proxies = build_proxies(proxy)
-            result = _openlist_upload_all_local(ol, download_root, proxies)
-            msg = result.get("message", "批量上传完成")
-            append_log(f"[网盘] {msg}")
-            openlist_state["last_result"] = msg
-            openlist_state["total_uploaded"] += result.get("success", 0)
-            openlist_state["total_failed"] += result.get("failed", 0)
-        except Exception as exc:
-            err = f"批量上传异常：{exc}"
-            append_log(f"[网盘] {err}")
-            openlist_state["last_result"] = err
-        finally:
-            openlist_state["is_running"] = False
-
-    threading.Thread(target=_run, daemon=True).start()
-    return JSONResponse({"ok": True, "message": "批量上传已启动"})
-
-
-@app.post("/api/openlist/save")
-async def api_openlist_save(request: Request):
-    try:
-        body = await request.json()
-    except Exception:
-        body = {}
-    with config_lock:
-        cfg = load_config()
-        ol = dict(cfg.get("openlist", {}))
-        for key in ("enabled", "base_url", "token", "remote_root", "overwrite",
-                     "upload_video", "upload_thumbnail", "auto_upload_after_download",
-                     "delete_local_after_upload", "timeout", "max_retries", "path_template"):
-            if key in body:
-                ol[key] = body[key]
-        cfg["openlist"] = ol
-        try:
-            save_config(cfg)
-            append_log("[网盘] 上传配置已保存")
-            return JSONResponse({"ok": True, "config": get_current_config().get("openlist", {})})
-        except ValueError as exc:
-            return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
-
-
-@app.get("/")
-def index(request: Request):
-    cfg = get_current_config()
-    state = dict(runtime_state)
-    return templates.TemplateResponse(
-        "index.html",
-        {
-            "request": request,
-            "config": cfg,
-            "state": state,
-            "blogger_state": dict(blogger_state),
-            "openlist_state": dict(openlist_state),
-            "logs": "\n".join(get_logs()),
-        },
-    )
-
-
 @app.post("/save")
 async def save(request: Request):
     try:
@@ -1608,22 +1129,6 @@ async def save(request: Request):
                 "twitter_blogger_max_media": int(form.get("twitter_blogger_max_media", cfg.get("twitter_blogger_max_media", -1))),
                 "twitter_blogger_has_retweet": parse_bool(form.get("twitter_blogger_has_retweet", cfg.get("twitter_blogger_has_retweet", False))),
             })
-            # OpenList 配置以 JSON 字符串形式提交
-            ol_raw = form.get("openlist", "")
-            if ol_raw:
-                try:
-                    ol_parsed = json.loads(ol_raw)
-                    # 类型纠正：布尔值在 form 中可能被转为字符串
-                    for bk in ("enabled", "overwrite", "upload_video", "upload_thumbnail",
-                               "auto_upload_after_download", "delete_local_after_upload"):
-                        if bk in ol_parsed and isinstance(ol_parsed[bk], str):
-                            ol_parsed[bk] = ol_parsed[bk].lower() in ("true", "1", "yes")
-                    for ik in ("timeout", "max_retries"):
-                        if ik in ol_parsed and isinstance(ol_parsed[ik], str):
-                            ol_parsed[ik] = int(ol_parsed[ik])
-                    cfg["openlist"] = ol_parsed
-                except (json.JSONDecodeError, TypeError) as exc:
-                    append_log(f"OpenList 配置解析失败：{exc}")
             save_config(cfg)
             updated = load_config()
         update_schedule(updated)
@@ -1700,7 +1205,6 @@ def status():
             "ok": True,
             "state": runtime_state,
             "blogger_state": blogger_state,
-            "openlist_state": openlist_state,
             "logs": get_logs(),
             "config": get_current_config(),
         }
@@ -1773,7 +1277,6 @@ async def api_waterfall_download(request: Request):
         target_dir,
         max_count=len(items),
         proxies=proxies,
-        cfg=cfg,
     )
     append_log(
         f"瀑布流手动下载完成：成功 {success_count}，跳过 {skip_count}，失败 {fail_count}"
@@ -2219,24 +1722,6 @@ async def api_replace_cover(folder: str = Form(""), stem: str = Form(...), file:
     return JSONResponse({"ok": True, "thumb": new_path.name})
 
 
-@app.get("/poster")
-def poster_page(request: Request, folder: str = ""):
-    return templates.TemplateResponse("poster.html", {"request": request, "folder": folder})
-
-
-@app.get("/waterfall")
-def waterfall_page(request: Request):
-    cfg = get_current_config()
-    return templates.TemplateResponse(
-        "waterfall.html",
-        {
-            "request": request,
-            "config": {"per_page": int(cfg.get("waterfall_per_page", 10))},
-            "page_size_options": sorted(ALLOWED_WATERFALL_PAGE_SIZES),
-        },
-    )
-
-
 # ──────────────────────────────────────────────────
 # 博主管理 API
 # ──────────────────────────────────────────────────
@@ -2388,6 +1873,21 @@ async def api_blogger_save_settings(request: Request):
     except Exception as exc:
         append_log(f"[博主] 保存设置失败：{exc}")
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+
+
+# ──────────────────────────────────────────────────
+# SPA 兜底路由（必须放在所有 API 路由之后）
+# ──────────────────────────────────────────────────
+
+@app.get("/{full_path:path}")
+def spa_fallback(full_path: str):
+    index = VUE_DIST / "index.html"
+    if not index.exists():
+        return JSONResponse(
+            {"error": "前端未构建，请在 frontend/ 目录运行 npm run build"},
+            status_code=500,
+        )
+    return FileResponse(str(index))
 
 
 if __name__ == "__main__":

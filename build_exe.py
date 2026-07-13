@@ -9,15 +9,14 @@ def build():
 
     # 定义资源文件 (Windows 使用 ; 分隔)
     # 格式: "源路径;目标路径"
-    add_data = ["templates;templates", "static;static"]
+    add_data = ["static;static"]
 
     # PyInstaller 参数
     params = [
         'main.py',              # 入口文件
         '--onefile',            # 打包成单个 exe 文件
         '--name', 'twitter-downloader', # 生成的可执行文件名
-        '--add-data', add_data[0], # 包含模板文件夹
-        '--add-data', add_data[1], # 包含静态资源文件夹
+        '--add-data', add_data[0], # 包含静态资源文件夹
         '--clean',              # 清理临时文件
         # '--noconsole',        # 如果需要隐藏控制台窗口，可以取消注释
         '--collect-all', 'uvicorn', # 收集 uvicorn 的所有依赖

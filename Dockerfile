@@ -17,7 +17,6 @@ RUN pip install --no-cache-dir --default-timeout=120 --retries=10 \
     -r /app/requirements.txt
 
 COPY main.py /app/main.py
-COPY templates /app/templates
 COPY static /app/static
 
 EXPOSE 2617

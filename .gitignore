@@ -26,3 +26,25 @@ config.json
 .idea/
 .trae/
 .claude/
+
+# Frontend dependencies
+frontend/node_modules/
+
+# Vite / unplugin 自动生成的类型声明（构建时自动重新生成）
+frontend/auto-imports.d.ts
+frontend/components.d.ts
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 日志文件
+*.log
+logs/
+
+# 临时文件
+*.tmp
+*.bak
+*.swp
+*~

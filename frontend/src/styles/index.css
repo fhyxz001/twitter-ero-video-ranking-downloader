@@ -1,0 +1,308 @@
+:root {
+  --app-max-width: 1200px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+.app-container {
+  max-width: var(--app-max-width);
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.page-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 8px 0 16px;
+}
+
+.muted {
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+}
+
+.text-monospace {
+  font-family: 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+}
+
+/* 海报墙网格 */
+.poster-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+/* 瀑布流 masonry */
+.waterfall-masonry {
+  column-count: 4;
+  column-gap: 12px;
+}
+@media (max-width: 1200px) {
+  .waterfall-masonry { column-count: 3; }
+}
+@media (max-width: 900px) {
+  .waterfall-masonry { column-count: 2; }
+}
+@media (max-width: 600px) {
+  .waterfall-masonry { column-count: 1; }
+}
+.waterfall-masonry > * {
+  break-inside: avoid;
+  margin-bottom: 12px;
+  display: block;
+}
+
+/* 日志面板 */
+.log-panel pre {
+  margin: 0;
+  padding: 12px;
+  background: var(--el-fill-color-light);
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  max-height: 320px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+}
+
+/* 海报卡片 */
+.poster-card {
+  border: 1px solid var(--el-border-color);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--el-bg-color);
+  transition: border-color 0.2s;
+}
+.poster-card.selected {
+  border-color: var(--el-color-primary);
+  box-shadow: 0 0 0 2px var(--el-color-primary-light-8);
+}
+.poster-card-cover {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: var(--el-fill-color-light);
+  cursor: pointer;
+  overflow: hidden;
+}
+.poster-card-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.poster-card-cover .placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--el-text-color-placeholder);
+  font-size: 13px;
+}
+.poster-card-cover .play-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  font-size: 32px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.poster-card-cover:hover .play-overlay {
+  opacity: 1;
+}
+.poster-card-cover .duration {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  padding: 1px 6px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  border-radius: 3px;
+  font-size: 11px;
+  font-family: 'Cascadia Code', monospace;
+}
+.poster-card-cover .checkbox {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 3px;
+  padding: 2px;
+}
+.poster-card-body {
+  padding: 8px 10px;
+}
+.poster-card-title {
+  font-size: 12px;
+  font-weight: 500;
+  word-break: break-all;
+  line-height: 1.4;
+  margin-bottom: 6px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.poster-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+/* 瀑布流卡片 */
+.waterfall-card {
+  border: 1px solid var(--el-border-color);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--el-bg-color);
+  transition: border-color 0.2s;
+}
+.waterfall-card.selected {
+  border-color: var(--el-color-primary);
+  box-shadow: 0 0 0 2px var(--el-color-primary-light-8);
+}
+.waterfall-card-cover {
+  position: relative;
+  cursor: pointer;
+  background: var(--el-fill-color-light);
+  overflow: hidden;
+}
+.waterfall-card-cover img {
+  width: 100%;
+  display: block;
+}
+.waterfall-card-cover .placeholder {
+  padding: 60px 0;
+  text-align: center;
+  color: var(--el-text-color-placeholder);
+  font-size: 13px;
+}
+.waterfall-card-cover .play-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  font-size: 36px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.waterfall-card-cover:hover .play-overlay {
+  opacity: 1;
+}
+.waterfall-card-cover .checkbox {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 3px;
+  padding: 2px;
+}
+.waterfall-card-body {
+  padding: 8px 10px;
+}
+.waterfall-card-title {
+  font-size: 12px;
+  font-weight: 500;
+  word-break: break-all;
+  line-height: 1.4;
+  margin-bottom: 6px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.waterfall-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* 博主卡片 */
+.blogger-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 6px;
+  background: var(--el-bg-color);
+  transition: border-color 0.2s;
+}
+.blogger-chip:hover {
+  border-color: var(--el-color-primary-light-5);
+}
+.blogger-chip .info {
+  flex: 1;
+  min-width: 0;
+}
+.blogger-chip .display-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+.blogger-chip .screen-name {
+  font-size: 11px;
+  color: var(--el-text-color-secondary);
+}
+.blogger-chip .description {
+  font-size: 12px;
+  color: var(--el-text-color-regular);
+  margin-top: 2px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.blogger-chip .file-count {
+  font-size: 11px;
+  color: var(--el-color-success);
+  margin-top: 2px;
+}
+
+/* 状态条 */
+.status-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.status-strip .item {
+  padding: 10px 12px;
+  background: var(--el-bg-color);
+  border: 1px solid var(--el-border-color);
+  border-radius: 6px;
+}
+.status-strip .label {
+  font-size: 11px;
+  color: var(--el-text-color-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.status-strip .value {
+  font-size: 14px;
+  font-weight: 600;
+}
