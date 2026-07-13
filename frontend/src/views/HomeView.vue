@@ -217,7 +217,7 @@ onUnmounted(() => {
           <template #header>
             <span style="font-weight: 600;">下载设置</span>
           </template>
-          <el-form label-width="0">
+          <el-form label-width="auto">
             <el-form-item>
               <template #label>
                 <span style="font-size: 13px;">视频下载根目录</span>
