@@ -25,3 +25,4 @@ coverage.xml
 config.json
 nas_downloads/
 downloads/
+frontend/node_modules/
