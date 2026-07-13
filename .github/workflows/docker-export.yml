@@ -48,9 +48,16 @@ jobs:
           docker save twitter-downloader:latest | gzip > "${FILENAME}"
           ls -lh "${FILENAME}"
 
+      - name: Prepare artifact name
+        id: artifact
+        run: |
+          ARCH="${{ github.event.inputs.arch || 'linux/amd64' }}"
+          NAME="twitter-downloader-${ARCH//\//-}"
+          echo "name=${NAME}" >> "${GITHUB_OUTPUT}"
+
       - name: Upload offline image artifact
         uses: actions/upload-artifact@v4
         with:
-          name: twitter-downloader-${{ replace(github.event.inputs.arch || 'linux/amd64', '/', '-') }}
+          name: ${{ steps.artifact.outputs.name }}
           path: twitter-downloader-*.tar.gz
           if-no-files-found: error
