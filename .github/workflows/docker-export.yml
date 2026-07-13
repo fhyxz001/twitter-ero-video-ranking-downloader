@@ -1,0 +1,56 @@
+name: Export Docker Image
+
+on:
+  push:
+    branches: ["master"]
+  workflow_dispatch:
+    inputs:
+      arch:
+        description: '目标架构'
+        required: true
+        default: 'linux/amd64'
+        type: choice
+        options:
+          - linux/amd64
+          - linux/arm64
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: ${{ github.event.inputs.arch || 'linux/amd64' }}
+          load: true
+          tags: twitter-downloader:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Save image to offline archive
+        run: |
+          ARCH="${{ github.event.inputs.arch || 'linux/amd64' }}"
+          FILENAME="twitter-downloader-${ARCH//\//-}.tar.gz"
+          docker save twitter-downloader:latest | gzip > "${FILENAME}"
+          ls -lh "${FILENAME}"
+
+      - name: Upload offline image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: twitter-downloader-${{ github.event.inputs.arch || 'linux/amd64' }}
+          path: twitter-downloader-*.tar.gz
+          if-no-files-found: error
