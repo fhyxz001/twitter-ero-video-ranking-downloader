@@ -51,6 +51,6 @@ jobs:
       - name: Upload offline image artifact
         uses: actions/upload-artifact@v4
         with:
-          name: twitter-downloader-${{ github.event.inputs.arch || 'linux/amd64' }}
+          name: twitter-downloader-${{ replace(github.event.inputs.arch || 'linux/amd64', '/', '-') }}
           path: twitter-downloader-*.tar.gz
           if-no-files-found: error
