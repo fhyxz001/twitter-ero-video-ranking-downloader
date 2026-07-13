@@ -161,6 +161,7 @@ def get_logs() -> List[str]:
         return list(log_lines)
 
 
+
 def parse_pektino_rsc(text: str) -> List[dict]:
     """Parse Next.js RSC payload from pektino.com to extract video items.
 
@@ -705,6 +706,8 @@ def _get_highest_video_quality(variants: list) -> Optional[str]:
 
 
 def _msecs_to_label(msecs: int) -> str:
+    if not msecs or msecs <= 0:
+        msecs = 0
     t = time.localtime(msecs / 1000)
     return time.strftime("%Y-%m-%d %H-%M", t)
 
@@ -853,7 +856,7 @@ def twitter_fetch_tweets(
                         continue
 
                     msecs_str = edit_ctrl.get("editable_until_msecs", "0")
-                    tweet_msecs = int(msecs_str) - 3600000 if msecs_str else 0
+                    tweet_msecs = max(0, int(msecs_str) - 3600000) if msecs_str else 0
                     timestr = _msecs_to_label(tweet_msecs)
 
                     if "extended_entities" in legacy:
@@ -869,8 +872,8 @@ def twitter_fetch_tweets(
             # has_retweet 模式的媒体提取
             if "retweeted_status_result" in legacy:
                 rt_legacy = legacy["retweeted_status_result"]["result"]["legacy"]
-                rt_msecs_str = tweet_result.get("edit_control", {}).get("editable_until_msecs", "0") if "tweet" in tweet_result else tweet_result.get("edit_control", {}).get("editable_until_msecs", "0")
-                tweet_msecs = int(rt_msecs_str) - 3600000 if rt_msecs_str else 0
+                rt_msecs_str = tweet_result.get("edit_control", {}).get("editable_until_msecs", "0")
+                tweet_msecs = max(0, int(rt_msecs_str) - 3600000) if rt_msecs_str else 0
                 timestr = _msecs_to_label(tweet_msecs)
                 if "extended_entities" in rt_legacy:
                     for media in rt_legacy["extended_entities"]["media"]:
@@ -882,7 +885,7 @@ def twitter_fetch_tweets(
                             media_list.append((media["media_url_https"], f"{timestr}-img-rt", False))
             else:
                 msecs_str = edit_ctrl.get("editable_until_msecs", "0")
-                tweet_msecs = int(msecs_str) - 3600000 if msecs_str else 0
+                tweet_msecs = max(0, int(msecs_str) - 3600000) if msecs_str else 0
                 timestr = _msecs_to_label(tweet_msecs)
                 if "extended_entities" in legacy:
                     for media in legacy["extended_entities"]["media"]:
@@ -1460,7 +1463,10 @@ def _format_duration(seconds: float) -> str:
 def _get_or_create_thumb(source_path: Path) -> Path:
     """生成或返回缓存的 WebP 缩略图。"""
     THUMB_CACHE_DIR.mkdir(exist_ok=True)
-    key = hashlib.md5(f"{source_path.stat().st_mtime_ns}::{source_path}".encode()).hexdigest()[:16]
+    try:
+        key = hashlib.md5(f"{source_path.stat().st_mtime_ns}::{source_path}".encode()).hexdigest()[:16]
+    except OSError:
+        return source_path
     cache_file = THUMB_CACHE_DIR / f"{key}.webp"
     if cache_file.exists():
         return cache_file
@@ -1478,7 +1484,10 @@ def _get_or_create_thumb(source_path: Path) -> Path:
 
 
 def _probe_video_duration(video_path: Path) -> Optional[str]:
-    key = f"{video_path.stat().st_mtime_ns}::{video_path}"
+    try:
+        key = f"{video_path.stat().st_mtime_ns}::{video_path}"
+    except OSError:
+        return None
     cached = _duration_cache.get(key)
     if cached is not None:
         expires_at, value = cached
@@ -1595,7 +1604,10 @@ def _batch_probe_durations(pending: List[tuple]) -> None:
     with ThreadPoolExecutor(max_workers=4) as ex:
         futures = [ex.submit(probe_one, f, s, v) for f, s, _, v in pending]
         for f in futures:
-            r = f.result()
+            try:
+                r = f.result()
+            except Exception:
+                continue
             if r:
                 results[r[0]] = r[1]
 
@@ -1691,10 +1703,11 @@ async def api_delete(request: Request):
         return JSONResponse({"ok": False, "error": "无效文件夹"}, status_code=400)
     deleted = []
     for stem in stems:
-        if "/" in str(stem) or "\\" in str(stem):
+        stem_str = str(stem)
+        if "/" in stem_str or "\\" in stem_str:
             continue
-        for p in list(directory.glob(f"{stem}.*")):
-            if p.suffix.lower() in VIDEO_EXTS | IMAGE_EXTS:
+        for p in list(directory.iterdir()):
+            if p.stem == stem_str and p.suffix.lower() in VIDEO_EXTS | IMAGE_EXTS:
                 p.unlink(missing_ok=True)
                 deleted.append(p.name)
     _invalidate_poster_cache()
@@ -1712,8 +1725,8 @@ async def api_replace_cover(folder: str = Form(""), stem: str = Form(...), file:
     if suffix not in IMAGE_EXTS:
         return JSONResponse({"ok": False, "error": "不支持的图片格式"}, status_code=400)
     # Remove old thumb files for this stem
-    for p in list(directory.glob(f"{stem}.*")):
-        if p.suffix.lower() in IMAGE_EXTS:
+    for p in list(directory.iterdir()):
+        if p.stem == stem and p.suffix.lower() in IMAGE_EXTS:
             p.unlink(missing_ok=True)
     new_path = directory / f"{stem}{suffix}"
     content = await file.read()
