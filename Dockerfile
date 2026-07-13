@@ -38,7 +38,7 @@ COPY main.py /app/main.py
 COPY static /app/static
 
 # Copy built frontend from builder stage
-COPY --from=frontend-builder /build/static/dist /app/static/dist
+COPY --from=frontend-builder /static/dist /app/static/dist
 
 EXPOSE 2617
 
