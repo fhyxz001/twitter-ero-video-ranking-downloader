@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useConfigStore } from '@/stores/config'
 import { useStatusStore } from '@/stores/status'
 import { api } from '@/api'
 import SettingsDrawer from '@/components/SettingsDrawer.vue'
-import BloggerList from '@/components/BloggerList.vue'
 import LogPanel from '@/components/LogPanel.vue'
 
 const configStore = useConfigStore()
@@ -19,7 +18,6 @@ const dirValid = ref<boolean | null>(null)
 const dirError = ref('')
 let quickSaveTimer: number | null = null
 
-const bloggerCount = computed(() => configStore.config?.twitter_blogger_list?.length || 0)
 const autoEnabled = computed(() => configStore.config?.auto_download_enabled !== false)
 const isRunning = computed(() => statusStore.runtimeState.is_running)
 const nextRun = computed(() =>
@@ -91,11 +89,6 @@ async function saveMaxDaily() {
     schedule_cron: c.schedule_cron || '0 3 * * *',
     max_daily_downloads: String(v),
     ranking_range: c.ranking_range || 'daily',
-    twitter_cookie: c.twitter_cookie || '',
-    twitter_blogger_enabled: c.twitter_blogger_enabled ? '1' : '0',
-    twitter_blogger_cron: c.twitter_blogger_cron || '0 4 * * *',
-    twitter_blogger_max_media: String(c.twitter_blogger_max_media ?? -1),
-    twitter_blogger_has_retweet: c.twitter_blogger_has_retweet ? '1' : '0',
   }
   try {
     await configStore.save(payload)
@@ -125,28 +118,8 @@ async function runNow() {
   }
 }
 
-function browseDirectory() {
-  const i = document.createElement('input')
-  i.type = 'file'
-  i.webkitdirectory = true
-  ;(i as any).directory = true
-  i.onchange = (e: Event) => {
-    const target = e.target as HTMLInputElement
-    const files = target.files
-    if (files && files.length > 0) {
-      const f = files[0] as File & { path?: string }
-      if (f.path) {
-        downloadRoot.value = f.path.replace(/[\\/][^\\/]+$/, '')
-      } else if (f.webkitRelativePath) {
-        downloadRoot.value = f.webkitRelativePath.split('/')[0]
-      }
-      onDownloadRootInput()
-    }
-  }
-  i.click()
-}
-
 onMounted(async () => {
+  await configStore.load()
   await statusStore.refresh()
   if (configStore.config) {
     downloadRoot.value = configStore.config.download_root || ''
@@ -158,6 +131,13 @@ onMounted(async () => {
 
 onUnmounted(() => {
   statusStore.stopPolling()
+})
+
+watch(() => configStore.config, (c) => {
+  if (c) {
+    downloadRoot.value = c.download_root || ''
+    maxDailyDownloads.value = c.max_daily_downloads || 10
+  }
 })
 </script>
 
@@ -187,10 +167,6 @@ onUnmounted(() => {
         </div>
       </div>
       <div class="item">
-        <div class="label">博主</div>
-        <div class="value">{{ bloggerCount }}</div>
-      </div>
-      <div class="item">
         <div class="label">上次执行</div>
         <div class="value">{{ statusStore.runtimeState.last_run_time || '暂无' }}</div>
       </div>
@@ -207,12 +183,9 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- 博主管理 + 下载设置 -->
+    <!-- 下载设置 -->
     <el-row :gutter="16">
-      <el-col :xs="24" :md="14">
-        <BloggerList />
-      </el-col>
-      <el-col :xs="24" :md="10">
+      <el-col :xs="24" :md="24">
         <el-card>
           <template #header>
             <span style="font-weight: 600;">下载设置</span>
@@ -224,7 +197,6 @@ onUnmounted(() => {
               </template>
               <div style="display: flex; gap: 8px; width: 100%;">
                 <el-input v-model="downloadRoot" @input="onDownloadRootInput" />
-                <el-button @click="browseDirectory">浏览</el-button>
               </div>
               <div v-if="dirError" class="muted" style="color: var(--el-color-danger); margin-top: 4px;">
                 {{ dirError }}

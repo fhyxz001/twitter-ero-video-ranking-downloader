@@ -3,7 +3,6 @@ import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useConfigStore } from '@/stores/config'
 import { useStatusStore } from '@/stores/status'
-import { useBloggerStore } from '@/stores/blogger'
 import { api } from '@/api'
 
 const props = defineProps<{ modelValue: boolean }>()
@@ -11,18 +10,12 @@ const emit = defineEmits<{ (e: 'update:modelValue', value: boolean): void }>()
 
 const configStore = useConfigStore()
 const statusStore = useStatusStore()
-const bloggerStore = useBloggerStore()
 
 const form = ref({
   proxy: '',
   auto_download_enabled: true,
   schedule_cron: '0 3 * * *',
   ranking_range: 'daily',
-  twitter_cookie: '',
-  blogger_enabled: true,
-  blogger_cron: '0 4 * * *',
-  blogger_max_media: -1,
-  blogger_has_retweet: false,
 })
 const saving = ref(false)
 
@@ -30,23 +23,30 @@ watch(
   () => props.modelValue,
   (open) => {
     if (open) {
-      const c = configStore.config
-      if (c) {
-        form.value = {
-          proxy: c.proxy || '',
-          auto_download_enabled: c.auto_download_enabled !== false,
-          schedule_cron: c.schedule_cron || '0 3 * * *',
-          ranking_range: c.ranking_range || 'daily',
-          twitter_cookie: c.twitter_cookie || '',
-          blogger_enabled: c.twitter_blogger_enabled !== false,
-          blogger_cron: c.twitter_blogger_cron || '0 4 * * *',
-          blogger_max_media: c.twitter_blogger_max_media ?? -1,
-          blogger_has_retweet: c.twitter_blogger_has_retweet === true,
-        }
-      }
+      populateForm()
     }
   }
 )
+
+watch(
+  () => configStore.config,
+  (c) => {
+    if (c && props.modelValue) {
+      populateForm()
+    }
+  }
+)
+
+function populateForm() {
+  const c = configStore.config
+  if (!c) return
+  form.value = {
+    proxy: c.proxy || '',
+    auto_download_enabled: c.auto_download_enabled !== false,
+    schedule_cron: c.schedule_cron || '0 3 * * *',
+    ranking_range: c.ranking_range || 'daily',
+  }
+}
 
 function close() {
   emit('update:modelValue', false)
@@ -56,7 +56,10 @@ async function save() {
   saving.value = true
   try {
     const c = configStore.config
-    if (!c) return
+    if (!c) {
+      ElMessage.warning('配置尚未加载，请稍后重试')
+      return
+    }
     const payload: Record<string, string | boolean | number> = {
       download_root: c.download_root,
       proxy: form.value.proxy,
@@ -64,11 +67,6 @@ async function save() {
       schedule_cron: form.value.schedule_cron,
       max_daily_downloads: c.max_daily_downloads,
       ranking_range: form.value.ranking_range,
-      twitter_cookie: form.value.twitter_cookie,
-      twitter_blogger_enabled: form.value.blogger_enabled ? '1' : '0',
-      twitter_blogger_cron: form.value.blogger_cron,
-      twitter_blogger_max_media: form.value.blogger_max_media,
-      twitter_blogger_has_retweet: form.value.blogger_has_retweet ? '1' : '0',
     }
     await configStore.save(payload)
     await statusStore.refresh()
@@ -110,26 +108,6 @@ async function save() {
           <el-option label="月榜" value="monthly" />
           <el-option label="总榜" value="all" />
         </el-select>
-      </el-form-item>
-
-      <div class="section-title">Twitter 设置</div>
-      <el-form-item label="Twitter Cookie">
-        <el-input v-model="form.twitter_cookie" type="password" placeholder="auth_token=xxx; ct0=xxx;" show-password />
-      </el-form-item>
-
-      <div class="section-title">博主爬取设置</div>
-      <el-form-item label="开启自动爬取">
-        <el-switch v-model="form.blogger_enabled" />
-      </el-form-item>
-      <el-form-item label="爬取 Cron">
-        <el-input v-model="form.blogger_cron" placeholder="0 4 * * *" />
-      </el-form-item>
-      <el-form-item label="每人最多爬取数">
-        <el-input-number v-model="form.blogger_max_media" :min="-1" :max="500" />
-        <div class="muted" style="margin-top: 4px;">-1 不限制</div>
-      </el-form-item>
-      <el-form-item label="包含转推">
-        <el-switch v-model="form.blogger_has_retweet" />
       </el-form-item>
     </el-form>
 

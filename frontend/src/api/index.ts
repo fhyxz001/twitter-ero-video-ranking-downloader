@@ -26,12 +26,6 @@ export interface AppConfig {
   max_daily_downloads: number
   ranking_range: string
   waterfall_per_page: number
-  twitter_cookie: string
-  twitter_blogger_list: string[]
-  twitter_blogger_enabled: boolean
-  twitter_blogger_cron: string
-  twitter_blogger_max_media: number
-  twitter_blogger_has_retweet: boolean
 }
 
 export interface RuntimeState {
@@ -40,16 +34,9 @@ export interface RuntimeState {
   last_result: string
 }
 
-export interface BloggerState {
-  is_running: boolean
-  last_run_time: string | null
-  last_result: string
-}
-
 export interface StatusResponse {
   ok: boolean
   state: RuntimeState
-  blogger_state: BloggerState
   logs: string[]
   config: AppConfig
 }
@@ -69,41 +56,6 @@ export const api = {
         per_page,
       })
       .then((r) => r.data),
-}
-
-// ===== Blogger =====
-
-export interface Blogger {
-  screen_name: string
-  name: string
-  profile_image_url: string
-  description: string
-  file_count: number
-}
-
-export interface BloggerListResponse {
-  ok: boolean
-  bloggers: Blogger[]
-  state: BloggerState
-  settings: {
-    twitter_blogger_enabled: boolean
-    twitter_blogger_cron: string
-    twitter_blogger_max_media: number
-    twitter_blogger_has_retweet: boolean
-    twitter_cookie_set: boolean
-  }
-}
-
-export const bloggerApi = {
-  list: () => http.get<BloggerListResponse>('/api/blogger/list').then((r) => r.data),
-  add: (screen_name: string) =>
-    http.post<{ ok: boolean; error?: string }>('/api/blogger/add', { screen_name }).then((r) => r.data),
-  remove: (screen_name: string) =>
-    http.post<{ ok: boolean; error?: string }>('/api/blogger/remove', { screen_name }).then((r) => r.data),
-  crawlNow: () =>
-    http.post<{ ok: boolean; message?: string }>('/api/blogger/crawl-now').then((r) => r.data),
-  saveSettings: (body: Record<string, unknown>) =>
-    http.post<{ ok: boolean; error?: string }>('/api/blogger/save-settings', body).then((r) => r.data),
 }
 
 // ===== Poster =====
