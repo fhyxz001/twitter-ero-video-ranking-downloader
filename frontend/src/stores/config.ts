@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { api, type AppConfig } from '@/api'
+import { api, type AppConfig, type SaveConfigPayload } from '@/api'
 
 export const useConfigStore = defineStore('config', () => {
   const config = ref<AppConfig | null>(null)
@@ -17,12 +17,8 @@ export const useConfigStore = defineStore('config', () => {
     }
   }
 
-  async function save(form: Record<string, string | boolean | number>) {
-    const fd = new FormData()
-    for (const [k, v] of Object.entries(form)) {
-      fd.append(k, String(v))
-    }
-    const r = await api.saveConfig(fd)
+  async function save(payload: SaveConfigPayload) {
+    const r = await api.saveConfig(payload)
     if (r.ok) {
       await load()
     }
@@ -30,9 +26,7 @@ export const useConfigStore = defineStore('config', () => {
   }
 
   async function saveQuickDownloadRoot(download_root: string) {
-    const fd = new FormData()
-    fd.append('download_root', download_root)
-    const r = await api.saveQuickConfig(fd)
+    const r = await api.saveQuickConfig({ download_root })
     if (r.ok && r.config) {
       config.value = r.config
     }

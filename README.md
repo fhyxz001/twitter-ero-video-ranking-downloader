@@ -2,14 +2,13 @@
 
 [![Docker Pulls](https://img.shields.io/docker/pulls/hexbkyoma/twitter-ero-video-ranking-downloader)](https://hub.docker.com/r/hexbkyoma/twitter-ero-video-ranking-downloader)
 
-从 [truvaze.com](https://truvaze.com/api/media) 按排行自动下载视频，支持按分类、时长、排序方式筛选。提供 Web 界面管理配置、查看日志、浏览瀑布流预览和本地海报墙。
+从 [pektino.com](https://pektino.com/api/media) 排行榜按播放量自动下载视频，支持日/周/月/总榜切换。提供 Web 界面管理配置、查看日志、浏览瀑布流预览和本地海报墙。
 
 ## 功能概览
 
-- **定时下载** — 按配置的排序/范围/时长/分类自动下载，支持每日定时执行，也可一键关闭自动下载
-- **分类管理** — 可配置多个标签分类，每个分类独立下载到对应子文件夹
-- **瀑布流预览** — 在线浏览远端排行视频，支持独立设置每页数量/排序/时间范围/时长筛选，选择后一键下载
-- **海报墙** — 浏览本地已下载的视频，支持预览播放、替换封面、批量删除
+- **定时下载** — 按配置的榜单范围自动下载排行靠前的视频，支持每日定时执行，也可一键关闭
+- **瀑布流预览** — 在线浏览远端排行视频，可独立设置每页数量，勾选后一键下载
+- **海报墙** — 浏览本地已下载的视频，支持预览播放、替换封面、批量删除、服务端分页与排序
 - **Web 界面** — 所有操作通过浏览器完成，端口 `2617`
 
 ## 配置说明
@@ -19,41 +18,27 @@
 ```json
 {
   "download_root": "/data/downloads",
-  "proxy": "http://192.168.1.13:20171",
+  "proxy": "",
   "auto_download_enabled": true,
-  "schedule_time": "03:00",
+  "schedule_cron": "0 3 * * *",
   "max_daily_downloads": 10,
-  "sort": "pv",
-  "range": "daily",
-  "min_time": 0,
-  "max_time": 86400,
-  "time_filter_unit": "seconds",
-  "tag_codes": [],
-  "waterfall_per_page": 10,
-  "waterfall_sort": "pv",
-  "waterfall_range": "daily",
-  "waterfall_min_time": 0,
-  "waterfall_max_time": 86400
+  "ranking_range": "daily",
+  "waterfall_per_page": 10
 }
 ```
 
 | 字段 | 说明 | 默认值 |
 |---|---|---|
 | `download_root` | 视频下载的根目录，绝对路径 | `/data/downloads` |
-| `proxy` | HTTP 代理地址，为空则不使用代理 | `http://192.168.1.13:20171` |
-| `auto_download_enabled` | 是否开启每日自动下载，关闭后仅保留手动下载 | `true` |
-| `schedule_time` | 每日定时执行时间，格式 `HH:MM` | `03:00` |
-| `max_daily_downloads` | 每个分类每日最大下载数量 | `10` |
-| `sort` | 排序方式：`pv` 播放量 / `favorite` 点赞 / `time` 时长 / `created` 最近添加 | `pv` |
-| `range` | 时间范围：`daily` 每日 / `weekly` 每周 / `monthly` 每月 / `all` 全部 | `daily` |
-| `min_time` | 最短时长（秒），`0` 表示不限制 | `0` |
-| `max_time` | 最长时长（秒），`86400` 表示不限制 | `86400` |
-| `tag_codes` | 要下载的分类标签列表，为空则只下载无标签分类 | `[]` |
+| `proxy` | HTTP 代理地址，为空则直连 | 空 |
+| `auto_download_enabled` | 是否开启定时自动下载，关闭后仅保留手动下载 | `true` |
+| `schedule_cron` | 定时执行 cron 表达式（5 位） | `0 3 * * *` |
+| `max_daily_downloads` | 每次执行最大下载数量 | `10` |
+| `ranking_range` | 榜单范围：`daily` 日榜 / `weekly` 周榜 / `monthly` 月榜 / `all` 总榜 | `daily` |
 | `waterfall_per_page` | 瀑布流每页展示数量，可选 `10/20/30/50/100` | `10` |
-| `waterfall_sort` | 瀑布流排序方式，独立于下载页设置 | `pv` |
-| `waterfall_range` | 瀑布流时间范围，独立于下载页设置 | `daily` |
-| `waterfall_min_time` | 瀑布流最短时长（秒） | `0` |
-| `waterfall_max_time` | 瀑布流最长时长（秒） | `86400` |
+
+> 配置采用白名单制：仅保留上述键，历史版本遗留的其他键（含敏感信息）会在下次保存时自动清除。
+> `/status` 等接口只返回上述白名单字段，不会泄露其他配置内容。
 
 ---
 

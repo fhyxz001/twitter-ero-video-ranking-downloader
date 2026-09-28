@@ -60,15 +60,14 @@ async function save() {
       ElMessage.warning('配置尚未加载，请稍后重试')
       return
     }
-    const payload: Record<string, string | boolean | number> = {
+    await configStore.save({
       download_root: c.download_root,
       proxy: form.value.proxy,
-      auto_download_enabled: form.value.auto_download_enabled ? '1' : '0',
+      auto_download_enabled: form.value.auto_download_enabled,
       schedule_cron: form.value.schedule_cron,
       max_daily_downloads: c.max_daily_downloads,
       ranking_range: form.value.ranking_range,
-    }
-    await configStore.save(payload)
+    })
     await statusStore.refresh()
     ElMessage.success('设置已保存')
     close()

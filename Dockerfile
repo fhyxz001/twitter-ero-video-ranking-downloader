@@ -31,8 +31,9 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir --default-timeout=120 --retries=10 \
     -r /app/requirements.txt
 
-# Copy backend code
+# Copy backend code (entry + app package)
 COPY main.py /app/main.py
+COPY app /app/app
 
 # Copy static assets from repo (set.png, etc.)
 COPY static /app/static

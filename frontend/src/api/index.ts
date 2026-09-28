@@ -28,6 +28,15 @@ export interface AppConfig {
   waterfall_per_page: number
 }
 
+export interface SaveConfigPayload {
+  download_root: string
+  proxy: string
+  auto_download_enabled: boolean
+  schedule_cron: string
+  max_daily_downloads: number
+  ranking_range: string
+}
+
 export interface RuntimeState {
   is_running: boolean
   last_run_time: string | null
@@ -44,10 +53,10 @@ export interface StatusResponse {
 export const api = {
   getStatus: () => http.get<StatusResponse>('/status').then((r) => r.data),
   runNow: () => http.post<{ ok: boolean; message?: string }>('/run-now').then((r) => r.data),
-  saveConfig: (form: FormData) =>
-    http.post<{ ok: boolean; error?: string }>('/save', form).then((r) => r.data),
-  saveQuickConfig: (form: FormData) =>
-    http.post<{ ok: boolean; config?: AppConfig; error?: string }>('/save-quick', form).then((r) => r.data),
+  saveConfig: (payload: SaveConfigPayload) =>
+    http.post<{ ok: boolean; error?: string }>('/save', payload).then((r) => r.data),
+  saveQuickConfig: (payload: { download_root: string }) =>
+    http.post<{ ok: boolean; config?: AppConfig; error?: string }>('/save-quick', payload).then((r) => r.data),
   checkDir: (path: string) =>
     http.get<{ ok: boolean; error?: string }>('/api/check-dir', { params: { path } }).then((r) => r.data),
   saveWaterfallSettings: (per_page: number) =>
@@ -76,11 +85,27 @@ export interface PosterItem {
   duration: string | null
 }
 
+export type PosterSort =
+  | 'time_desc'
+  | 'time_asc'
+  | 'size_desc'
+  | 'size_asc'
+  | 'duration_desc'
+  | 'duration_asc'
+
+export interface PosterPagination {
+  page: number
+  page_size: number
+  total: number
+  has_next: boolean
+}
+
 export interface PosterResponse {
   ok: boolean
   folder: string | null
   folders: PosterFolder[]
   items: PosterItem[]
+  pagination: PosterPagination
 }
 
 export interface PosterDurationsResponse {
@@ -89,9 +114,16 @@ export interface PosterDurationsResponse {
 }
 
 export const posterApi = {
-  list: (folder?: string) =>
+  list: (params: { folder?: string; page?: number; page_size?: number; sort?: PosterSort } = {}) =>
     http
-      .get<PosterResponse>('/api/poster', { params: folder ? { folder } : {} })
+      .get<PosterResponse>('/api/poster', {
+        params: {
+          folder: params.folder || undefined,
+          page: params.page ?? 1,
+          page_size: params.page_size ?? 20,
+          sort: params.sort ?? 'time_desc',
+        },
+      })
       .then((r) => r.data),
   durations: (folder?: string) =>
     http

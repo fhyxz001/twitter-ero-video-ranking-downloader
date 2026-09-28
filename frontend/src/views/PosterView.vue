@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { posterApi, type PosterFolder, type PosterItem } from '@/api'
+import { posterApi, type PosterFolder, type PosterItem, type PosterSort } from '@/api'
 import PosterCard from '@/components/PosterCard.vue'
 import VideoPreviewDialog from '@/components/VideoPreviewDialog.vue'
 import ReplaceCoverDialog from '@/components/ReplaceCoverDialog.vue'
@@ -10,12 +10,13 @@ import ReplaceCoverDialog from '@/components/ReplaceCoverDialog.vue'
 const route = useRoute()
 const router = useRouter()
 
-const allItems = ref<PosterItem[]>([])
+const items = ref<PosterItem[]>([])
 const folders = ref<PosterFolder[]>([])
 const folderFilter = ref<string>((route.query.folder as string) || '')
-const sortSelect = ref<'time_desc' | 'time_asc' | 'size_desc' | 'size_asc' | 'duration_desc' | 'duration_asc'>('time_desc')
+const sortSelect = ref<PosterSort>('time_desc')
 const pageSize = ref<number>(Number(localStorage.getItem('poster_page_size')) || 20)
 const currentPage = ref(1)
+const total = ref(0)
 const selectedKeys = ref<Set<string>>(new Set())
 const durationCache = ref<Map<string, string>>(new Map())
 const loading = ref(false)
@@ -26,6 +27,8 @@ const previewItem = ref<PosterItem | null>(null)
 const replaceOpen = ref(false)
 const replaceItem = ref<PosterItem | null>(null)
 
+const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
+
 function itemKey(i: PosterItem): string {
   return i.folder + '::' + i.stem
 }
@@ -34,39 +37,8 @@ function durationLabel(i: PosterItem): string {
   return i.duration || durationCache.value.get(itemKey(i)) || '--:--'
 }
 
-function durationSeconds(i: PosterItem): number {
-  const r = i.duration || durationCache.value.get(itemKey(i)) || ''
-  const p = r.split(':').map(Number)
-  if (!p.length || p.some(isNaN)) return -1
-  if (p.length === 2) return p[0] * 60 + p[1]
-  if (p.length === 3) return p[0] * 3600 + p[1] * 60 + p[2]
-  return -1
-}
-
-const visibleItems = computed(() => {
-  let list = allItems.value.filter((i) => !folderFilter.value || i.folder === folderFilter.value)
-  const sv = sortSelect.value
-  list = [...list].sort((a, b) => {
-    if (sv === 'time_asc') return a.stem.localeCompare(b.stem)
-    if (sv === 'time_desc') return b.stem.localeCompare(a.stem)
-    if (sv === 'size_asc') return a.size - b.size
-    if (sv === 'size_desc') return b.size - a.size
-    if (sv === 'duration_asc') return durationSeconds(a) - durationSeconds(b)
-    if (sv === 'duration_desc') return durationSeconds(b) - durationSeconds(a)
-    return 0
-  })
-  return list
-})
-
-const totalPages = computed(() => Math.max(1, Math.ceil(visibleItems.value.length / pageSize.value)))
-
-const currentPageItems = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  return visibleItems.value.slice(start, start + pageSize.value)
-})
-
 const allSelected = computed(
-  () => visibleItems.value.length > 0 && visibleItems.value.every((i) => selectedKeys.value.has(itemKey(i)))
+  () => items.value.length > 0 && items.value.every((i) => selectedKeys.value.has(itemKey(i)))
 )
 
 function syncURL() {
@@ -79,16 +51,29 @@ async function loadItems() {
   loading.value = true
   loadError.value = ''
   try {
-    const data = await posterApi.list(folderFilter.value || undefined)
-    allItems.value = data.items || []
+    const data = await posterApi.list({
+      folder: folderFilter.value || undefined,
+      page: currentPage.value,
+      page_size: pageSize.value,
+      sort: sortSelect.value,
+    })
+    // 当前页被删空时回退一页
+    if ((!data.items || data.items.length === 0) && currentPage.value > 1) {
+      loading.value = false
+      currentPage.value -= 1
+      return loadItems()
+    }
+    items.value = data.items || []
     folders.value = data.folders || []
-    for (const i of allItems.value) {
+    total.value = data.pagination?.total ?? items.value.length
+    selectedKeys.value = new Set()
+    for (const i of items.value) {
       if (i.duration) durationCache.value.set(itemKey(i), i.duration)
     }
-    currentPage.value = 1
   } catch (e: any) {
     loadError.value = e?.message || '加载失败'
-    allItems.value = []
+    items.value = []
+    total.value = 0
   } finally {
     loading.value = false
   }
@@ -117,20 +102,24 @@ async function pollDurations() {
 
 function onFolderChange() {
   syncURL()
+  currentPage.value = 1
   loadItems()
 }
 
 function onSortChange() {
   currentPage.value = 1
+  loadItems()
 }
 
 function onPageSizeChange() {
   localStorage.setItem('poster_page_size', String(pageSize.value))
   currentPage.value = 1
+  loadItems()
 }
 
 function onPageChange(p: number) {
   currentPage.value = p
+  loadItems()
 }
 
 function toggleSelect(item: PosterItem) {
@@ -142,9 +131,9 @@ function toggleSelect(item: PosterItem) {
 
 function toggleSelectAll() {
   if (allSelected.value) {
-    for (const i of visibleItems.value) selectedKeys.value.delete(itemKey(i))
+    for (const i of items.value) selectedKeys.value.delete(itemKey(i))
   } else {
-    for (const i of visibleItems.value) selectedKeys.value.add(itemKey(i))
+    for (const i of items.value) selectedKeys.value.add(itemKey(i))
   }
   selectedKeys.value = new Set(selectedKeys.value)
 }
@@ -168,10 +157,10 @@ async function deleteItem(item: PosterItem) {
   try {
     const r = await posterApi.delete(item.folder, [item.stem])
     if (r.ok) {
-      allItems.value = allItems.value.filter((c) => itemKey(c) !== itemKey(item))
       selectedKeys.value.delete(itemKey(item))
       selectedKeys.value = new Set(selectedKeys.value)
       ElMessage.success('已删除')
+      await loadItems()
     }
   } catch {
     // handled
@@ -186,7 +175,7 @@ async function batchDelete() {
     return
   }
   const groups = new Map<string, string[]>()
-  for (const i of visibleItems.value) {
+  for (const i of items.value) {
     if (selectedKeys.value.has(itemKey(i))) {
       const arr = groups.get(i.folder) || []
       arr.push(i.stem)
@@ -201,10 +190,10 @@ async function batchDelete() {
         return
       }
     }
-    allItems.value = allItems.value.filter((i) => !selectedKeys.value.has(itemKey(i)))
     selectedKeys.value.clear()
     selectedKeys.value = new Set(selectedKeys.value)
     ElMessage.success('批量删除完成')
+    await loadItems()
   } catch {
     // handled
   }
@@ -218,7 +207,7 @@ function onCoverReplaced(newThumb: string) {
       thumb: newThumb,
       thumbnail_url: `/api/poster-thumb?folder=${encodeURIComponent(item.folder)}&name=${encodeURIComponent(newThumb)}&t=${Date.now()}`,
     }
-    allItems.value = allItems.value.map((c) => (itemKey(c) === itemKey(item) ? updated : c))
+    items.value = items.value.map((c) => (itemKey(c) === itemKey(item) ? updated : c))
   }
 }
 
@@ -276,11 +265,12 @@ onMounted(async () => {
           <el-option :value="20" label="20" />
           <el-option :value="25" label="25" />
           <el-option :value="30" label="30" />
+          <el-option :value="50" label="50" />
         </el-select>
       </div>
       <div style="flex: 1;"></div>
       <el-button @click="loadItems">刷新</el-button>
-      <el-button @click="toggleSelectAll">{{ allSelected ? '取消全选' : '全选' }}</el-button>
+      <el-button @click="toggleSelectAll">{{ allSelected ? '取消全选' : '全选本页' }}</el-button>
       <el-button type="danger" :disabled="selectedKeys.size === 0" @click="batchDelete">
         批量删除
       </el-button>
@@ -293,7 +283,7 @@ onMounted(async () => {
         <span v-else-if="loadError" style="color: var(--el-color-danger);">{{ loadError }}</span>
         <span v-else>
           {{ folderFilter ? folderFilter + ' · ' : '全部 · ' }}
-          共 <strong>{{ visibleItems.length }}</strong> 个，第 <strong>{{ currentPage }}</strong>/<strong>{{ totalPages }}</strong> 页
+          共 <strong>{{ total }}</strong> 个，第 <strong>{{ currentPage }}</strong>/<strong>{{ totalPages }}</strong> 页
         </span>
       </div>
       <div class="muted">
@@ -303,12 +293,12 @@ onMounted(async () => {
 
     <!-- 网格 -->
     <div v-loading="loading">
-      <div v-if="visibleItems.length === 0 && !loading" class="muted" style="padding: 40px 0; text-align: center;">
+      <div v-if="items.length === 0 && !loading" class="muted" style="padding: 40px 0; text-align: center;">
         当前筛选条件下暂无视频。
       </div>
       <div v-else class="poster-grid">
         <PosterCard
-          v-for="item in currentPageItems"
+          v-for="item in items"
           :key="itemKey(item)"
           :item="item"
           :selected="selectedKeys.has(itemKey(item))"
@@ -322,11 +312,11 @@ onMounted(async () => {
     </div>
 
     <!-- 分页 -->
-    <div v-if="visibleItems.length > 0" style="margin-top: 16px; display: flex; justify-content: center;">
+    <div v-if="total > 0" style="margin-top: 16px; display: flex; justify-content: center;">
       <el-pagination
-        v-model:current-page="currentPage"
+        :current-page="currentPage"
         :page-size="pageSize"
-        :total="visibleItems.length"
+        :total="total"
         layout="prev, pager, next, jumper, total"
         @current-change="onPageChange"
       />

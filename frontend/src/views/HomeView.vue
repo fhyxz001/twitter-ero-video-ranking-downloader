@@ -82,16 +82,15 @@ async function saveMaxDaily() {
     return
   }
   const c = configStore.config!
-  const payload: Record<string, string | boolean | number> = {
-    download_root: downloadRoot.value,
-    proxy: c.proxy || '',
-    auto_download_enabled: c.auto_download_enabled ? '1' : '0',
-    schedule_cron: c.schedule_cron || '0 3 * * *',
-    max_daily_downloads: String(v),
-    ranking_range: c.ranking_range || 'daily',
-  }
   try {
-    await configStore.save(payload)
+    await configStore.save({
+      download_root: downloadRoot.value,
+      proxy: c.proxy || '',
+      auto_download_enabled: c.auto_download_enabled !== false,
+      schedule_cron: c.schedule_cron || '0 3 * * *',
+      max_daily_downloads: v,
+      ranking_range: c.ranking_range || 'daily',
+    })
     await statusStore.refresh()
     ElMessage.success('保存成功')
   } catch {
