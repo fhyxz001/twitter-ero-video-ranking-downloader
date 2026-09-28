@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
-import requests
+from curl_cffi import requests
 
 from app.config import MEDIA_API_URL, RANKING_RANGE_OPTIONS, REQUEST_TIMEOUT
 
@@ -67,7 +67,6 @@ def normalize_media_item(raw: object) -> Optional[dict]:
 
 
 def fetch_pektino_media(
-    session: requests.Session,
     proxies,
     ranking_range: str = "daily",
     page: int = 1,
@@ -88,12 +87,13 @@ def fetch_pektino_media(
         "Accept": "application/json",
         "User-Agent": USER_AGENT,
     }
-    resp = session.get(
+    resp = requests.get(
         MEDIA_API_URL,
         params=params,
         headers=headers,
         timeout=REQUEST_TIMEOUT,
         proxies=proxies,
+        impersonate="chrome",
     )
     resp.raise_for_status()
     raw_text = resp.text.strip()

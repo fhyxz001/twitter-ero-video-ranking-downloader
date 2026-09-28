@@ -50,10 +50,9 @@ def api_waterfall(page: int = 1, range: str = ""):
     if ranking_range not in RANKING_RANGE_OPTIONS:
         ranking_range = "daily"
     proxies = build_proxies(str(cfg.get("proxy", "")).strip())
-    session = requests.Session()
     try:
         page_items, has_next = fetch_pektino_media(
-            session, proxies, ranking_range, page=safe_page, per_page=per_page
+            proxies, ranking_range, page=safe_page, per_page=per_page
         )
         items = [
             normalized

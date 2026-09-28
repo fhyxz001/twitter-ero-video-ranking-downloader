@@ -199,7 +199,7 @@ def run_download_job() -> None:
         ranking_range = str(cfg.get("ranking_range", "daily")).strip()
         try:
             items, _has_next = fetch_pektino_media(
-                session, proxies, ranking_range, per_page=max(30, max_downloads)
+                proxies, ranking_range, per_page=max(30, max_downloads)
             )
             s, k, f = download_items(session, items, download_root, max_downloads, proxies)
         except Exception as exc:
