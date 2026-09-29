@@ -18,7 +18,15 @@ from app.paths import APP_DIR, CONFIG_PATH, STATIC_PATH, VUE_DIST  # noqa: F401 
 
 # ── 数据源与全局常量 ──
 MEDIA_API_URL = "https://pektino.com/api/media"
-RANKING_RANGE_OPTIONS = ["daily", "weekly", "monthly", "all"]
+# 榜单档位（配置/UI 值）→ 接口 range 参数。站点的日榜取值是 timely，
+# range 缺省会被接口当作无效档位返回空列表，因此必须始终携带。
+RANKING_RANGE_PARAMS = {
+    "daily": "timely",
+    "weekly": "weekly",
+    "monthly": "monthly",
+    "all": "all",
+}
+RANKING_RANGE_OPTIONS = list(RANKING_RANGE_PARAMS.keys())
 REQUEST_TIMEOUT = 30
 ALLOWED_WATERFALL_PAGE_SIZES = {10, 20, 30, 50, 100}
 

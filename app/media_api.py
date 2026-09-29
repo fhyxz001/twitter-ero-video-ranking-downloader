@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 
 from curl_cffi import requests
 
-from app.config import MEDIA_API_URL, RANKING_RANGE_OPTIONS, REQUEST_TIMEOUT
+from app.config import MEDIA_API_URL, RANKING_RANGE_PARAMS, REQUEST_TIMEOUT
 
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -72,17 +72,20 @@ def fetch_pektino_media(
     page: int = 1,
     per_page: int = 30,
 ) -> Tuple[List[dict], bool]:
-    """调用 pektino.com 的 /api/media 接口获取排行榜视频列表，返回 (items, has_next)。"""
+    """调用 pektino.com 的 /api/media 接口获取排行榜视频列表，返回 (items, has_next)。
+
+    请求参数与站点前端保持一致：range 必须始终携带（日榜的取值是 timely，
+    缺省或不发会被当作无效档位返回空列表），排序沿用按播放量（pv）。
+    """
     params: Dict[str, object] = {
         "page": max(1, int(page)),
         "per_page": max(1, int(per_page)),
+        "range": RANKING_RANGE_PARAMS.get(str(ranking_range or "daily").strip(), "timely"),
         "ids": "",
-        "isAnimeOnly": 0,
+        "category": "",
+        "isFilteredOnly": "0",
         "sort": "pv",
     }
-    range_value = str(ranking_range or "daily").strip()
-    if range_value in RANKING_RANGE_OPTIONS and range_value != "daily":
-        params["range"] = range_value
     headers = {
         "Accept": "application/json",
         "User-Agent": USER_AGENT,

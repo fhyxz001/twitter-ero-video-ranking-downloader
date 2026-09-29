@@ -2,7 +2,7 @@
 
 [![Docker Pulls](https://img.shields.io/docker/pulls/hexbkyoma/twitter-ero-video-ranking-downloader)](https://hub.docker.com/r/hexbkyoma/twitter-ero-video-ranking-downloader)
 
-从 [pektino.com](https://pektino.com/api/media) 排行榜按播放量自动下载视频，支持日/周/月/总榜切换。提供 Web 界面管理配置、查看日志、浏览瀑布流预览和本地海报墙。
+从 [pektino.com](https://pektino.com) 排行榜按播放量自动下载视频，支持日/周/月/总榜切换。提供 Web 界面管理配置、查看日志、浏览瀑布流预览和本地海报墙。
 
 ## 功能概览
 
