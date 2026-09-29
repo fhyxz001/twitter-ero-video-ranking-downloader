@@ -11,7 +11,7 @@ if [ -f config.json ]; then
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] 配置已备份到 $CONFIG_BACKUP"
 fi
 
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] 拉取最新代码..."
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] 同步最新部署文件..."
 
 # 获取当前分支名
 CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
@@ -32,10 +32,14 @@ if [ -n "$CONFIG_BACKUP" ] && [ -f "$CONFIG_BACKUP" ]; then
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] 用户配置已恢复"
 fi
 
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] 重建并重启容器..."
-docker compose down
-docker compose build --no-cache
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] 从阿里云 ACR 拉取最新镜像..."
+docker compose pull
+
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] 重启容器..."
 docker compose up -d
+
+# 清理旧版本遗留的悬空镜像，回收磁盘
+docker image prune -f
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] 更新完成"
 docker compose ps

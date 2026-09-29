@@ -169,9 +169,26 @@ journalctl -u twitter-downloader -f
 
 适用于所有 Docker 环境，包括 x86_64 和 ARM64（ARM NAS、树莓派等）。
 
-#### 0. 直接拉取镜像（推荐）
+#### 0. 从镜像仓库拉取（推荐）
 
-已构建并发布到 Docker Hub，支持 `linux/amd64` 和 `linux/arm64` 多架构：
+镜像有两个来源，按网络环境选择：
+
+**国内 NAS —— 阿里云 ACR（私有仓库）**
+
+推送到 `master` 后 CI 自动构建 amd64 镜像并推送 ACR，NAS 端直接拉取：
+
+```bash
+# 私有仓库首次部署需登录一次（凭证保存在 NAS 上）
+docker login registry.cn-hangzhou.aliyuncs.com
+
+# 在放有 docker-compose.yml 和 config.json 的目录里执行
+docker compose pull
+docker compose up -d
+```
+
+> 该 ACR 仓库为作者私有，其他用户请使用 Docker Hub 或本地构建。
+
+**海外 —— Docker Hub（公开，多架构）**
 
 ```bash
 docker pull hexbkyoma/twitter-ero-video-ranking-downloader:latest
@@ -200,11 +217,11 @@ docker compose up -d
 > Docker 镜像基于 `python:3.11-slim`，同时支持 `linux/amd64` 和 `linux/arm64` 架构。
 > 在 ARM 设备（如群晖 NAS、树莓派）上构建时会自动使用 ARM64 基础镜像，无需额外配置。
 
-#### 2. 离线镜像导入
+#### 2. 离线镜像导入（应急）
 
-适合无网络或网络受限的环境（如内网 NAS）：
+适合 NAS 完全无法访问外网的场景，作为拉取模式的备用手段：
 
-从 GitHub Releases 下载对应架构的离线镜像包：
+在 GitHub 仓库 **Actions → Export Docker Image → Run workflow** 手动触发，选择目标架构，构建完成后从该次运行页面的 **Artifacts** 下载对应离线镜像包：
 
 | 架构 | 文件名 |
 |---|---|
@@ -239,7 +256,7 @@ docker compose up -d
 | `/app/config.json` | `./config.json` | 配置文件持久化 |
 | `/data/downloads` | `./nas_downloads` | 视频下载目录 |
 
-配置文件中的 `download_root` 应设置为容器内路径 `/data/downloads`，而非主机路径。
+`docker-compose.yml` 已配置为从阿里云 ACR 拉取 CI 构建的镜像；本地开发调试时用 `docker build -t twitter-downloader .` 自行构建。配置文件中的 `download_root` 应设置为容器内路径 `/data/downloads`，而非主机路径。
 
 如需把海报墙指向独立媒体库，为 `poster_root` 额外挂载一个容器路径并在设置页填写该容器内路径：
 
@@ -266,10 +283,12 @@ docker compose down
 # 查看日志
 docker compose logs -f
 
-# 更新镜像
-docker compose down
+# 更新（拉取最新镜像并重启）
 docker compose pull
 docker compose up -d
+
+# 或一键更新（同步部署文件 + 拉取镜像 + 重启）
+bash update.sh
 ```
 
 ---
@@ -381,7 +400,7 @@ DSM → **控制面板** → **信息中心**，查看 CPU 型号。常见对应
 ### Q: 如何更新版本？
 
 - **直接运行**：`git pull` 后重启程序
-- **Docker**：`bash update.sh` 或手动 `docker compose down && docker compose build --no-cache && docker compose up -d`
+- **Docker（NAS）**：`bash update.sh`（同步部署文件并从 ACR 拉取最新镜像），或手动 `docker compose pull && docker compose up -d`；回滚时把 compose 里的 `latest` 换成对应的 `sha-xxxxxxx` 标签
 - **群晖 DSM**：删除旧容器 → 导入新镜像 → 重新创建容器
 
 ## 技术栈

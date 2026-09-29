@@ -1,4 +1,4 @@
-name: Export Docker Image
+name: Build & Push Docker Image
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       arch:
-        description: '目标架构'
+        description: '离线包目标架构（断网应急手动导出用）'
         required: true
         default: 'linux/amd64'
         type: choice
@@ -16,9 +16,53 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # 阿里云 ACR 镜像地址的 命名空间/仓库 段；registry 域名取自 secrets.ACR_REGISTRY
+  ACR_IMAGE: docker-hexb/twitter-ero-video-ranking-downloader
 
 jobs:
-  export:
+  push-acr:
+    # push 到 master：构建 amd64 镜像并推送阿里云 ACR，NAS 端 docker compose pull 即可更新
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Compute short SHA
+        run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Alibaba Cloud ACR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.ACR_REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ secrets.ACR_REGISTRY }}/${{ env.ACR_IMAGE }}:latest
+            ${{ secrets.ACR_REGISTRY }}/${{ env.ACR_IMAGE }}:sha-${{ env.SHORT_SHA }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Summary
+        run: |
+          echo "已推送镜像（amd64）：" >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ secrets.ACR_REGISTRY }}/${{ env.ACR_IMAGE }}:latest" >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ secrets.ACR_REGISTRY }}/${{ env.ACR_IMAGE }}:sha-${SHORT_SHA}" >> "$GITHUB_STEP_SUMMARY"
+
+  export-offline:
+    # 手动触发：导出离线镜像包，供 NAS 无法拉取镜像时手动搬运
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository

@@ -1,6 +1,7 @@
 services:
   twitter-ero-video-ranking-downloader:
-    build: .
+    # NAS 部署用：从阿里云 ACR 拉取 CI 自动构建的镜像（回滚时把 latest 换成 sha-xxxxxxx）
+    image: registry.cn-hangzhou.aliyuncs.com/docker-hexb/twitter-ero-video-ranking-downloader:latest
     container_name: twitter-ero-video-ranking-downloader
     restart: unless-stopped
     ports:
