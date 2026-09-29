@@ -48,6 +48,10 @@ jobs:
           file: ./Dockerfile
           platforms: linux/amd64
           push: true
+          # ACR 个人版不认 buildx 默认附加的 OCI provenance/SBOM attestation
+          # （报错 unknown manifest class for application/vnd.oci.empty.v1+json）
+          provenance: false
+          sbom: false
           tags: |
             ${{ secrets.ACR_REGISTRY }}/${{ env.ACR_IMAGE }}:latest
             ${{ secrets.ACR_REGISTRY }}/${{ env.ACR_IMAGE }}:sha-${{ env.SHORT_SHA }}
