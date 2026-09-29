@@ -1,7 +1,19 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python -c \"import py_compile; py_compile.compile\\('main.py', doraise=True\\); print\\('OK'\\)\")"
+      "Bash(python -c \"import py_compile; py_compile.compile\\('main.py', doraise=True\\); print\\('OK'\\)\")",
+      "Bash(curl -s -m 20 \"https://pektino.com/zh-CN\" -H \"Accept: text/x-component\" -H \"RSC: 1\" -H \"Next-Router-State-Tree: %5B%22%22%2C%7B%22children%22%3A%5B%22zh-CN%22%2C%7B%22children%22%3A%5B%22__PAGE__%22%2C%7B%7D%5D%7D%5D%7D%2Cnull%2Cnull%2Ctrue%5D\" -H \"User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/125.0.0.0 Safari/537.36\" -o /tmp/pektino.html)",
+      "Bash(echo \"exit=$?\")",
+      "Read(//tmp/**)",
+      "Bash(cygpath -w /tmp/pektino.html)",
+      "Bash(python *)",
+      "Bash(venv/Scripts/python.exe -c \"import sys; print\\(sys.version\\)\")",
+      "Bash(venv/Scripts/pip.exe index *)",
+      "Bash(venv/Scripts/pip.exe install *)",
+      "Bash(echo \"---EXIT $?---\")",
+      "Bash(venv/Scripts/python.exe -c \"import curl_cffi; print\\('curl_cffi', curl_cffi.__version__\\)\")",
+      "Bash(venv/Scripts/python.exe -m pip install curl_cffi --no-input)",
+      "Bash(echo \"EXIT=$?\")"
     ]
   }
 }
