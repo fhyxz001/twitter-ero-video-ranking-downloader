@@ -3,14 +3,14 @@ from pathlib import Path
 from typing import List, Optional
 
 from fastapi import APIRouter, File, Form, UploadFile
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel
 
 from app.config import (
     IMAGE_EXTS,
-    VIDEO_EXTS,
+    POSTER_VIDEO_EXTS,
     get_current_config,
-    resolve_download_root,
+    resolve_poster_root,
 )
 from app.logging_utils import append_log
 from app.poster import (
@@ -18,6 +18,8 @@ from app.poster import (
     SORT_OPTIONS,
     duration_store,
     invalidate_scan_cache,
+    is_streaming_url,
+    read_strm_target,
     resolve_media_folder,
     sort_poster_items,
     _collect_poster_items,
@@ -41,7 +43,7 @@ def api_poster_all(
     sort: str = "time_desc",
 ):
     cfg = get_current_config()
-    root = resolve_download_root(cfg["download_root"])
+    root = resolve_poster_root(cfg)
     if folder is not None and resolve_media_folder(root, folder) is None:
         return JSONResponse({"ok": False, "error": "无效文件夹"}, status_code=400)
 
@@ -72,7 +74,7 @@ def api_poster_all(
 @router.get("/api/poster-thumb")
 def api_thumb(folder: str = "", name: str = ""):
     cfg = get_current_config()
-    root = resolve_download_root(cfg["download_root"])
+    root = resolve_poster_root(cfg)
     directory = resolve_media_folder(root, folder)
     if directory is None or "/" in name or "\\" in name:
         return JSONResponse({"error": "无效路径"}, status_code=400)
@@ -96,7 +98,7 @@ def api_thumb(folder: str = "", name: str = ""):
 def api_poster_durations(folder: str = ""):
     """返回已探测完成的视频时长，供前端轮询补充。"""
     cfg = get_current_config()
-    root = resolve_download_root(cfg["download_root"])
+    root = resolve_poster_root(cfg)
     if folder and resolve_media_folder(root, folder) is None:
         return JSONResponse({"ok": False, "error": "无效文件夹"}, status_code=400)
 
@@ -112,18 +114,28 @@ def api_poster_durations(folder: str = ""):
 @router.get("/api/poster-video")
 def api_video(folder: str = "", name: str = ""):
     cfg = get_current_config()
-    root = resolve_download_root(cfg["download_root"])
+    root = resolve_poster_root(cfg)
     directory = resolve_media_folder(root, folder)
     if directory is None or "/" in name or "\\" in name:
         return JSONResponse({"error": "无效路径"}, status_code=400)
     path = directory / name
     if not path.exists() or not path.is_file():
         return JSONResponse({"error": "文件不存在"}, status_code=404)
-    if path.suffix.lower() not in VIDEO_EXTS:
+    if path.suffix.lower() not in POSTER_VIDEO_EXTS:
         return JSONResponse({"error": "不是视频文件"}, status_code=400)
     resolved = path.resolve()
     if not resolved.is_relative_to(root.resolve()):
         return JSONResponse({"error": "禁止访问"}, status_code=403)
+    if resolved.suffix.lower() == ".strm":
+        target = read_strm_target(resolved)
+        if not target:
+            return JSONResponse({"error": "strm 文件内容为空或无效"}, status_code=400)
+        if is_streaming_url(target):
+            return RedirectResponse(target, status_code=302)
+        target_path = Path(target)
+        if not target_path.exists() or not target_path.is_file():
+            return JSONResponse({"error": "strm 指向的本地文件不存在"}, status_code=404)
+        return FileResponse(str(target_path))
     return FileResponse(str(resolved))
 
 
@@ -132,7 +144,7 @@ def api_delete(body: PosterDeleteRequest):
     folder = body.folder
     stems = body.stems
     cfg = get_current_config()
-    root = resolve_download_root(cfg["download_root"])
+    root = resolve_poster_root(cfg)
     directory = resolve_media_folder(root, folder)
     if directory is None:
         return JSONResponse({"ok": False, "error": "无效文件夹"}, status_code=400)
@@ -142,7 +154,7 @@ def api_delete(body: PosterDeleteRequest):
         if "/" in stem_str or "\\" in stem_str:
             continue
         for p in list(directory.iterdir()):
-            if p.stem == stem_str and p.suffix.lower() in VIDEO_EXTS | IMAGE_EXTS:
+            if p.stem == stem_str and p.suffix.lower() in POSTER_VIDEO_EXTS | IMAGE_EXTS:
                 p.unlink(missing_ok=True)
                 deleted.append(p.name)
     # 定向清理已删除条目的时长记录，避免影响其余视频的缓存
@@ -160,7 +172,7 @@ def api_replace_cover(
     file: UploadFile = File(...),
 ):
     cfg = get_current_config()
-    root = resolve_download_root(cfg["download_root"])
+    root = resolve_poster_root(cfg)
     directory = resolve_media_folder(root, folder)
     if directory is None or "/" in stem or "\\" in stem:
         return JSONResponse({"ok": False, "error": "无效路径"}, status_code=400)

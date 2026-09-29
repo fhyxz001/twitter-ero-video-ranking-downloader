@@ -20,6 +20,7 @@ export default http
 
 export interface AppConfig {
   download_root: string
+  poster_root: string
   proxy: string
   auto_download_enabled: boolean
   schedule_cron: string
@@ -30,6 +31,7 @@ export interface AppConfig {
 
 export interface SaveConfigPayload {
   download_root: string
+  poster_root: string
   proxy: string
   auto_download_enabled: boolean
   schedule_cron: string

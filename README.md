@@ -8,7 +8,7 @@
 
 - **定时下载** — 按配置的榜单范围自动下载排行靠前的视频，支持每日定时执行，也可一键关闭
 - **瀑布流预览** — 在线浏览远端排行视频，可独立设置每页数量，勾选后一键下载
-- **海报墙** — 浏览本地已下载的视频，支持预览播放、替换封面、批量删除、服务端分页与排序
+- **海报墙** — 浏览本地视频，媒体根目录可独立配置（留空则使用视频下载根目录），支持 `.strm` 引用条目的播放，预览播放、替换封面、批量删除、服务端分页与排序
 - **Web 界面** — 所有操作通过浏览器完成，端口 `2617`
 
 ## 配置说明
@@ -18,6 +18,7 @@
 ```json
 {
   "download_root": "/data/downloads",
+  "poster_root": "",
   "proxy": "",
   "auto_download_enabled": true,
   "schedule_cron": "0 3 * * *",
@@ -30,6 +31,7 @@
 | 字段 | 说明 | 默认值 |
 |---|---|---|
 | `download_root` | 视频下载的根目录，绝对路径 | `/data/downloads` |
+| `poster_root` | 海报墙媒体根目录（设置页"海报墙"中配置），留空则回退到 `download_root` | 空 |
 | `proxy` | HTTP 代理地址，为空则直连 | 空 |
 | `auto_download_enabled` | 是否开启定时自动下载，关闭后仅保留手动下载 | `true` |
 | `schedule_cron` | 定时执行 cron 表达式（5 位） | `0 3 * * *` |
@@ -238,12 +240,17 @@ docker compose up -d
 
 配置文件中的 `download_root` 应设置为容器内路径 `/data/downloads`，而非主机路径。
 
-如需映射到 NAS 其他目录，修改 `docker-compose.yml` 中的 `volumes`：
+如需把海报墙指向独立媒体库，为 `poster_root` 额外挂载一个容器路径并在设置页填写该容器内路径：
 
 ```yaml
 volumes:
   - ./config.json:/app/config.json
-  - /vol1/1000/AdultMedia/tw:/data/downloads   # 改为你的 NAS 实际路径
+  - /vol1/1000/AdultMedia/tw:/data/downloads          # 改为你的 NAS 实际路径
+  - /vol1/1000/AdultMedia/library:/data/media         # 海报墙媒体库（可选）
+```
+
+```json
+{ "poster_root": "/data/media" }
 ```
 
 #### 4. 管理命令
@@ -337,6 +344,20 @@ docker load -i twitter-ero-video-ranking-downloader-latest-offline-arm64.tar
 - **Linux**：`sudo apt install ffmpeg`
 - **Docker**：镜像已内置 ffmpeg，无需额外安装
 - **Windows**：从 [ffmpeg.org](https://ffmpeg.org/download.html) 下载并将 `ffprobe.exe` 放到 PATH 或程序同目录
+
+### Q: 海报墙如何指向自己的媒体库（而不是下载目录）？
+
+在 Web 界面 **任务页 → 设置 → 海报墙 → 媒体根目录** 填写目录路径（如 `D:\Media` 或 `/vol1/1000/AdultMedia`），保存后海报墙立即扫描该目录；留空则继续使用视频下载根目录。该目录下的一级子文件夹会作为可筛选的分类。
+
+### Q: `.strm` 文件是什么？如何播放？
+
+`.strm` 是媒体库常用的"引用型"文本文件，内容只有一行——真实媒体的位置。海报墙会把 `.strm` 当作视频条目收录，播放时读取其内容：
+
+- 内容为 `http://` / `https://` 链接 → 服务端 302 重定向，浏览器播放器直接拉流
+- 内容为本地文件路径（支持相对路径与 UNC 路径如 `\\NAS\share\a.mp4`）→ 服务端读取该文件供流
+- 相对路径按 `.strm` 所在目录展开；同名的图片文件（如 `Movie.jpg`）会作为其海报封面
+
+> 注意：`.strm` 指向的远程链接需可直接访问（302/直链），HLS（m3u8）直链在部分浏览器上无法原生播放；Docker 部署时 strm 内的本地路径指的应是**容器内**可见的路径。
 
 ### Q: 群晖 NAS 如何确认 CPU 架构？
 

@@ -21,12 +21,14 @@ from app.downloader import (
 )
 from app.logging_utils import append_log, get_logs
 from app.media_api import probe_source
+from app.poster import invalidate_scan_cache
 
 router = APIRouter()
 
 
 class SaveConfigRequest(BaseModel):
     download_root: str
+    poster_root: str = ""
     proxy: str = ""
     auto_download_enabled: bool = True
     schedule_cron: str = "0 3 * * *"
@@ -64,9 +66,14 @@ def save(body: SaveConfigRequest):
     try:
         with config_lock:
             cfg = load_config()
+            roots_changed = (
+                cfg.get("download_root") != body.download_root.strip()
+                or cfg.get("poster_root", "") != body.poster_root.strip()
+            )
             cfg.update(
                 {
                     "download_root": body.download_root.strip(),
+                    "poster_root": body.poster_root.strip(),
                     "proxy": body.proxy.strip(),
                     "auto_download_enabled": body.auto_download_enabled,
                     "schedule_cron": body.schedule_cron.strip(),
@@ -76,6 +83,9 @@ def save(body: SaveConfigRequest):
             )
             save_config(cfg)
         update_schedule(get_current_config())
+        if roots_changed:
+            # 目录变化后立刻失效扫描缓存，海报墙无需等 TTL 过期
+            invalidate_scan_cache()
         append_log("配置已保存")
         return JSONResponse({"ok": True})
     except Exception as exc:

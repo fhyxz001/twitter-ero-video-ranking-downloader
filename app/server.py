@@ -49,7 +49,9 @@ async def add_cache_headers(request, call_next):
             response.headers["Cache-Control"] = "public, max-age=86400"
         response.headers["Vary"] = "Accept-Encoding"
     elif path.startswith("/api/poster-video"):
-        response.headers["Cache-Control"] = "public, max-age=3600"
+        # strm 播放会 302 到 strm 内的目标地址，重定向不可缓存，否则改写 strm 后不生效
+        if response.status_code == 200:
+            response.headers["Cache-Control"] = "public, max-age=3600"
     return response
 
 

@@ -12,6 +12,7 @@ const configStore = useConfigStore()
 const statusStore = useStatusStore()
 
 const form = ref({
+  poster_root: '',
   proxy: '',
   auto_download_enabled: true,
   schedule_cron: '0 3 * * *',
@@ -51,6 +52,7 @@ function populateForm() {
   const c = configStore.config
   if (!c) return
   form.value = {
+    poster_root: c.poster_root || '',
     proxy: c.proxy || '',
     auto_download_enabled: c.auto_download_enabled !== false,
     schedule_cron: c.schedule_cron || '0 3 * * *',
@@ -72,6 +74,7 @@ async function save() {
     }
     await configStore.save({
       download_root: c.download_root,
+      poster_root: form.value.poster_root.trim(),
       proxy: form.value.proxy,
       auto_download_enabled: form.value.auto_download_enabled,
       schedule_cron: form.value.schedule_cron,
@@ -152,6 +155,15 @@ async function checkProxy() {
           <el-option label="月榜" value="monthly" />
           <el-option label="总榜" value="all" />
         </el-select>
+      </el-form-item>
+
+      <div class="section-title">海报墙</div>
+      <el-form-item label="媒体根目录">
+        <el-input v-model="form.poster_root" placeholder="如 D:\Media 或 /data/media" />
+        <div class="muted" style="margin-top: 4px;">
+          海报墙从该目录扫描视频与 .strm 引用；留空时使用"视频下载根目录"。
+          同名图片文件（如 Movie.jpg）将作为对应条目的封面。
+        </div>
       </el-form-item>
     </el-form>
 

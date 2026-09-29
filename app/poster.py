@@ -19,7 +19,7 @@ from urllib.parse import quote
 
 from PIL import Image
 
-from app.config import IMAGE_EXTS, VIDEO_EXTS
+from app.config import IMAGE_EXTS, POSTER_VIDEO_EXTS
 from app.paths import APP_DIR
 
 POSTER_SCAN_TTL = 60.0  # 秒
@@ -181,7 +181,7 @@ def _count_videos(directory: Path) -> int:
         return 0
     return sum(
         1 for p in directory.iterdir()
-        if p.is_file() and p.suffix.lower() in VIDEO_EXTS
+        if p.is_file() and p.suffix.lower() in POSTER_VIDEO_EXTS
     )
 
 
@@ -209,7 +209,7 @@ def _list_folder_items(directory: Path) -> List[dict]:
     items = []
     if not directory.exists():
         return items
-    videos = {p.stem: p for p in directory.iterdir() if p.is_file() and p.suffix.lower() in VIDEO_EXTS}
+    videos = {p.stem: p for p in directory.iterdir() if p.is_file() and p.suffix.lower() in POSTER_VIDEO_EXTS}
     thumbs = {p.stem: p for p in directory.iterdir() if p.is_file() and p.suffix.lower() in IMAGE_EXTS}
     for stem, vp in videos.items():
         tp = thumbs.get(stem)
@@ -221,6 +221,31 @@ def _list_folder_items(directory: Path) -> List[dict]:
         })
     items.sort(key=lambda x: x["stem"])
     return items
+
+
+def read_strm_target(strm_path: Path) -> Optional[str]:
+    """读取 .strm 文本内容，解析出播放目标。
+
+    内容取首个非空行：http(s) 链接原样返回；否则视为本地/UNC 路径，
+    相对路径按 .strm 所在目录展开。内容为空或读不了时返回 None。
+    """
+    try:
+        text = strm_path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    line = next((ln.strip() for ln in text.splitlines() if ln.strip()), "")
+    if not line:
+        return None
+    if line.lower().startswith(("http://", "https://")):
+        return line
+    p = Path(line).expanduser()
+    if not p.is_absolute():
+        p = strm_path.parent / p
+    return str(p)
+
+
+def is_streaming_url(target: str) -> bool:
+    return target.lower().startswith(("http://", "https://"))
 
 
 def _format_duration(seconds: float) -> str:
@@ -269,8 +294,11 @@ def _get_or_create_thumb(source_path: Path) -> Path:
     return cache_file
 
 
-def _ffprobe_duration(video_path: Path) -> Optional[str]:
-    """调用 ffprobe 探测时长并格式化标签，失败返回 None（不做缓存）。"""
+def _ffprobe_duration(source: str) -> Optional[str]:
+    """调用 ffprobe 探测时长并格式化标签，失败返回 None（不做缓存）。
+
+    source 为本地路径或 URL（.strm 解析结果，ffprobe 原生支持网络地址）。
+    """
     ffprobe_cmd = [
         "ffprobe",
         "-v",
@@ -279,7 +307,7 @@ def _ffprobe_duration(video_path: Path) -> Optional[str]:
         "format=duration",
         "-of",
         "default=noprint_wrappers=1:nokey=1",
-        str(video_path),
+        source,
     ]
     try:
         result = subprocess.run(
@@ -363,7 +391,15 @@ def _collect_poster_items(download_root: Path, folder: Optional[str] = None) -> 
 def _batch_probe_durations(pending: List[tuple]) -> None:
     """后台线程池并行探测时长，结果以 "folder::stem" 为键批量写入持久化缓存。"""
     def probe_one(folder: str, stem: str, vp: Path) -> Optional[Tuple[str, str]]:
-        dur = _ffprobe_duration(vp)
+        source = str(vp)
+        if vp.suffix.lower() == ".strm":
+            target = read_strm_target(vp)
+            if not target:
+                return None
+            if not is_streaming_url(target) and not Path(target).is_file():
+                return None
+            source = target
+        dur = _ffprobe_duration(source)
         if dur:
             return (f"{folder}::{stem}", dur)
         return None

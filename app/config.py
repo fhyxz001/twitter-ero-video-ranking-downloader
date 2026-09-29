@@ -31,10 +31,14 @@ REQUEST_TIMEOUT = 30
 ALLOWED_WATERFALL_PAGE_SIZES = {10, 20, 30, 50, 100}
 
 VIDEO_EXTS = {".mp4", ".mkv", ".avi", ".mov", ".flv", ".wmv"}
+# 海报墙额外收录的“引用型”条目：.strm 是文本文件，内容为媒体 URL 或本地路径
+POSTER_VIDEO_EXTS = VIDEO_EXTS | {".strm"}
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 
 DEFAULT_CONFIG: Dict[str, object] = {
     "download_root": "/data/downloads",
+    # 海报墙媒体根目录：留空时回退到 download_root
+    "poster_root": "",
     "proxy": "",
     "auto_download_enabled": True,
     "schedule_cron": "0 3 * * *",
@@ -64,6 +68,8 @@ def validate_config(raw: Dict[str, object]) -> Dict[str, object]:
     if not download_root:
         raise ValueError("下载根目录不能为空")
     cfg["download_root"] = download_root
+
+    cfg["poster_root"] = str(cfg.get("poster_root", "") or "").strip()
 
     cfg["proxy"] = str(cfg.get("proxy", "")).strip()
     cfg["auto_download_enabled"] = parse_bool(cfg.get("auto_download_enabled", True))
@@ -162,3 +168,11 @@ def resolve_download_root(download_root: object) -> Path:
     if not root.is_absolute():
         root = APP_DIR / root
     return root.resolve()
+
+
+def resolve_poster_root(cfg: Dict[str, object]) -> Path:
+    """海报墙媒体根目录：优先用 poster_root，未配置时回退 download_root。"""
+    poster_root = str(cfg.get("poster_root", "") or "").strip()
+    if poster_root:
+        return resolve_download_root(poster_root)
+    return resolve_download_root(cfg["download_root"])

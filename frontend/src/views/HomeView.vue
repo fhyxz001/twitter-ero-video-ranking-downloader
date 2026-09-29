@@ -85,6 +85,7 @@ async function saveMaxDaily() {
   try {
     await configStore.save({
       download_root: downloadRoot.value,
+      poster_root: c.poster_root || '',
       proxy: c.proxy || '',
       auto_download_enabled: c.auto_download_enabled !== false,
       schedule_cron: c.schedule_cron || '0 3 * * *',
