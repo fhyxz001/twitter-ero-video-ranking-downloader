@@ -131,6 +131,20 @@ export interface PosterDurationsResponse {
   durations: Record<string, string>
 }
 
+export interface ScrapeStatusResponse {
+  ok: boolean
+  running: boolean
+  phase: 'idle' | 'scanning' | 'extracting' | 'done' | 'error'
+  total: number
+  done: number
+  generated: number
+  skipped: number
+  failed: number
+  current: string | null
+  errors: string[]
+  message: string
+}
+
 export const posterApi = {
   list: (params: { folder?: string; page?: number; page_size?: number; sort?: PosterSort } = {}) =>
     http
@@ -158,6 +172,14 @@ export const posterApi = {
       .post<{ ok: boolean; thumb?: string; error?: string }>('/api/poster/replace-cover', fd)
       .then((r) => r.data)
   },
+  scrapeCovers: (folder: string) =>
+    http
+      .post<{ ok: boolean; started: boolean; error?: string }>('/api/poster/scrape-covers', {
+        folder,
+      })
+      .then((r) => r.data),
+  scrapeStatus: () =>
+    http.get<ScrapeStatusResponse>('/api/poster/scrape-covers/status').then((r) => r.data),
 }
 
 // ===== Waterfall =====

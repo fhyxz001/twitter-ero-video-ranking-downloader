@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { posterApi, type PosterFolder, type PosterItem, type PosterSort } from '@/api'
@@ -26,6 +26,10 @@ const previewOpen = ref(false)
 const previewItem = ref<PosterItem | null>(null)
 const replaceOpen = ref(false)
 const replaceItem = ref<PosterItem | null>(null)
+
+const scraping = ref(false)
+const scrapeProgress = ref('')
+let scrapeTimer: number | null = null
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
 
@@ -211,11 +215,88 @@ function onCoverReplaced(newThumb: string) {
   }
 }
 
+function stopScrapePolling() {
+  if (scrapeTimer !== null) {
+    window.clearInterval(scrapeTimer)
+    scrapeTimer = null
+  }
+}
+
+function startScrapePolling() {
+  stopScrapePolling()
+  scrapeTimer = window.setInterval(pollScrapeStatus, 1500)
+}
+
+async function pollScrapeStatus() {
+  try {
+    const st = await posterApi.scrapeStatus()
+    if (st.running) {
+      const progress = st.total > 0 ? ` ${st.done}/${st.total}` : ''
+      scrapeProgress.value = `刮削封面中${progress}（新增 ${st.generated}，跳过 ${st.skipped}，失败 ${st.failed}）`
+      return
+    }
+    if (!scraping.value) return
+    scraping.value = false
+    scrapeProgress.value = ''
+    stopScrapePolling()
+    if (st.phase === 'error') {
+      ElMessage.error(st.message || '封面刮削失败')
+    } else {
+      ElMessage.success(`封面刮削完成：新增 ${st.generated}，跳过 ${st.skipped}，失败 ${st.failed}`)
+    }
+    await loadItems()
+  } catch {
+    // silent，下一轮轮询继续
+  }
+}
+
+async function scrapeCovers() {
+  const scope = folderFilter.value
+    ? `文件夹「${folderFilter.value}」`
+    : '全部文件夹（含根目录与各子文件夹）'
+  try {
+    await ElMessageBox.confirm(
+      `将遍历${scope}中的视频文件（mp4、mkv 等），用 ffmpeg 抽取首帧生成同名 jpg 封面；已有封面的视频会跳过，不会覆盖。继续？`,
+      '刮削封面',
+      { type: 'info', confirmButtonText: '开始刮削', cancelButtonText: '取消' }
+    )
+  } catch {
+    return
+  }
+  try {
+    const r = await posterApi.scrapeCovers(folderFilter.value)
+    if (r.started) {
+      ElMessage.info('封面刮削已开始')
+    } else {
+      ElMessage.info('封面刮削任务已在运行中')
+    }
+    scraping.value = true
+    scrapeProgress.value = '正在扫描待处理的视频…'
+    startScrapePolling()
+  } catch {
+    // handled by interceptor
+  }
+}
+
 onMounted(async () => {
   await loadItems()
   setTimeout(pollDurations, 2000)
   setTimeout(pollDurations, 5000)
   setTimeout(pollDurations, 12000)
+  try {
+    // 其他页面/标签可能已启动刮削任务，进入页面时重新挂上轮询
+    const st = await posterApi.scrapeStatus()
+    if (st.running) {
+      scraping.value = true
+      startScrapePolling()
+    }
+  } catch {
+    // silent
+  }
+})
+
+onUnmounted(() => {
+  stopScrapePolling()
 })
 </script>
 
@@ -270,6 +351,7 @@ onMounted(async () => {
       </div>
       <div style="flex: 1;"></div>
       <el-button @click="loadItems">刷新</el-button>
+      <el-button :loading="scraping" @click="scrapeCovers">刮削封面</el-button>
       <el-button @click="toggleSelectAll">{{ allSelected ? '取消全选' : '全选本页' }}</el-button>
       <el-button type="danger" :disabled="selectedKeys.size === 0" @click="batchDelete">
         批量删除
@@ -281,6 +363,7 @@ onMounted(async () => {
       <div class="muted">
         <span v-if="loading">正在加载…</span>
         <span v-else-if="loadError" style="color: var(--el-color-danger);">{{ loadError }}</span>
+        <span v-else-if="scraping" style="color: var(--el-color-primary);">{{ scrapeProgress }}</span>
         <span v-else>
           {{ folderFilter ? folderFilter + ' · ' : '全部 · ' }}
           共 <strong>{{ total }}</strong> 个，第 <strong>{{ currentPage }}</strong>/<strong>{{ totalPages }}</strong> 页

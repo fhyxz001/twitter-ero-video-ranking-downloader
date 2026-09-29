@@ -26,6 +26,7 @@ from app.poster import (
     _get_or_create_thumb,
     _media_folders,
 )
+from app.scraper import scrape_status, start_scrape_job
 
 router = APIRouter()
 
@@ -33,6 +34,10 @@ router = APIRouter()
 class PosterDeleteRequest(BaseModel):
     folder: str = ""
     stems: List[str] = []
+
+
+class ScrapeCoversRequest(BaseModel):
+    folder: str = ""
 
 
 @router.get("/api/poster")
@@ -190,3 +195,28 @@ def api_replace_cover(
     invalidate_scan_cache()
     append_log(f"已替换封面：{folder or '根目录'}/{stem}{suffix}")
     return JSONResponse({"ok": True, "thumb": new_path.name})
+
+
+@router.post("/api/poster/scrape-covers")
+def api_scrape_covers(body: ScrapeCoversRequest):
+    """为缺失封面的视频抽取首帧生成 jpg；folder 空=根目录+全部一级子文件夹。"""
+    cfg = get_current_config()
+    root = resolve_poster_root(cfg)
+    folder = body.folder.strip()
+    if folder:
+        directory = resolve_media_folder(root, folder)
+        if directory is None:
+            return JSONResponse({"ok": False, "error": "无效文件夹"}, status_code=400)
+        targets = [directory]
+    else:
+        targets = [root] + [root / f["folder"] for f in _media_folders(root) if f["folder"]]
+    started = start_scrape_job(targets)
+    if started:
+        append_log(f"已触发封面刮削：{folder or '全部文件夹'}")
+    return JSONResponse({"ok": True, "started": started})
+
+
+@router.get("/api/poster/scrape-covers/status")
+def api_scrape_status():
+    """返回封面刮削作业进度，供前端轮询。"""
+    return JSONResponse({"ok": True, **scrape_status()})
