@@ -104,25 +104,33 @@ def public_config(cfg: Dict[str, object]) -> Dict[str, object]:
     return {key: cfg.get(key, DEFAULT_CONFIG[key]) for key in CONFIG_KEYS}
 
 
-def load_config() -> Dict[str, object]:
-    """读取配置。带 mtime 缓存：文件未变化时直接返回缓存副本。
+def _config_file() -> Path:
+    """实际生效的配置文件路径。
 
-    Docker volume 映射时如果宿主机文件不存在，会创建一个同名目录，需处理。
+    Docker 文件级挂载（./config.json:/app/config.json）在宿主机文件不存在时，
+    Docker 会创建一个同名目录挂进容器；该目录是挂载点，容器内既删不掉也无法
+    替换成文件。此时把配置落到该目录内的 config.json，实现零干预自愈。
     """
+    if CONFIG_PATH.is_dir():
+        return CONFIG_PATH / "config.json"
+    return CONFIG_PATH
+
+
+def load_config() -> Dict[str, object]:
+    """读取配置。带 mtime 缓存：文件未变化时直接返回缓存副本。"""
     global _config_cache
 
-    # Docker volume 映射时如果宿主机文件不存在，会创建一个同名目录，需处理
-    if CONFIG_PATH.is_dir():
-        append_log(f"检测到 {CONFIG_PATH} 是目录而非文件，已自动移除并重建默认配置")
-        shutil.rmtree(CONFIG_PATH, ignore_errors=True)
-        save_config(DEFAULT_CONFIG)
-        return dict(DEFAULT_CONFIG)
-    if not CONFIG_PATH.exists():
+    path = _config_file()
+    if path.is_dir():
+        # 极端情况：配置路径本身又是个目录，清理后重建默认配置
+        append_log(f"检测到 {path} 是目录而非文件，已自动移除并重建默认配置")
+        shutil.rmtree(path, ignore_errors=True)
+    if not path.exists():
         save_config(DEFAULT_CONFIG)
         return dict(DEFAULT_CONFIG)
 
     try:
-        mtime = CONFIG_PATH.stat().st_mtime_ns
+        mtime = path.stat().st_mtime_ns
     except OSError:
         mtime = -1
 
@@ -130,7 +138,7 @@ def load_config() -> Dict[str, object]:
         if _config_cache is not None and mtime >= 0 and _config_cache[0] == mtime:
             return dict(_config_cache[1])
         try:
-            with CONFIG_PATH.open("r", encoding="utf-8") as f:
+            with path.open("r", encoding="utf-8") as f:
                 raw = json.load(f)
             validated = validate_config(raw)
         except Exception as exc:
@@ -145,14 +153,15 @@ def save_config(cfg: Dict[str, object]) -> None:
     """校验并写入配置（原子写），同时刷新进程内缓存。"""
     global _config_cache
     validated = validate_config(cfg)
-    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = CONFIG_PATH.with_suffix(".json.tmp")
+    path = _config_file()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_suffix(".json.tmp")
     with tmp_path.open("w", encoding="utf-8") as f:
         json.dump(validated, f, ensure_ascii=False, indent=2)
-    os.replace(tmp_path, CONFIG_PATH)
+    os.replace(tmp_path, path)
     with config_lock:
         try:
-            mtime = CONFIG_PATH.stat().st_mtime_ns
+            mtime = path.stat().st_mtime_ns
         except OSError:
             mtime = -1
         _config_cache = (mtime, validated)

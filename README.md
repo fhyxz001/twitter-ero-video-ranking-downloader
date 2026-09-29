@@ -387,6 +387,12 @@ docker load -i twitter-ero-video-ranking-downloader-latest-offline-arm64.tar
 - 作业后台执行，页面轮询进度；失败原因（如文件损坏）会保留在作业状态里
 - 依赖 ffmpeg：Docker 镜像已内置；Windows/Linux 直接运行需将 `ffmpeg` 加入 PATH
 
+### Q: 容器启动报 `IsADirectoryError: '/app/config.json.tmp' -> '/app/config.json'`？
+
+部署目录里没有 `config.json` 文件就直接 `docker compose up` 时，Docker 会先在宿主机自动创建一个同名**目录**并挂载为 `/app/config.json`，而挂载点无法在容器内删除或替换成文件，旧版本会因此崩溃循环。新版本已内置自愈：自动把配置写到该目录内的 `config.json`（宿主机上表现为 `部署目录/config.json/config.json`），拉取最新镜像重启即可。
+
+建议首次部署时先在部署目录创建好 `config.json` 文件（可从仓库复制后修改），保持整洁的单文件布局。
+
 ### Q: 群晖 NAS 如何确认 CPU 架构？
 
 DSM → **控制面板** → **信息中心**，查看 CPU 型号。常见对应：
