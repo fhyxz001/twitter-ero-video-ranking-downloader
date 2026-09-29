@@ -3,7 +3,7 @@ import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useConfigStore } from '@/stores/config'
 import { useStatusStore } from '@/stores/status'
-import { api } from '@/api'
+import { api, type CheckProxyResponse } from '@/api'
 
 const props = defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{ (e: 'update:modelValue', value: boolean): void }>()
@@ -18,6 +18,8 @@ const form = ref({
   ranking_range: 'daily',
 })
 const saving = ref(false)
+const checking = ref(false)
+const checkResult = ref<CheckProxyResponse | null>(null)
 
 watch(
   () => props.modelValue,
@@ -34,6 +36,14 @@ watch(
     if (c && props.modelValue) {
       populateForm()
     }
+  }
+)
+
+watch(
+  () => form.value.proxy,
+  () => {
+    // 代理地址改动后，旧检测结果不再可信
+    checkResult.value = null
   }
 )
 
@@ -77,6 +87,25 @@ async function save() {
     saving.value = false
   }
 }
+
+function describeProbe(label: string, ok: boolean, status: number | null, elapsedMs: number | null, error: string | null): string {
+  if (ok) {
+    return `${label}：正常（HTTP ${status ?? 200}，${elapsedMs ?? 0}ms）`
+  }
+  return `${label}：失败 —— ${error || '未知错误'}`
+}
+
+async function checkProxy() {
+  checking.value = true
+  checkResult.value = null
+  try {
+    checkResult.value = await api.checkProxy(form.value.proxy.trim())
+  } catch (e) {
+    // axios interceptor already shows error
+  } finally {
+    checking.value = false
+  }
+}
 </script>
 
 <template>
@@ -95,6 +124,22 @@ async function save() {
       </el-form-item>
       <el-form-item label="HTTP 代理">
         <el-input v-model="form.proxy" placeholder="http://127.0.0.1:7890" />
+        <div style="margin-top: 6px;">
+          <el-button size="small" :loading="checking" @click="checkProxy">检测连接</el-button>
+          <span class="muted" style="margin-left: 8px;">对数据源 pektino.com 分别经代理与直连探测</span>
+        </div>
+        <div v-if="checkResult" class="check-result">
+          <div v-if="checkResult.proxy" :class="checkResult.proxy.ok ? 'is-ok' : 'is-fail'">
+            {{ describeProbe('代理连接', checkResult.proxy.ok, checkResult.proxy.status, checkResult.proxy.elapsed_ms, checkResult.proxy.error) }}
+          </div>
+          <div v-else class="muted">未填写代理，已跳过代理测试</div>
+          <div :class="checkResult.direct.ok ? 'is-ok' : 'is-fail'">
+            {{ describeProbe('直连对照', checkResult.direct.ok, checkResult.direct.status, checkResult.direct.elapsed_ms, checkResult.direct.error) }}
+          </div>
+          <div v-if="checkResult.proxy && !checkResult.proxy.ok && checkResult.direct.ok" class="muted">
+            直连可用而代理失败：代理地址不可达或其分流规则未放行该站点；反之若两者都失败，需更换可用代理。
+          </div>
+        </div>
       </el-form-item>
       <el-form-item label="定时 Cron">
         <el-input v-model="form.schedule_cron" placeholder="0 3 * * *" />
@@ -132,5 +177,24 @@ async function save() {
 }
 .section-title:first-child {
   margin-top: 0;
+}
+.muted {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+.check-result {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.7;
+  word-break: break-all;
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: var(--el-fill-color-light);
+}
+.check-result .is-ok {
+  color: var(--el-color-success);
+}
+.check-result .is-fail {
+  color: var(--el-color-danger);
 }
 </style>

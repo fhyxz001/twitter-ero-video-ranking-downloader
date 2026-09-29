@@ -14,11 +14,13 @@ from app.config import (
     save_config,
 )
 from app.downloader import (
+    build_proxies,
     run_download_job,
     runtime_state,
     update_schedule,
 )
 from app.logging_utils import append_log, get_logs
+from app.media_api import probe_source
 
 router = APIRouter()
 
@@ -34,6 +36,10 @@ class SaveConfigRequest(BaseModel):
 
 class QuickSaveRequest(BaseModel):
     download_root: str
+
+
+class CheckProxyRequest(BaseModel):
+    proxy: str = ""
 
 
 @router.get("/health")
@@ -114,3 +120,18 @@ def api_check_dir(path: str = ""):
     if p.exists() and p.is_dir():
         return JSONResponse({"ok": True})
     return JSONResponse({"ok": False, "error": "目录不存在"})
+
+
+@router.post("/api/check-proxy")
+def api_check_proxy(body: CheckProxyRequest):
+    """用设置页正在填写的代理与直连各探测一次数据源，返回两条链路的结果供对照。"""
+    proxy = body.proxy.strip()
+    proxy_result = probe_source(build_proxies(proxy)) if proxy else None
+    direct_result = probe_source(None)
+    summary = "直连 " + ("正常" if direct_result["ok"] else "失败")
+    if proxy_result is not None:
+        summary = "代理 " + ("正常" if proxy_result["ok"] else "失败") + "；" + summary
+    else:
+        summary = "未填写代理，仅测试直连；" + summary
+    append_log(f"代理连通性检测：{summary}")
+    return JSONResponse({"ok": True, "proxy": proxy_result, "direct": direct_result})

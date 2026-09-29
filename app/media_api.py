@@ -1,6 +1,8 @@
 """pektino.com /api/media 客户端与条目规整。"""
 import hashlib
 import json
+import re
+import time
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from urllib.parse import urlparse
@@ -13,6 +15,9 @@ USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
 )
+
+# 连通性探测用的轻量超时，避免设置页的检测按钮卡顿过久
+PROBE_TIMEOUT = 10
 
 
 def generate_video_id(url: str) -> str:
@@ -66,6 +71,61 @@ def normalize_media_item(raw: object) -> Optional[dict]:
     }
 
 
+def _friendly_curl_error(exc: Exception) -> str:
+    """把 curl 连接类错误翻译成带排查提示的信息（curl: (35) TLS被重置 等）。"""
+    msg = str(exc)[:300]
+    match = re.search(r"curl: \((\d+)\)", msg)
+    if match and match.group(1) in {"6", "7", "28", "35", "56"}:
+        hint = (
+            "无法连通 pektino.com：请检查设置里的 HTTP 代理是否为部署环境可访问的地址"
+            "（容器内不要写 127.0.0.1），或当前网络到该站点的连接被阻断了"
+        )
+        return f"{msg}（{hint}）"
+    return msg
+
+
+def probe_source(proxies: Optional[Dict[str, str]], timeout: int = PROBE_TIMEOUT) -> dict:
+    """对数据源做一次轻量连通性探测，供设置页"检测连接"使用。
+
+    ok 表示网络链路可用（拿到 HTTP 200 且响应是合法 JSON），与榜单当前是否有数据无关。
+    """
+    params: Dict[str, object] = {
+        "page": 1,
+        "per_page": 1,
+        "range": "all",
+        "ids": "",
+        "category": "",
+        "isFilteredOnly": "0",
+        "sort": "pv",
+    }
+    started = time.monotonic()
+    try:
+        resp = requests.get(
+            MEDIA_API_URL,
+            params=params,
+            headers={"Accept": "application/json", "User-Agent": USER_AGENT},
+            timeout=timeout,
+            proxies=proxies or None,
+            impersonate="chrome",
+        )
+    except Exception as exc:
+        elapsed = int((time.monotonic() - started) * 1000)
+        return {"ok": False, "status": None, "elapsed_ms": elapsed, "items": None,
+                "error": _friendly_curl_error(exc)}
+
+    elapsed = int((time.monotonic() - started) * 1000)
+    if resp.status_code != 200:
+        return {"ok": False, "status": resp.status_code, "elapsed_ms": elapsed, "items": None,
+                "error": f"HTTP {resp.status_code}"}
+    try:
+        items = resp.json().get("items", [])
+    except (json.JSONDecodeError, ValueError):
+        return {"ok": False, "status": resp.status_code, "elapsed_ms": elapsed, "items": None,
+                "error": "响应不是合法 JSON"}
+    return {"ok": True, "status": resp.status_code, "elapsed_ms": elapsed,
+            "items": len(items) if isinstance(items, list) else None, "error": None}
+
+
 def fetch_pektino_media(
     proxies,
     ranking_range: str = "daily",
@@ -90,14 +150,17 @@ def fetch_pektino_media(
         "Accept": "application/json",
         "User-Agent": USER_AGENT,
     }
-    resp = requests.get(
-        MEDIA_API_URL,
-        params=params,
-        headers=headers,
-        timeout=REQUEST_TIMEOUT,
-        proxies=proxies,
-        impersonate="chrome",
-    )
+    try:
+        resp = requests.get(
+            MEDIA_API_URL,
+            params=params,
+            headers=headers,
+            timeout=REQUEST_TIMEOUT,
+            proxies=proxies,
+            impersonate="chrome",
+        )
+    except Exception as exc:
+        raise ValueError(_friendly_curl_error(exc)) from exc
     resp.raise_for_status()
     raw_text = resp.text.strip()
     if not raw_text:

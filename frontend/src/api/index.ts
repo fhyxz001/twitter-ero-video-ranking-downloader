@@ -50,6 +50,20 @@ export interface StatusResponse {
   config: AppConfig
 }
 
+export interface ProbeResult {
+  ok: boolean
+  status: number | null
+  elapsed_ms: number | null
+  items: number | null
+  error: string | null
+}
+
+export interface CheckProxyResponse {
+  ok: boolean
+  proxy: ProbeResult | null
+  direct: ProbeResult
+}
+
 export const api = {
   getStatus: () => http.get<StatusResponse>('/status').then((r) => r.data),
   runNow: () => http.post<{ ok: boolean; message?: string }>('/run-now').then((r) => r.data),
@@ -59,6 +73,8 @@ export const api = {
     http.post<{ ok: boolean; config?: AppConfig; error?: string }>('/save-quick', payload).then((r) => r.data),
   checkDir: (path: string) =>
     http.get<{ ok: boolean; error?: string }>('/api/check-dir', { params: { path } }).then((r) => r.data),
+  checkProxy: (proxy: string) =>
+    http.post<CheckProxyResponse>('/api/check-proxy', { proxy }).then((r) => r.data),
   saveWaterfallSettings: (per_page: number) =>
     http
       .post<{ ok: boolean; config?: { per_page: number }; error?: string }>('/api/waterfall/settings', {
