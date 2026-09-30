@@ -1,253 +1,42 @@
 # Twitter Ero Video Ranking Downloader
 
+按播放量从远端视频排行榜自动下载视频，支持日/周/月/总榜切换，提供 Web 界面管理配置、查看日志、浏览远程视频和本地视频。
+
 [![Docker Pulls](https://img.shields.io/docker/pulls/hexbkyoma/twitter-ero-video-ranking-downloader)](https://hub.docker.com/r/hexbkyoma/twitter-ero-video-ranking-downloader)
 
-从 [pektino.com](https://pektino.com) 排行榜按播放量自动下载视频，支持日/周/月/总榜切换。提供 Web 界面管理配置、查看日志、浏览远程视频和本地视频。
+## 功能
 
-## 功能概览
-
-- **定时下载** — 按配置的榜单范围自动下载排行靠前的视频，支持每日定时执行，也可一键关闭
-- **远程视频** — 在线浏览远端排行视频，可独立设置每页数量，勾选后一键下载
-- **本地视频** — 浏览本地视频文件，媒体根目录可独立配置（留空则使用视频下载根目录），支持 `.strm` 引用条目的播放，预览播放、替换封面、批量删除、服务端分页与排序
-- **封面刮削** — 一键遍历所选文件夹中的视频（mp4、mkv 等），用 ffmpeg 抽取首帧生成同名 jpg 封面，已有封面的自动跳过
+- **定时下载** — 按榜单范围定时下载排行靠前的视频，可一键关闭
+- **远程视频** — 在线浏览远端排行视频，可设置每页数量，勾选一键下载
+- **本地视频** — 浏览本地视频，媒体根目录可独立配置；支持 `.strm` 引用条目播放、预览播放、替换封面、批量删除、服务端分页与排序
+- **封面刮削** — 用 ffmpeg 抽取视频首帧生成同名 jpg 封面，已有封面自动跳过
 - **Web 界面** — 所有操作通过浏览器完成，端口 `2617`
 
-## 配置说明
+## 配置
 
-配置文件为程序同目录下的 `config.json`，首次运行会自动生成默认配置：
-
-```json
-{
-  "download_root": "/data/downloads",
-  "poster_root": "",
-  "proxy": "",
-  "auto_download_enabled": true,
-  "schedule_cron": "0 3 * * *",
-  "max_daily_downloads": 10,
-  "ranking_range": "daily",
-  "waterfall_per_page": 10
-}
-```
+配置文件为程序同目录下的 `config.json`，首次运行自动生成：
 
 | 字段 | 说明 | 默认值 |
 |---|---|---|
-| `download_root` | 视频下载的根目录，绝对路径 | `/data/downloads` |
-| `poster_root` | 本地视频媒体根目录（设置页"本地视频"中配置），留空则回退到 `download_root` | 空 |
-| `proxy` | HTTP 代理地址，为空则直连 | 空 |
-| `auto_download_enabled` | 是否开启定时自动下载，关闭后仅保留手动下载 | `true` |
+| `download_root` | 视频下载根目录，绝对路径 | `/data/downloads` |
+| `poster_root` | 本地视频媒体根目录（设置页"本地视频"中配置），留空回退 `download_root` | 空 |
+| `proxy` | HTTP 代理地址，格式 `http://IP:端口`，空则直连 | 空 |
+| `auto_download_enabled` | 是否开启定时自动下载 | `true` |
 | `schedule_cron` | 定时执行 cron 表达式（5 位） | `0 3 * * *` |
 | `max_daily_downloads` | 每次执行最大下载数量 | `10` |
 | `ranking_range` | 榜单范围：`daily` 日榜 / `weekly` 周榜 / `monthly` 月榜 / `all` 总榜 | `daily` |
 | `waterfall_per_page` | 远程视频每页展示数量，可选 `10/20/30/50/100` | `10` |
 
-> 配置采用白名单制：仅保留上述键，历史版本遗留的其他键（含敏感信息）会在下次保存时自动清除。
-> `/status` 等接口只返回上述白名单字段，不会泄露其他配置内容。
+> 配置采用白名单制：仅保留上述键，历史版本遗留的其他键会在下次保存时自动清除。
 
----
+## 部署
 
-## 部署方式
-
-### 方式一：Windows 直接运行
-
-适用于 Windows 桌面/服务器环境。
-
-#### 1. Python 源码运行
-
-```bash
-# 克隆项目
-git clone https://github.com/你的用户名/twitter-ero-video-ranking-downloader.git
-cd twitter-ero-video-ranking-downloader
-
-# 创建虚拟环境（推荐）
-python -m venv venv
-venv\Scripts\activate
-
-# 安装依赖
-pip install -r requirements.txt
-
-# 运行
-python main.py
-```
-
-打开浏览器访问 `http://localhost:2617` 即可使用。
-
-#### 2. 打包为 EXE 单文件
-
-使用 PyInstaller 打包为独立可执行文件，无需安装 Python：
-
-```bash
-# 安装 PyInstaller
-pip install pyinstaller
-
-# 打包（也可直接运行 build_exe.py）
-python build_exe.py
-```
-
-打包完成后，`dist\twitter-downloader.exe` 即为独立可执行文件。
-
-运行方式：
-
-```bash
-# 直接双击运行，或在命令行中：
-twitter-downloader.exe
-```
-
-> `config.json` 会自动生成在 EXE 同目录下，修改配置后重启程序生效。
-
----
-
-### 方式二：Linux 直接运行
-
-适用于 x86_64 Linux 服务器（Ubuntu、Debian、CentOS 等）。
-
-#### 1. Python 源码运行
-
-```bash
-# 克隆项目
-git clone https://github.com/你的用户名/twitter-ero-video-ranking-downloader.git
-cd twitter-ero-video-ranking-downloader
-
-# 创建虚拟环境（推荐）
-python3 -m venv venv
-source venv/bin/activate
-
-# 安装依赖
-pip install -r requirements.txt
-
-# 安装 ffmpeg（本地视频时长探测需要 ffprobe）
-sudo apt install ffmpeg      # Ubuntu/Debian
-sudo yum install ffmpeg      # CentOS（可能需要 EPEL 或 RPM Fusion）
-
-# 运行
-python main.py
-```
-
-#### 2. systemd 服务（推荐长期运行）
-
-创建 systemd 服务文件，实现开机自启和崩溃自动重启：
-
-```bash
-sudo nano /etc/systemd/system/twitter-downloader.service
-```
-
-写入以下内容（根据实际路径修改）：
-
-```ini
-[Unit]
-Description=Twitter Ero Video Ranking Downloader
-After=network.target
-
-[Service]
-Type=simple
-User=你的用户名
-WorkingDirectory=/home/你的用户名/twitter-ero-video-ranking-downloader
-ExecStart=/home/你的用户名/twitter-ero-video-ranking-downloader/venv/bin/python main.py
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-```
-
-启用并启动：
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable twitter-downloader
-sudo systemctl start twitter-downloader
-
-# 查看状态
-sudo systemctl status twitter-downloader
-
-# 查看日志
-journalctl -u twitter-downloader -f
-```
-
----
-
-### 方式三：Docker 容器化运行（支持 ARM）
-
-适用于所有 Docker 环境，包括 x86_64 和 ARM64（ARM NAS、树莓派等）。
-
-#### 0. 从镜像仓库拉取（推荐）
-
-镜像有两个来源，按网络环境选择：
-
-**国内 NAS —— 阿里云 ACR（私有仓库）**
-
-推送到 `master` 后 CI 自动构建 amd64 镜像并推送 ACR，NAS 端直接拉取：
-
-```bash
-# 私有仓库首次部署需登录一次（凭证保存在 NAS 上）
-docker login registry.cn-hangzhou.aliyuncs.com
-
-# 在放有 docker-compose.yml 和 config.json 的目录里执行
-docker compose pull
-docker compose up -d
-```
-
-> 该 ACR 仓库为作者私有，其他用户请使用 Docker Hub 或本地构建。
-
-**海外 —— Docker Hub（公开，多架构）**
+### Docker（推荐，支持 amd64 / arm64）
 
 ```bash
 docker pull hexbkyoma/twitter-ero-video-ranking-downloader:latest
-```
-
-#### 1. 在线构建
-
-适合需要从源码自定义构建的场景（大多数用户可直接用上面的 `docker pull`）：
-
-```bash
-# 克隆项目
-git clone https://github.com/你的用户名/twitter-ero-video-ranking-downloader.git
-cd twitter-ero-video-ranking-downloader
-
-# 准备配置文件（首次运行会自动生成默认配置，也可手动创建）
-# 编辑 config.json，将 download_root 改为容器内的挂载路径：
-#   "download_root": "/data/downloads"
-
-# 从源码构建镜像
-docker build -t hexbkyoma/twitter-ero-video-ranking-downloader:latest .
-
-# 启动
 docker compose up -d
 ```
-
-> Docker 镜像基于 `python:3.11-slim`，同时支持 `linux/amd64` 和 `linux/arm64` 架构。
-> 在 ARM 设备（如群晖 NAS、树莓派）上构建时会自动使用 ARM64 基础镜像，无需额外配置。
-
-#### 2. 离线镜像导入（应急）
-
-适合 NAS 完全无法访问外网的场景，作为拉取模式的备用手段：
-
-在 GitHub 仓库 **Actions → Export Docker Image → Run workflow** 手动触发，选择目标架构，构建完成后从该次运行页面的 **Artifacts** 下载对应离线镜像包：
-
-| 架构 | 文件名 |
-|---|---|
-| x86_64 (amd64) | `twitter-ero-video-ranking-downloader-版本号-offline-amd64.tar.gz` |
-| ARM64 (arm64) | `twitter-ero-video-ranking-downloader-版本号-offline-arm64.tar.gz` |
-
-导入并启动：
-
-```bash
-# 解压并加载镜像
-gunzip twitter-ero-video-ranking-downloader-latest-offline-arm64.tar.gz
-docker load -i twitter-ero-video-ranking-downloader-latest-offline-arm64.tar
-
-# 给镜像打上 Docker Hub 标签（docker-compose.yml 使用此镜像名）
-docker tag twitter-ero-video-ranking-downloader:latest-arm64 hexbkyoma/twitter-ero-video-ranking-downloader:latest
-
-# 准备配置文件和下载目录
-mkdir -p nas_downloads
-# 编辑 config.json，将 download_root 改为容器内路径：
-#   "download_root": "/data/downloads"
-
-# 启动
-docker compose up -d
-```
-
-#### 3. 配置与目录映射
 
 `docker-compose.yml` 默认映射：
 
@@ -256,165 +45,75 @@ docker compose up -d
 | `/app/config.json` | `./config.json` | 配置文件持久化 |
 | `/data/downloads` | `./nas_downloads` | 视频下载目录 |
 
-`docker-compose.yml` 已配置为从阿里云 ACR 拉取 CI 构建的镜像；本地开发调试时用 `docker build -t twitter-downloader .` 自行构建。配置文件中的 `download_root` 应设置为容器内路径 `/data/downloads`，而非主机路径。
+> `config.json` 中的 `download_root` 应设置为**容器内**路径 `/data/downloads`，而非主机路径。
+> 如需把本地视频指向独立媒体库，为 `poster_root` 额外挂载一个容器路径（如 `/data/media`）并在设置页填写该容器内路径。
 
-如需把本地视频指向独立媒体库，为 `poster_root` 额外挂载一个容器路径并在设置页填写该容器内路径：
-
-```yaml
-volumes:
-  - ./config.json:/app/config.json
-  - /vol1/1000/AdultMedia/tw:/data/downloads          # 改为你的 NAS 实际路径
-  - /vol1/1000/AdultMedia/library:/data/media         # 本地视频媒体库（可选）
-```
-
-```json
-{ "poster_root": "/data/media" }
-```
-
-#### 4. 管理命令
+管理命令：
 
 ```bash
-# 启动
-docker compose up -d
-
-# 停止
-docker compose down
-
-# 查看日志
-docker compose logs -f
-
-# 更新（拉取最新镜像并重启）
-docker compose pull
-docker compose up -d
-
-# 或一键更新（同步部署文件 + 拉取镜像 + 重启）
-bash update.sh
+docker compose up -d                          # 启动
+docker compose down                           # 停止
+docker compose logs -f                        # 查看日志
+docker compose pull && docker compose up -d   # 更新
+bash update.sh                                # 或一键更新（同步部署文件 + 拉取镜像 + 重启）
 ```
 
----
-
-### 方式四：群晖 NAS Docker 部署
-
-适用于 Synology DSM 界面操作。
-
-#### 1. 获取镜像
-
-**方式 A：从 Docker Hub 拉取（推荐，有网络时）**
-
-DSM → **容器管理器** → **注册表** → 搜索 `hexbkyoma/twitter-ero-video-ranking-downloader` → 下载 `latest` 标签。
-
-或通过 SSH：
+### 源码运行（Windows / Linux）
 
 ```bash
-docker pull hexbkyoma/twitter-ero-video-ranking-downloader:latest
+git clone https://github.com/你的用户名/twitter-ero-video-ranking-downloader.git
+cd twitter-ero-video-ranking-downloader
+
+python -m venv venv && source venv/bin/activate   # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+
+# 本地视频时长探测与封面刮削依赖 ffmpeg（含 ffprobe）
+sudo apt install ffmpeg   # Windows 从 ffmpeg.org 下载后加入 PATH
+
+python main.py
 ```
 
-**方式 B：离线镜像导入（无网络时）**
+访问 `http://localhost:2617`。长期运行可用 systemd 等托管 `main.py`。
+打包 Windows 单文件 EXE：`pip install pyinstaller && python build_exe.py`，产物在 `dist\` 下。
 
-1. 从 GitHub Releases 下载 **`arm64`** 架构的离线镜像包（大部分群晖为 ARM64；部分高端型号为 x86_64，请确认你的架构）
-2. DSM → **容器管理器** → **注册表** → **添加** → 从文件导入 `.tar` 镜像
-3. 或通过 SSH 命令行导入：
+### 群晖 NAS / 离线部署
 
-```bash
-gunzip twitter-ero-video-ranking-downloader-latest-offline-arm64.tar.gz
-docker load -i twitter-ero-video-ranking-downloader-latest-offline-arm64.tar
-```
-
-#### 2. 创建容器
-
-1. DSM → **容器管理器** → **创建容器**
-2. 选择导入的 `twitter-ero-video-ranking-downloader:latest` 镜像
-3. 端口映射：主机 `2617` → 容器 `2617`
-4. 存储空间映射：
-   - 主机配置文件路径 → 容器 `/app/config.json`（文件级映射）
-   - 主机下载目录（如 `/vol1/1000/AdultMedia/tw`） → 容器 `/data/downloads`
-5. 环境变量：`TZ=Asia/Shanghai`
-6. 勾选 **自动重启**
-
-#### 3. 配置
-
-确保 `config.json` 中 `download_root` 设置为容器内路径 `/data/downloads`：
-
-```json
-{
-  "download_root": "/data/downloads",
-  "proxy": "http://192.168.1.13:20171",
-  ...
-}
-```
-
----
+- **群晖 DSM**：容器管理器 → 注册表搜索镜像名下载 `latest`（或从文件导入离线镜像），端口映射 `2617:2617`，配置文件映射到 `/app/config.json`，环境变量 `TZ=Asia/Shanghai`。CPU 架构在控制面板 → 信息中心查看（Intel 系列选 amd64，Realtek/ARM 系列选 arm64）
+- **完全离线**：GitHub Actions（Export Docker Image）按架构构建后，从该次运行的 Artifacts 下载离线包，`gunzip` 后 `docker load` 导入
 
 ## 常见问题
 
-### Q: 下载目录在哪里？
+### Q: 视频时长显示 `--:--`？
 
-**直接运行模式**：`config.json` 中 `download_root` 设置为主机绝对路径（如 `/vol1/1000/AdultMedia/tw` 或 `D:\videos`）。
+时长探测依赖 `ffprobe`（ffmpeg 套件），确保运行环境已安装 ffmpeg。Docker 镜像已内置。
 
-**Docker 模式**：`config.json` 中 `download_root` 设置为容器内路径 `/data/downloads`，实际文件通过 volume 映射存到主机目录。
+### Q: 如何把本地视频指向自己的媒体库？
 
-### Q: 如何设置代理？
-
-在 `config.json` 中填写 `proxy` 字段，格式为 `http://IP:端口`，如 `http://192.168.1.100:7897`。Docker 容器内如需使用宿主机代理，可填写宿主机 IP（不能填 `127.0.0.1`，因为容器内 localhost 不是宿主机）。
-
-### Q: 本地视频时长显示 `--:--`？
-
-时长探测依赖 `ffprobe`（属于 ffmpeg）。请确保运行环境已安装 ffmpeg：
-
-- **Linux**：`sudo apt install ffmpeg`
-- **Docker**：镜像已内置 ffmpeg，无需额外安装
-- **Windows**：从 [ffmpeg.org](https://ffmpeg.org/download.html) 下载并将 `ffprobe.exe` 放到 PATH 或程序同目录
-
-### Q: 本地视频如何指向自己的媒体库（而不是下载目录）？
-
-在 Web 界面 **任务页 → 设置 → 本地视频 → 媒体根目录** 填写目录路径（如 `D:\Media` 或 `/vol1/1000/AdultMedia`），保存后本地视频页面立即扫描该目录；留空则继续使用视频下载根目录。该目录下的一级子文件夹会作为可筛选的分类。
+**任务页 → 设置 → 本地视频 → 媒体根目录** 填写目录路径，保存后立即扫描；留空则使用视频下载根目录。该目录下的一级子文件夹会作为可筛选的分类。
 
 ### Q: `.strm` 文件是什么？如何播放？
 
 `.strm` 是媒体库常用的"引用型"文本文件，内容只有一行——真实媒体的位置。本地视频会把 `.strm` 当作视频条目收录，播放时读取其内容：
 
-- 内容为 `http://` / `https://` 链接 → 服务端 302 重定向，浏览器播放器直接拉流
-- 内容为本地文件路径（支持相对路径与 UNC 路径如 `\\NAS\share\a.mp4`）→ 服务端读取该文件供流
-- 相对路径按 `.strm` 所在目录展开；同名的图片文件（如 `Movie.jpg`）会作为其海报封面
+- 内容为 `http(s)` 链接 → 服务端 302 重定向，浏览器播放器直接拉流
+- 内容为本地文件路径（支持相对路径与 UNC 路径如 `\\NAS\share\a.mp4`）→ 服务端读取该文件供流，相对路径按 `.strm` 所在目录展开
+- 同名图片文件（如 `Movie.jpg`）会作为其封面
 
-> 注意：`.strm` 指向的远程链接需可直接访问（302/直链），HLS（m3u8）直链在部分浏览器上无法原生播放；Docker 部署时 strm 内的本地路径指的应是**容器内**可见的路径。
+> `.strm` 指向的远程链接需可直接访问（302/直链），HLS（m3u8）直链在部分浏览器上无法原生播放；Docker 部署时 strm 内的本地路径指的应是**容器内**可见的路径。
 
 ### Q: 封面刮削是什么？怎么用？
 
-本地视频工具栏提供 **刮削封面** 按钮，按当前文件夹筛选范围执行（选"全部文件夹"时覆盖根目录与各一级子文件夹）。流程：遍历其中的视频文件（mp4、mkv 等，`.strm` 引用条目除外）→ 用 ffmpeg 抽取每个视频的首帧 → 在同目录生成同名 jpg（如 `a.mp4` → `a.jpg`）。
-
-- 已有同名图片（任意常见图片格式）的视频会跳过，**不会覆盖**手动设置的封面
-- 作业后台执行，页面轮询进度；失败原因（如文件损坏）会保留在作业状态里
-- 依赖 ffmpeg：Docker 镜像已内置；Windows/Linux 直接运行需将 `ffmpeg` 加入 PATH
+本地视频工具栏 **刮削封面** 按钮，按当前文件夹筛选范围执行：遍历视频文件（`.strm` 引用条目除外）→ ffmpeg 抽取首帧 → 同目录生成同名 jpg（如 `a.mp4` → `a.jpg`）。已有封面的自动跳过，**不会覆盖**手动设置的封面；作业后台执行，页面轮询进度，失败原因保留在作业状态里。
 
 ### Q: 容器启动报 `IsADirectoryError: '/app/config.json.tmp' -> '/app/config.json'`？
 
-部署目录里没有 `config.json` 文件就直接 `docker compose up` 时，Docker 会先在宿主机自动创建一个同名**目录**并挂载为 `/app/config.json`，而挂载点无法在容器内删除或替换成文件，旧版本会因此崩溃循环。新版本已内置自愈：自动把配置写到该目录内的 `config.json`（宿主机上表现为 `部署目录/config.json/config.json`），拉取最新镜像重启即可。
-
-建议首次部署时先在部署目录创建好 `config.json` 文件（可从仓库复制后修改），保持整洁的单文件布局。
-
-### Q: 群晖 NAS 如何确认 CPU 架构？
-
-DSM → **控制面板** → **信息中心**，查看 CPU 型号。常见对应：
-
-| CPU 系列 | 架构 |
-|---|---|
-| Intel (J、N、+ 系列) | x86_64 → 下载 **amd64** 镜像 |
-| Realtek (RTD129x) | ARM64 → 下载 **arm64** 镜像 |
-| ARM Annapurna Labs | ARM64 → 下载 **arm64** 镜像 |
-
-### Q: 如何更新版本？
-
-- **直接运行**：`git pull` 后重启程序
-- **Docker（NAS）**：`bash update.sh`（同步部署文件并从 ACR 拉取最新镜像），或手动 `docker compose pull && docker compose up -d`；回滚时把 compose 里的 `latest` 换成对应的 `sha-xxxxxxx` 标签
-- **群晖 DSM**：删除旧容器 → 导入新镜像 → 重新创建容器
+部署目录里没有 `config.json` 文件就直接 `docker compose up` 时，Docker 会先在宿主机创建一个同名**目录**挂载进容器，旧版本会因此崩溃循环。新版本已内置自愈：自动把配置写到该目录内的 `config.json`，拉取最新镜像重启即可。建议首次部署先创建好 `config.json` 文件。
 
 ## 技术栈
 
 - **后端**：Python 3.11 + FastAPI + APScheduler
-- **前端**：Vue 3 + Element Plus + Vue Router + Pinia + Vite（构建产物提交到 `static/dist/`）
-- **容器**：Docker（多架构：amd64 + arm64）
-- **打包**：PyInstaller（Windows 单文件 EXE）
+- **前端**：Vue 3 + Element Plus + Vite
+- **容器**：Docker（多架构 amd64 + arm64）；PyInstaller 打包 Windows EXE
 
 ## License
 
