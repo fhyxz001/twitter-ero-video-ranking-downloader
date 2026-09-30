@@ -188,7 +188,7 @@ def fetch_pektino_media(
 
 
 def normalize_waterfall_item(item: dict) -> Optional[dict]:
-    """把内部条目映射为瀑布流接口的输出格式。"""
+    """把内部条目映射为远程视频接口的输出格式。"""
     if not isinstance(item, dict):
         return None
     video_id = str(item.get("id", "")).strip()

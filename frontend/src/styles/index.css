@@ -38,14 +38,14 @@ body {
   font-family: 'Cascadia Code', 'Consolas', 'Courier New', monospace;
 }
 
-/* 海报墙网格 */
+/* 本地视频网格 */
 .poster-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 12px;
 }
 
-/* 瀑布流 masonry */
+/* 远程视频 masonry */
 .waterfall-masonry {
   column-count: 4;
   column-gap: 12px;
@@ -169,7 +169,7 @@ body {
   margin-bottom: 8px;
 }
 
-/* 瀑布流卡片 */
+/* 远程视频卡片 */
 .waterfall-card {
   border: 1px solid var(--el-border-color);
   border-radius: 6px;

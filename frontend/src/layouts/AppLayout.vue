@@ -30,8 +30,8 @@ const isRunning = computed(() => statusStore.runtimeState.is_running)
         style="border-bottom: none; flex: 1;"
       >
         <el-menu-item index="/">任务</el-menu-item>
-        <el-menu-item index="/poster">海报墙</el-menu-item>
-        <el-menu-item index="/waterfall">瀑布流</el-menu-item>
+        <el-menu-item index="/poster">本地视频</el-menu-item>
+        <el-menu-item index="/waterfall">远程视频</el-menu-item>
       </el-menu>
       <el-tag :type="isRunning ? 'success' : 'info'" effect="plain" style="margin-right: 12px;">
         <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 4px; vertical-align: middle;" />

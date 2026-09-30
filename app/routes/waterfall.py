@@ -1,4 +1,4 @@
-"""瀑布流路由：远端榜单浏览与选择下载。"""
+"""远程视频路由：远端榜单浏览与选择下载。"""
 from pathlib import Path
 from typing import List, Optional
 
@@ -70,7 +70,7 @@ def api_waterfall(page: int = 1, range: str = ""):
             },
         })
     except Exception as exc:
-        append_log(f"瀑布流预览加载失败：{exc}")
+        append_log(f"远程视频预览加载失败：{exc}")
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=502)
 
 
@@ -84,10 +84,10 @@ def save_waterfall_settings(body: WaterfallSettingsRequest):
             cfg = load_config()
             cfg["waterfall_per_page"] = per_page
             save_config(cfg)
-        append_log("瀑布流配置已保存")
+        append_log("远程视频配置已保存")
         return JSONResponse({"ok": True, "config": {"per_page": per_page}})
     except Exception as exc:
-        append_log(f"瀑布流配置保存失败：{exc}")
+        append_log(f"远程视频配置保存失败：{exc}")
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
 
 

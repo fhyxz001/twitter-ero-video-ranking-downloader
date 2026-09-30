@@ -144,7 +144,7 @@ onMounted(loadData)
   <div>
     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
       <el-button text @click="router.push('/')">← 返回</el-button>
-      <h1 class="page-title" style="margin: 0;">瀑布流</h1>
+      <h1 class="page-title" style="margin: 0;">远程视频</h1>
     </div>
     <div class="muted" style="margin-bottom: 16px;">每页 {{ perPage }} 个</div>
 
@@ -186,7 +186,7 @@ onMounted(loadData)
       </div>
     </div>
 
-    <!-- 瀑布流 -->
+    <!-- 远程视频 -->
     <div v-loading="loading">
       <div v-if="items.length === 0 && !loading" class="muted" style="padding: 40px 0; text-align: center;">
         当前配置下没有可预览的视频。
@@ -226,7 +226,7 @@ onMounted(loadData)
     </div>
 
     <!-- 设置弹窗 -->
-    <el-dialog v-model="settingsOpen" title="瀑布流设置" width="420px">
+    <el-dialog v-model="settingsOpen" title="远程视频设置" width="420px">
       <el-form label-width="100px">
         <el-form-item label="每页数量">
           <el-select v-model="settingsPerPage" style="width: 200px;">

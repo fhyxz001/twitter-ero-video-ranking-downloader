@@ -6,7 +6,7 @@
   logging_utils.py 日志（内存环形缓冲 + 落盘滚动文件）
   media_api.py    pektino.com /api/media 客户端与条目规整
   downloader.py   下载任务（并行 + 重试）与定时调度
-  poster.py       海报墙扫描/时长/缩略图与多级缓存
+  poster.py       本地视频扫描/时长/缩略图与多级缓存
   routes/         路由（system / waterfall / poster）
   server.py       FastAPI 应用装配
 """

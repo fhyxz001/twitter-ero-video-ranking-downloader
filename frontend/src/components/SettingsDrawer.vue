@@ -157,11 +157,11 @@ async function checkProxy() {
         </el-select>
       </el-form-item>
 
-      <div class="section-title">海报墙</div>
+      <div class="section-title">本地视频</div>
       <el-form-item label="媒体根目录">
         <el-input v-model="form.poster_root" placeholder="如 D:\Media 或 /data/media" />
         <div class="muted" style="margin-top: 4px;">
-          海报墙从该目录扫描视频与 .strm 引用；留空时使用"视频下载根目录"。
+          本地视频从该目录扫描视频与 .strm 引用；留空时使用"视频下载根目录"。
           同名图片文件（如 Movie.jpg）将作为对应条目的封面。
         </div>
       </el-form-item>

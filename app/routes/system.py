@@ -84,7 +84,7 @@ def save(body: SaveConfigRequest):
             save_config(cfg)
         update_schedule(get_current_config())
         if roots_changed:
-            # 目录变化后立刻失效扫描缓存，海报墙无需等 TTL 过期
+            # 目录变化后立刻失效扫描缓存，本地视频页面无需等 TTL 过期
             invalidate_scan_cache()
         append_log("配置已保存")
         return JSONResponse({"ok": True})

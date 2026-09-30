@@ -2,13 +2,13 @@
 
 [![Docker Pulls](https://img.shields.io/docker/pulls/hexbkyoma/twitter-ero-video-ranking-downloader)](https://hub.docker.com/r/hexbkyoma/twitter-ero-video-ranking-downloader)
 
-从 [pektino.com](https://pektino.com) 排行榜按播放量自动下载视频，支持日/周/月/总榜切换。提供 Web 界面管理配置、查看日志、浏览瀑布流预览和本地海报墙。
+从 [pektino.com](https://pektino.com) 排行榜按播放量自动下载视频，支持日/周/月/总榜切换。提供 Web 界面管理配置、查看日志、浏览远程视频和本地视频。
 
 ## 功能概览
 
 - **定时下载** — 按配置的榜单范围自动下载排行靠前的视频，支持每日定时执行，也可一键关闭
-- **瀑布流预览** — 在线浏览远端排行视频，可独立设置每页数量，勾选后一键下载
-- **海报墙** — 浏览本地视频，媒体根目录可独立配置（留空则使用视频下载根目录），支持 `.strm` 引用条目的播放，预览播放、替换封面、批量删除、服务端分页与排序
+- **远程视频** — 在线浏览远端排行视频，可独立设置每页数量，勾选后一键下载
+- **本地视频** — 浏览本地视频文件，媒体根目录可独立配置（留空则使用视频下载根目录），支持 `.strm` 引用条目的播放，预览播放、替换封面、批量删除、服务端分页与排序
 - **封面刮削** — 一键遍历所选文件夹中的视频（mp4、mkv 等），用 ffmpeg 抽取首帧生成同名 jpg 封面，已有封面的自动跳过
 - **Web 界面** — 所有操作通过浏览器完成，端口 `2617`
 
@@ -32,13 +32,13 @@
 | 字段 | 说明 | 默认值 |
 |---|---|---|
 | `download_root` | 视频下载的根目录，绝对路径 | `/data/downloads` |
-| `poster_root` | 海报墙媒体根目录（设置页"海报墙"中配置），留空则回退到 `download_root` | 空 |
+| `poster_root` | 本地视频媒体根目录（设置页"本地视频"中配置），留空则回退到 `download_root` | 空 |
 | `proxy` | HTTP 代理地址，为空则直连 | 空 |
 | `auto_download_enabled` | 是否开启定时自动下载，关闭后仅保留手动下载 | `true` |
 | `schedule_cron` | 定时执行 cron 表达式（5 位） | `0 3 * * *` |
 | `max_daily_downloads` | 每次执行最大下载数量 | `10` |
 | `ranking_range` | 榜单范围：`daily` 日榜 / `weekly` 周榜 / `monthly` 月榜 / `all` 总榜 | `daily` |
-| `waterfall_per_page` | 瀑布流每页展示数量，可选 `10/20/30/50/100` | `10` |
+| `waterfall_per_page` | 远程视频每页展示数量，可选 `10/20/30/50/100` | `10` |
 
 > 配置采用白名单制：仅保留上述键，历史版本遗留的其他键（含敏感信息）会在下次保存时自动清除。
 > `/status` 等接口只返回上述白名单字段，不会泄露其他配置内容。
@@ -114,7 +114,7 @@ source venv/bin/activate
 # 安装依赖
 pip install -r requirements.txt
 
-# 安装 ffmpeg（海报墙时长探测需要 ffprobe）
+# 安装 ffmpeg（本地视频时长探测需要 ffprobe）
 sudo apt install ffmpeg      # Ubuntu/Debian
 sudo yum install ffmpeg      # CentOS（可能需要 EPEL 或 RPM Fusion）
 
@@ -258,13 +258,13 @@ docker compose up -d
 
 `docker-compose.yml` 已配置为从阿里云 ACR 拉取 CI 构建的镜像；本地开发调试时用 `docker build -t twitter-downloader .` 自行构建。配置文件中的 `download_root` 应设置为容器内路径 `/data/downloads`，而非主机路径。
 
-如需把海报墙指向独立媒体库，为 `poster_root` 额外挂载一个容器路径并在设置页填写该容器内路径：
+如需把本地视频指向独立媒体库，为 `poster_root` 额外挂载一个容器路径并在设置页填写该容器内路径：
 
 ```yaml
 volumes:
   - ./config.json:/app/config.json
   - /vol1/1000/AdultMedia/tw:/data/downloads          # 改为你的 NAS 实际路径
-  - /vol1/1000/AdultMedia/library:/data/media         # 海报墙媒体库（可选）
+  - /vol1/1000/AdultMedia/library:/data/media         # 本地视频媒体库（可选）
 ```
 
 ```json
@@ -357,7 +357,7 @@ docker load -i twitter-ero-video-ranking-downloader-latest-offline-arm64.tar
 
 在 `config.json` 中填写 `proxy` 字段，格式为 `http://IP:端口`，如 `http://192.168.1.100:7897`。Docker 容器内如需使用宿主机代理，可填写宿主机 IP（不能填 `127.0.0.1`，因为容器内 localhost 不是宿主机）。
 
-### Q: 海报墙视频时长显示 `--:--`？
+### Q: 本地视频时长显示 `--:--`？
 
 时长探测依赖 `ffprobe`（属于 ffmpeg）。请确保运行环境已安装 ffmpeg：
 
@@ -365,13 +365,13 @@ docker load -i twitter-ero-video-ranking-downloader-latest-offline-arm64.tar
 - **Docker**：镜像已内置 ffmpeg，无需额外安装
 - **Windows**：从 [ffmpeg.org](https://ffmpeg.org/download.html) 下载并将 `ffprobe.exe` 放到 PATH 或程序同目录
 
-### Q: 海报墙如何指向自己的媒体库（而不是下载目录）？
+### Q: 本地视频如何指向自己的媒体库（而不是下载目录）？
 
-在 Web 界面 **任务页 → 设置 → 海报墙 → 媒体根目录** 填写目录路径（如 `D:\Media` 或 `/vol1/1000/AdultMedia`），保存后海报墙立即扫描该目录；留空则继续使用视频下载根目录。该目录下的一级子文件夹会作为可筛选的分类。
+在 Web 界面 **任务页 → 设置 → 本地视频 → 媒体根目录** 填写目录路径（如 `D:\Media` 或 `/vol1/1000/AdultMedia`），保存后本地视频页面立即扫描该目录；留空则继续使用视频下载根目录。该目录下的一级子文件夹会作为可筛选的分类。
 
 ### Q: `.strm` 文件是什么？如何播放？
 
-`.strm` 是媒体库常用的"引用型"文本文件，内容只有一行——真实媒体的位置。海报墙会把 `.strm` 当作视频条目收录，播放时读取其内容：
+`.strm` 是媒体库常用的"引用型"文本文件，内容只有一行——真实媒体的位置。本地视频会把 `.strm` 当作视频条目收录，播放时读取其内容：
 
 - 内容为 `http://` / `https://` 链接 → 服务端 302 重定向，浏览器播放器直接拉流
 - 内容为本地文件路径（支持相对路径与 UNC 路径如 `\\NAS\share\a.mp4`）→ 服务端读取该文件供流
@@ -381,7 +381,7 @@ docker load -i twitter-ero-video-ranking-downloader-latest-offline-arm64.tar
 
 ### Q: 封面刮削是什么？怎么用？
 
-海报墙工具栏提供 **刮削封面** 按钮，按当前文件夹筛选范围执行（选"全部文件夹"时覆盖根目录与各一级子文件夹）。流程：遍历其中的视频文件（mp4、mkv 等，`.strm` 引用条目除外）→ 用 ffmpeg 抽取每个视频的首帧 → 在同目录生成同名 jpg（如 `a.mp4` → `a.jpg`）。
+本地视频工具栏提供 **刮削封面** 按钮，按当前文件夹筛选范围执行（选"全部文件夹"时覆盖根目录与各一级子文件夹）。流程：遍历其中的视频文件（mp4、mkv 等，`.strm` 引用条目除外）→ 用 ffmpeg 抽取每个视频的首帧 → 在同目录生成同名 jpg（如 `a.mp4` → `a.jpg`）。
 
 - 已有同名图片（任意常见图片格式）的视频会跳过，**不会覆盖**手动设置的封面
 - 作业后台执行，页面轮询进度；失败原因（如文件损坏）会保留在作业状态里

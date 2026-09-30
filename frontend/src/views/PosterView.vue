@@ -305,7 +305,7 @@ onUnmounted(() => {
     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
       <el-button text @click="router.push('/')">← 返回</el-button>
       <h1 class="page-title" style="margin: 0;">
-        {{ folderFilter ? folderFilter + ' · 海报墙' : '视频海报墙' }}
+        {{ folderFilter ? folderFilter + ' · 本地视频' : '本地视频' }}
       </h1>
     </div>
 

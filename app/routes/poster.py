@@ -1,4 +1,4 @@
-"""海报墙路由：本地视频浏览（服务端分页/排序）、缩略图、预览、删除、换封面。"""
+"""本地视频路由：媒体浏览（服务端分页/排序）、缩略图、预览、删除、换封面。"""
 from pathlib import Path
 from typing import List, Optional
 
