@@ -142,10 +142,7 @@ onMounted(loadData)
 
 <template>
   <div>
-    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-      <el-button text @click="router.push('/')">← 返回</el-button>
-      <h1 class="page-title" style="margin: 0;">远程视频</h1>
-    </div>
+    <h1 class="page-title">远程视频</h1>
     <div class="muted" style="margin-bottom: 16px;">每页 {{ perPage }} 个</div>
 
     <!-- 工具栏 -->

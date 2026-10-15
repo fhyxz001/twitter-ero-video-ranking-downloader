@@ -134,14 +134,10 @@ def api_check_dir(path: str = ""):
 
 @router.post("/api/check-proxy")
 def api_check_proxy(body: CheckProxyRequest):
-    """用设置页正在填写的代理与直连各探测一次数据源，返回两条链路的结果供对照。"""
+    """用设置页正在填写的代理探测数据源连通性。"""
     proxy = body.proxy.strip()
-    proxy_result = probe_source(build_proxies(proxy)) if proxy else None
-    direct_result = probe_source(None)
-    summary = "直连 " + ("正常" if direct_result["ok"] else "失败")
-    if proxy_result is not None:
-        summary = "代理 " + ("正常" if proxy_result["ok"] else "失败") + "；" + summary
-    else:
-        summary = "未填写代理，仅测试直连；" + summary
-    append_log(f"代理连通性检测：{summary}")
-    return JSONResponse({"ok": True, "proxy": proxy_result, "direct": direct_result})
+    if not proxy:
+        return JSONResponse({"ok": False, "error": "请先填写代理地址"}, status_code=400)
+    proxy_result = probe_source(build_proxies(proxy))
+    append_log(f"代理连通性检测：{'正常' if proxy_result['ok'] else '失败'}")
+    return JSONResponse({"ok": True, "proxy": proxy_result})

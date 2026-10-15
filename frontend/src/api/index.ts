@@ -62,8 +62,7 @@ export interface ProbeResult {
 
 export interface CheckProxyResponse {
   ok: boolean
-  proxy: ProbeResult | null
-  direct: ProbeResult
+  proxy: ProbeResult
 }
 
 export const api = {

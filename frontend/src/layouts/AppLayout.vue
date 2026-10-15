@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useStatusStore } from '@/stores/status'
+import SettingsDrawer from '@/components/SettingsDrawer.vue'
 
 const route = useRoute()
 const router = useRouter()
 const statusStore = useStatusStore()
 
+const settingsOpen = ref(false)
 const activeIndex = computed(() => route.path)
 
 async function handleSelect(index: string) {
@@ -16,6 +18,16 @@ async function handleSelect(index: string) {
 }
 
 const isRunning = computed(() => statusStore.runtimeState.is_running)
+
+// 运行状态轮询在全局外壳统一管理，保证任意页面下顶部标签都能实时更新
+onMounted(() => {
+  statusStore.refresh()
+  statusStore.startPolling(5000)
+})
+
+onUnmounted(() => {
+  statusStore.stopPolling()
+})
 </script>
 
 <template>
@@ -37,11 +49,13 @@ const isRunning = computed(() => statusStore.runtimeState.is_running)
         <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 4px; vertical-align: middle;" />
         {{ isRunning ? '运行中' : '空闲' }}
       </el-tag>
+      <el-button @click="settingsOpen = true">设置</el-button>
     </el-header>
     <el-main>
       <div class="app-container">
         <slot />
       </div>
     </el-main>
+    <SettingsDrawer v-model="settingsOpen" />
   </el-container>
 </template>

@@ -1,16 +1,14 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useConfigStore } from '@/stores/config'
 import { useStatusStore } from '@/stores/status'
 import { api } from '@/api'
-import SettingsDrawer from '@/components/SettingsDrawer.vue'
 import LogPanel from '@/components/LogPanel.vue'
 
 const configStore = useConfigStore()
 const statusStore = useStatusStore()
 
-const settingsOpen = ref(false)
 const downloadRoot = ref('')
 const downloadRootDirty = ref(false)
 const maxDailyDownloads = ref(10)
@@ -120,17 +118,11 @@ async function runNow() {
 
 onMounted(async () => {
   await configStore.load()
-  await statusStore.refresh()
   if (configStore.config) {
     downloadRoot.value = configStore.config.download_root || ''
     maxDailyDownloads.value = configStore.config.max_daily_downloads || 10
   }
   validateDir()
-  statusStore.startPolling(5000)
-})
-
-onUnmounted(() => {
-  statusStore.stopPolling()
 })
 
 watch(() => configStore.config, (c) => {
@@ -145,13 +137,10 @@ watch(() => configStore.config, (c) => {
   <div>
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
       <h1 class="page-title" style="margin: 0;">任务</h1>
-      <div>
-        <el-button @click="settingsOpen = true">设置</el-button>
-        <el-button type="primary" :loading="isRunning" @click="runNow">
-          <template v-if="!isRunning">▶</template>
-          立即执行
-        </el-button>
-      </div>
+      <el-button type="primary" :loading="isRunning" @click="runNow">
+        <template v-if="!isRunning">▶</template>
+        立即执行
+      </el-button>
     </div>
 
     <!-- 状态条 -->
@@ -220,7 +209,5 @@ watch(() => configStore.config, (c) => {
     <div style="margin-top: 16px;">
       <LogPanel />
     </div>
-
-    <SettingsDrawer v-model="settingsOpen" />
   </div>
 </template>

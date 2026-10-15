@@ -24,10 +24,13 @@ const checkResult = ref<CheckProxyResponse | null>(null)
 
 watch(
   () => props.modelValue,
-  (open) => {
-    if (open) {
-      populateForm()
+  async (open) => {
+    if (!open) return
+    // 设置抽屉已挂到全局顶栏，任何页面打开时都需确保配置已加载
+    if (!configStore.config) {
+      await configStore.load()
     }
+    populateForm()
   }
 )
 
@@ -129,18 +132,11 @@ async function checkProxy() {
         <el-input v-model="form.proxy" placeholder="http://127.0.0.1:7890" />
         <div style="margin-top: 6px;">
           <el-button size="small" :loading="checking" @click="checkProxy">检测连接</el-button>
-          <span class="muted" style="margin-left: 8px;">对数据源 pektino.com 分别经代理与直连探测</span>
+          <span class="muted" style="margin-left: 8px;">经代理探测数据源 pektino.com</span>
         </div>
         <div v-if="checkResult" class="check-result">
-          <div v-if="checkResult.proxy" :class="checkResult.proxy.ok ? 'is-ok' : 'is-fail'">
+          <div :class="checkResult.proxy.ok ? 'is-ok' : 'is-fail'">
             {{ describeProbe('代理连接', checkResult.proxy.ok, checkResult.proxy.status, checkResult.proxy.elapsed_ms, checkResult.proxy.error) }}
-          </div>
-          <div v-else class="muted">未填写代理，已跳过代理测试</div>
-          <div :class="checkResult.direct.ok ? 'is-ok' : 'is-fail'">
-            {{ describeProbe('直连对照', checkResult.direct.ok, checkResult.direct.status, checkResult.direct.elapsed_ms, checkResult.direct.error) }}
-          </div>
-          <div v-if="checkResult.proxy && !checkResult.proxy.ok && checkResult.direct.ok" class="muted">
-            直连可用而代理失败：代理地址不可达或其分流规则未放行该站点；反之若两者都失败，需更换可用代理。
           </div>
         </div>
       </el-form-item>

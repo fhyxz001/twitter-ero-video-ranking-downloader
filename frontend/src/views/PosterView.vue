@@ -302,12 +302,9 @@ onUnmounted(() => {
 
 <template>
   <div>
-    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-      <el-button text @click="router.push('/')">← 返回</el-button>
-      <h1 class="page-title" style="margin: 0;">
-        {{ folderFilter ? folderFilter + ' · 本地视频' : '本地视频' }}
-      </h1>
-    </div>
+    <h1 class="page-title">
+      {{ folderFilter ? folderFilter + ' · 本地视频' : '本地视频' }}
+    </h1>
 
     <div class="muted" style="margin-bottom: 12px;">
       点击海报即可预览视频，可按文件夹筛选、排序和批量操作。
