@@ -158,4 +158,97 @@ onMounted(loadData)
       <div style="flex: 1;"></div>
       <el-button @click="settingsOpen = true">设置</el-button>
       <el-button @click="loadData">刷新</el-button>
-      <el-button @click="toggleSelectAll" :dis
+      <el-button @click="toggleSelectAll" :disabled="items.length === 0">
+        {{ allSelected ? '取消全选' : '全选' }}
+      </el-button>
+      <el-button type="primary" :disabled="selectedIds.size === 0 || loading" @click="downloadSelected">
+        下载选中
+      </el-button>
+    </div>
+
+    <!-- 状态条 -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <div class="muted">
+        <span v-if="loading">正在加载第 {{ currentPage }} 页…</span>
+        <span v-else-if="loadError" style="color: var(--el-color-danger);">{{ loadError }}</span>
+        <span v-else>当前页共 {{ items.length }} 个视频</span>
+      </div>
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <div class="muted">已选 <strong style="color: var(--el-color-primary);">{{ selectedIds.size }}</strong> 个</div>
+        <div style="display: flex; gap: 4px;">
+          <el-button size="small" :disabled="loading || currentPage <= 1" @click="changePage(-1)">上一页</el-button>
+          <span class="muted" style="line-height: 28px;">第 {{ currentPage }} 页</span>
+          <el-button size="small" :disabled="loading || !pagination.has_next" @click="changePage(1)">下一页</el-button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 远程视频 -->
+    <div v-loading="loading">
+      <div v-if="items.length === 0 && !loading" class="muted" style="padding: 40px 0; text-align: center;">
+        当前配置下没有可预览的视频。
+      </div>
+      <div v-else class="waterfall-masonry">
+        <div
+          v-for="item in items"
+          :key="item.id"
+          class="waterfall-card"
+          :class="{ selected: selectedIds.has(item.id) }"
+        >
+          <div class="waterfall-card-cover" @click="openPreview(item)">
+            <div class="checkbox" @click.stop>
+              <el-checkbox
+                :model-value="selectedIds.has(item.id)"
+                @update:model-value="toggleSelect(item)"
+              />
+            </div>
+            <img v-if="item.thumbnail" :src="item.thumbnail" :alt="item.title || item.id" loading="lazy" />
+            <div v-else class="placeholder">视频</div>
+            <div class="play-overlay">▶</div>
+          </div>
+          <div class="waterfall-card-body">
+            <div class="waterfall-card-title" :title="item.title || item.id">
+              {{ item.title || item.id }}
+            </div>
+            <div class="waterfall-card-meta">
+              <el-tag size="small">{{ item.id }}</el-tag>
+              <el-tag v-if="item.pv != null" size="small" type="info">{{ item.pv }} 播放</el-tag>
+              <el-tag v-if="item.favorite_count != null" size="small" type="warning">
+                {{ item.favorite_count }} 收藏
+              </el-tag>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 设置弹窗 -->
+    <el-dialog v-model="settingsOpen" title="远程视频设置" width="420px">
+      <el-form label-width="100px">
+        <el-form-item label="每页数量">
+          <el-select v-model="settingsPerPage" style="width: 200px;">
+            <el-option :value="10" label="10" />
+            <el-option :value="20" label="20" />
+            <el-option :value="30" label="30" />
+            <el-option :value="50" label="50" />
+            <el-option :value="100" label="100" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div style="text-align: right;">
+          <el-button @click="settingsOpen = false">取消</el-button>
+          <el-button type="primary" @click="saveSettings">保存</el-button>
+        </div>
+      </template>
+    </el-dialog>
+
+    <!-- 预览弹窗 -->
+    <VideoPreviewDialog
+      v-model="previewOpen"
+      :title="previewItem?.title || previewItem?.id || '视频预览'"
+      :video-url="previewItem?.preview_url || previewItem?.url || ''"
+      :poster-url="previewItem?.thumbnail || ''"
+    />
+  </div>
+</template>

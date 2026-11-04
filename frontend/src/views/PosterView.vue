@@ -198,4 +198,106 @@ onMounted(async () => {
     </div>
 
     <!-- 工具栏 -->
-    <div style="display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px
+    <div style="display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--el-border-color);">
+      <div>
+        <div class="muted" style="font-size: 11px; margin-bottom: 4px;">文件夹筛选</div>
+        <el-select v-model="folderFilter" placeholder="全部文件夹" style="width: 200px;" @change="onFolderChange">
+          <el-option label="全部文件夹" value="" />
+          <el-option
+            v-for="f in folders"
+            :key="f.folder"
+            :label="`${f.folder || '根目录'} (${f.count})`"
+            :value="f.folder"
+          />
+        </el-select>
+      </div>
+      <div>
+        <div class="muted" style="font-size: 11px; margin-bottom: 4px;">排序</div>
+        <el-select v-model="sortSelect" style="width: 160px;" @change="onSortChange">
+          <el-option label="按名称降序" value="time_desc" />
+          <el-option label="按名称升序" value="time_asc" />
+          <el-option label="大小从大到小" value="size_desc" />
+          <el-option label="大小从小到大" value="size_asc" />
+        </el-select>
+      </div>
+      <div>
+        <div class="muted" style="font-size: 11px; margin-bottom: 4px;">每页</div>
+        <el-select v-model="pageSize" style="width: 100px;" @change="onPageSizeChange">
+          <el-option :value="10" label="10" />
+          <el-option :value="15" label="15" />
+          <el-option :value="20" label="20" />
+          <el-option :value="25" label="25" />
+          <el-option :value="30" label="30" />
+          <el-option :value="50" label="50" />
+        </el-select>
+      </div>
+      <div style="flex: 1;"></div>
+      <el-button @click="loadItems">刷新</el-button>
+      <el-button @click="toggleSelectAll">{{ allSelected ? '取消全选' : '全选本页' }}</el-button>
+      <el-button type="danger" :disabled="selectedKeys.size === 0" @click="batchDelete">
+        批量删除
+      </el-button>
+    </div>
+
+    <!-- 状态条 -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <div class="muted">
+        <span v-if="loading">正在加载…</span>
+        <span v-else-if="loadError" style="color: var(--el-color-danger);">{{ loadError }}</span>
+        <span v-else>
+          {{ folderFilter ? folderFilter + ' · ' : '全部 · ' }}
+          共 <strong>{{ total }}</strong> 个，第 <strong>{{ currentPage }}</strong>/<strong>{{ totalPages }}</strong> 页
+        </span>
+      </div>
+      <div class="muted">
+        已选 <strong style="color: var(--el-color-primary);">{{ selectedKeys.size }}</strong> 个
+      </div>
+    </div>
+
+    <!-- 网格 -->
+    <div v-loading="loading">
+      <div v-if="items.length === 0 && !loading" class="muted" style="padding: 40px 0; text-align: center;">
+        当前筛选条件下暂无视频。
+      </div>
+      <div v-else class="poster-grid">
+        <PosterCard
+          v-for="item in items"
+          :key="itemKey(item)"
+          :item="item"
+          :selected="selectedKeys.has(itemKey(item))"
+          @toggle-select="toggleSelect(item)"
+          @preview="openPreview(item)"
+          @replace-cover="openReplace(item)"
+          @delete="deleteItem(item)"
+        />
+      </div>
+    </div>
+
+    <!-- 分页 -->
+    <div v-if="total > 0" style="margin-top: 16px; display: flex; justify-content: center;">
+      <el-pagination
+        :current-page="currentPage"
+        :page-size="pageSize"
+        :total="total"
+        layout="prev, pager, next, jumper, total"
+        @current-change="onPageChange"
+      />
+    </div>
+
+    <!-- 预览弹窗 -->
+    <VideoPreviewDialog
+      v-model="previewOpen"
+      :title="previewItem?.video || '视频预览'"
+      :meta="previewItem ? previewItem.folder || '根目录' : ''"
+      :video-url="previewItem?.video_url || ''"
+      :poster-url="previewItem?.thumbnail_url || ''"
+    />
+
+    <!-- 替换封面弹窗 -->
+    <ReplaceCoverDialog
+      v-model="replaceOpen"
+      :item="replaceItem"
+      @replaced="onCoverReplaced"
+    />
+  </div>
+</template>
