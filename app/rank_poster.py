@@ -1,4 +1,4 @@
-"""排行榜海报拼图：拉取榜单封面，生成 2 列 × 5 行一组、带序号的图片。
+"""排行榜海报拼图：拉取榜单封面，生成单列 10 张一组、带序号和内边距的图片。
 
 同一档位（day/week/month/year）的榜单快照会短时间缓存，图片接口与链接
 接口共用同一份快照，保证图上序号与下载链接一一对应。
@@ -31,12 +31,13 @@ TYPE_TO_RANGE = {
 }
 RANGE_LABELS = {"daily": "日榜", "weekly": "周榜", "monthly": "月榜", "all": "总榜"}
 
-COLS = 2
-ROWS = 5
+COLS = 1
+ROWS = 10
 GROUP_SIZE = COLS * ROWS
 CELL_W = 288
 CELL_H = 512
-GROUP_GAP = 12
+PAD = 16  # 画布内边距：封面与边缘、封面之间的间距
+LAYOUT_VERSION = 2  # 布局变更时递增，使旧布局的缓存图失效
 MAX_GROUPS = 10
 
 SNAPSHOT_TTL = 600  # 榜单快照缓存秒数
@@ -125,7 +126,7 @@ def get_or_create_collage(range_key: str, groups: int, items: List[dict]) -> Pat
     signature = hashlib.md5(
         "|".join(str(item.get("id", "")) for item in items).encode("utf-8")
     ).hexdigest()[:16]
-    path = CACHE_DIR / f"{range_key}_{groups}_{signature}.jpg"
+    path = CACHE_DIR / f"v{LAYOUT_VERSION}_{range_key}_{groups}_{signature}.jpg"
     if path.exists() and path.stat().st_size > 0:
         return path
 
@@ -141,21 +142,19 @@ def get_or_create_collage(range_key: str, groups: int, items: List[dict]) -> Pat
 
 
 def render_collage(groups: int, items: List[dict]) -> Image.Image:
-    """按 2 列 × 5 行一组纵向拼接，编号全局连续。"""
-    group_height = ROWS * CELL_H
-    height = groups * group_height + max(0, groups - 1) * GROUP_GAP
-    canvas = Image.new("RGB", (COLS * CELL_W, height), (16, 16, 18))
+    """按单列纵向拼接（每组 10 张），封面四周留内边距，编号全局连续。"""
+    cell_block = CELL_H + PAD
+    width = CELL_W + PAD * 2
+    height = PAD + groups * ROWS * cell_block
+    canvas = Image.new("RGB", (width, height), (16, 16, 18))
 
     proxies = _build_proxies()
     urls = [str(item.get("thumbnail", "")).strip() for item in items]
     thumbnails = _download_thumbnails(urls, proxies)
 
     for idx in range(min(len(items), groups * GROUP_SIZE)):
-        group = idx // GROUP_SIZE
-        pos = idx % GROUP_SIZE
-        row, col = divmod(pos, COLS)
-        left = col * CELL_W
-        top = group * (group_height + GROUP_GAP) + row * CELL_H
+        left = PAD
+        top = PAD + idx * cell_block
         thumbnail = thumbnails[idx]
         cell = (
             ImageOps.fit(thumbnail, (CELL_W, CELL_H), Image.LANCZOS)
