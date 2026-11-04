@@ -9,10 +9,8 @@ __pycache__/
 *.pyo
 *.pyd
 
-# Build and distribution
-build/
+# 构建产物（含前端 static/dist）
 dist/
-*.spec
 
 # Configuration
 config.json
@@ -23,7 +21,6 @@ downloads/
 
 # Runtime caches
 .thumb_cache/
-.duration_cache.json
 .rank_poster_cache/
 
 # Local IDE

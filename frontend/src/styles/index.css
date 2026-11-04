@@ -147,17 +147,6 @@ body {
 .poster-card-cover:hover .play-overlay {
   opacity: 1;
 }
-.poster-card-cover .duration {
-  position: absolute;
-  bottom: 4px;
-  right: 4px;
-  padding: 1px 6px;
-  background: rgba(0, 0, 0, 0.7);
-  color: #fff;
-  border-radius: 3px;
-  font-size: 11px;
-  font-family: 'Cascadia Code', monospace;
-}
 .poster-card-cover .checkbox {
   position: absolute;
   top: 6px;

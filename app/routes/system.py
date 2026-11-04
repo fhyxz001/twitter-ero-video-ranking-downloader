@@ -34,6 +34,7 @@ class SaveConfigRequest(BaseModel):
     schedule_cron: str = "0 3 * * *"
     max_daily_downloads: int = 10
     ranking_range: str = "daily"
+    open_api_key: str = ""
 
 
 class QuickSaveRequest(BaseModel):
@@ -79,6 +80,7 @@ def save(body: SaveConfigRequest):
                     "schedule_cron": body.schedule_cron.strip(),
                     "max_daily_downloads": body.max_daily_downloads,
                     "ranking_range": body.ranking_range.strip(),
+                    "open_api_key": body.open_api_key.strip(),
                 }
             )
             save_config(cfg)

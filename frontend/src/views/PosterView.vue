@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { posterApi, type PosterFolder, type PosterItem, type PosterSort } from '@/api'
@@ -18,7 +18,6 @@ const pageSize = ref<number>(Number(localStorage.getItem('poster_page_size')) ||
 const currentPage = ref(1)
 const total = ref(0)
 const selectedKeys = ref<Set<string>>(new Set())
-const durationCache = ref<Map<string, string>>(new Map())
 const loading = ref(false)
 const loadError = ref('')
 
@@ -27,18 +26,10 @@ const previewItem = ref<PosterItem | null>(null)
 const replaceOpen = ref(false)
 const replaceItem = ref<PosterItem | null>(null)
 
-const scraping = ref(false)
-const scrapeProgress = ref('')
-let scrapeTimer: number | null = null
-
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
 
 function itemKey(i: PosterItem): string {
   return i.folder + '::' + i.stem
-}
-
-function durationLabel(i: PosterItem): string {
-  return i.duration || durationCache.value.get(itemKey(i)) || '--:--'
 }
 
 const allSelected = computed(
@@ -71,36 +62,12 @@ async function loadItems() {
     folders.value = data.folders || []
     total.value = data.pagination?.total ?? items.value.length
     selectedKeys.value = new Set()
-    for (const i of items.value) {
-      if (i.duration) durationCache.value.set(itemKey(i), i.duration)
-    }
   } catch (e: any) {
     loadError.value = e?.message || '加载失败'
     items.value = []
     total.value = 0
   } finally {
     loading.value = false
-  }
-}
-
-async function pollDurations() {
-  try {
-    const data = await posterApi.durations(folderFilter.value)
-    if (data.ok && data.durations) {
-      let changed = false
-      for (const [k, v] of Object.entries(data.durations)) {
-        if (!durationCache.value.has(k)) {
-          durationCache.value.set(k, v)
-          changed = true
-        }
-      }
-      if (changed) {
-        // trigger reactivity
-        durationCache.value = new Map(durationCache.value)
-      }
-    }
-  } catch {
-    // silent
   }
 }
 
@@ -215,88 +182,8 @@ function onCoverReplaced(newThumb: string) {
   }
 }
 
-function stopScrapePolling() {
-  if (scrapeTimer !== null) {
-    window.clearInterval(scrapeTimer)
-    scrapeTimer = null
-  }
-}
-
-function startScrapePolling() {
-  stopScrapePolling()
-  scrapeTimer = window.setInterval(pollScrapeStatus, 1500)
-}
-
-async function pollScrapeStatus() {
-  try {
-    const st = await posterApi.scrapeStatus()
-    if (st.running) {
-      const progress = st.total > 0 ? ` ${st.done}/${st.total}` : ''
-      scrapeProgress.value = `刮削封面中${progress}（新增 ${st.generated}，跳过 ${st.skipped}，失败 ${st.failed}）`
-      return
-    }
-    if (!scraping.value) return
-    scraping.value = false
-    scrapeProgress.value = ''
-    stopScrapePolling()
-    if (st.phase === 'error') {
-      ElMessage.error(st.message || '封面刮削失败')
-    } else {
-      ElMessage.success(`封面刮削完成：新增 ${st.generated}，跳过 ${st.skipped}，失败 ${st.failed}`)
-    }
-    await loadItems()
-  } catch {
-    // silent，下一轮轮询继续
-  }
-}
-
-async function scrapeCovers() {
-  const scope = folderFilter.value
-    ? `文件夹「${folderFilter.value}」`
-    : '全部文件夹（含根目录与各子文件夹）'
-  try {
-    await ElMessageBox.confirm(
-      `将遍历${scope}中的视频文件（mp4、mkv 等），用 ffmpeg 抽取首帧生成同名 jpg 封面；已有封面的视频会跳过，不会覆盖。继续？`,
-      '刮削封面',
-      { type: 'info', confirmButtonText: '开始刮削', cancelButtonText: '取消' }
-    )
-  } catch {
-    return
-  }
-  try {
-    const r = await posterApi.scrapeCovers(folderFilter.value)
-    if (r.started) {
-      ElMessage.info('封面刮削已开始')
-    } else {
-      ElMessage.info('封面刮削任务已在运行中')
-    }
-    scraping.value = true
-    scrapeProgress.value = '正在扫描待处理的视频…'
-    startScrapePolling()
-  } catch {
-    // handled by interceptor
-  }
-}
-
 onMounted(async () => {
   await loadItems()
-  setTimeout(pollDurations, 2000)
-  setTimeout(pollDurations, 5000)
-  setTimeout(pollDurations, 12000)
-  try {
-    // 其他页面/标签可能已启动刮削任务，进入页面时重新挂上轮询
-    const st = await posterApi.scrapeStatus()
-    if (st.running) {
-      scraping.value = true
-      startScrapePolling()
-    }
-  } catch {
-    // silent
-  }
-})
-
-onUnmounted(() => {
-  stopScrapePolling()
 })
 </script>
 
@@ -311,111 +198,4 @@ onUnmounted(() => {
     </div>
 
     <!-- 工具栏 -->
-    <div style="display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--el-border-color);">
-      <div>
-        <div class="muted" style="font-size: 11px; margin-bottom: 4px;">文件夹筛选</div>
-        <el-select v-model="folderFilter" placeholder="全部文件夹" style="width: 200px;" @change="onFolderChange">
-          <el-option label="全部文件夹" value="" />
-          <el-option
-            v-for="f in folders"
-            :key="f.folder"
-            :label="`${f.folder || '根目录'} (${f.count})`"
-            :value="f.folder"
-          />
-        </el-select>
-      </div>
-      <div>
-        <div class="muted" style="font-size: 11px; margin-bottom: 4px;">排序</div>
-        <el-select v-model="sortSelect" style="width: 160px;" @change="onSortChange">
-          <el-option label="按名称降序" value="time_desc" />
-          <el-option label="按名称升序" value="time_asc" />
-          <el-option label="大小从大到小" value="size_desc" />
-          <el-option label="大小从小到大" value="size_asc" />
-          <el-option label="时长从长到短" value="duration_desc" />
-          <el-option label="时长从短到长" value="duration_asc" />
-        </el-select>
-      </div>
-      <div>
-        <div class="muted" style="font-size: 11px; margin-bottom: 4px;">每页</div>
-        <el-select v-model="pageSize" style="width: 100px;" @change="onPageSizeChange">
-          <el-option :value="10" label="10" />
-          <el-option :value="15" label="15" />
-          <el-option :value="20" label="20" />
-          <el-option :value="25" label="25" />
-          <el-option :value="30" label="30" />
-          <el-option :value="50" label="50" />
-        </el-select>
-      </div>
-      <div style="flex: 1;"></div>
-      <el-button @click="loadItems">刷新</el-button>
-      <el-button :loading="scraping" @click="scrapeCovers">刮削封面</el-button>
-      <el-button @click="toggleSelectAll">{{ allSelected ? '取消全选' : '全选本页' }}</el-button>
-      <el-button type="danger" :disabled="selectedKeys.size === 0" @click="batchDelete">
-        批量删除
-      </el-button>
-    </div>
-
-    <!-- 状态条 -->
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-      <div class="muted">
-        <span v-if="loading">正在加载…</span>
-        <span v-else-if="loadError" style="color: var(--el-color-danger);">{{ loadError }}</span>
-        <span v-else-if="scraping" style="color: var(--el-color-primary);">{{ scrapeProgress }}</span>
-        <span v-else>
-          {{ folderFilter ? folderFilter + ' · ' : '全部 · ' }}
-          共 <strong>{{ total }}</strong> 个，第 <strong>{{ currentPage }}</strong>/<strong>{{ totalPages }}</strong> 页
-        </span>
-      </div>
-      <div class="muted">
-        已选 <strong style="color: var(--el-color-primary);">{{ selectedKeys.size }}</strong> 个
-      </div>
-    </div>
-
-    <!-- 网格 -->
-    <div v-loading="loading">
-      <div v-if="items.length === 0 && !loading" class="muted" style="padding: 40px 0; text-align: center;">
-        当前筛选条件下暂无视频。
-      </div>
-      <div v-else class="poster-grid">
-        <PosterCard
-          v-for="item in items"
-          :key="itemKey(item)"
-          :item="item"
-          :selected="selectedKeys.has(itemKey(item))"
-          :duration-label="durationLabel(item)"
-          @toggle-select="toggleSelect(item)"
-          @preview="openPreview(item)"
-          @replace-cover="openReplace(item)"
-          @delete="deleteItem(item)"
-        />
-      </div>
-    </div>
-
-    <!-- 分页 -->
-    <div v-if="total > 0" style="margin-top: 16px; display: flex; justify-content: center;">
-      <el-pagination
-        :current-page="currentPage"
-        :page-size="pageSize"
-        :total="total"
-        layout="prev, pager, next, jumper, total"
-        @current-change="onPageChange"
-      />
-    </div>
-
-    <!-- 预览弹窗 -->
-    <VideoPreviewDialog
-      v-model="previewOpen"
-      :title="previewItem?.video || '视频预览'"
-      :meta="previewItem ? `${previewItem.folder || '根目录'} · 时长 ${durationLabel(previewItem)}` : ''"
-      :video-url="previewItem?.video_url || ''"
-      :poster-url="previewItem?.thumbnail_url || ''"
-    />
-
-    <!-- 替换封面弹窗 -->
-    <ReplaceCoverDialog
-      v-model="replaceOpen"
-      :item="replaceItem"
-      @replaced="onCoverReplaced"
-    />
-  </div>
-</template>
+    <div style="display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px

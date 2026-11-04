@@ -16,7 +16,6 @@ from app.logging_utils import append_log
 from app.poster import (
     POSTER_MAX_PAGE_SIZE,
     SORT_OPTIONS,
-    duration_store,
     invalidate_scan_cache,
     is_streaming_url,
     read_strm_target,
@@ -26,7 +25,6 @@ from app.poster import (
     _get_or_create_thumb,
     _media_folders,
 )
-from app.scraper import scrape_status, start_scrape_job
 
 router = APIRouter()
 
@@ -34,10 +32,6 @@ router = APIRouter()
 class PosterDeleteRequest(BaseModel):
     folder: str = ""
     stems: List[str] = []
-
-
-class ScrapeCoversRequest(BaseModel):
-    folder: str = ""
 
 
 @router.get("/api/poster")
@@ -99,23 +93,6 @@ def api_thumb(folder: str = "", name: str = ""):
     )
 
 
-@router.get("/api/poster-durations")
-def api_poster_durations(folder: str = ""):
-    """返回已探测完成的视频时长，供前端轮询补充。"""
-    cfg = get_current_config()
-    root = resolve_poster_root(cfg)
-    if folder and resolve_media_folder(root, folder) is None:
-        return JSONResponse({"ok": False, "error": "无效文件夹"}, status_code=400)
-
-    persistent_cache = duration_store.snapshot()
-    matching = {}
-    prefix = f"{folder}::" if folder else ""
-    for k, v in persistent_cache.items():
-        if not prefix or k.startswith(prefix):
-            matching[k] = v
-    return JSONResponse({"ok": True, "durations": matching})
-
-
 @router.get("/api/poster-video")
 def api_video(folder: str = "", name: str = ""):
     cfg = get_current_config()
@@ -162,8 +139,6 @@ def api_delete(body: PosterDeleteRequest):
             if p.stem == stem_str and p.suffix.lower() in POSTER_VIDEO_EXTS | IMAGE_EXTS:
                 p.unlink(missing_ok=True)
                 deleted.append(p.name)
-    # 定向清理已删除条目的时长记录，避免影响其余视频的缓存
-    duration_store.remove_stems(folder, stems)
     invalidate_scan_cache()
     if deleted:
         append_log(f"已删除 {len(deleted)} 个文件（{folder or '根目录'}）")
@@ -191,32 +166,6 @@ def api_replace_cover(
     new_path = directory / f"{stem}{suffix}"
     content = file.file.read()
     new_path.write_bytes(content)
-    # 换封面不影响视频时长，只需刷新扫描缓存
     invalidate_scan_cache()
     append_log(f"已替换封面：{folder or '根目录'}/{stem}{suffix}")
     return JSONResponse({"ok": True, "thumb": new_path.name})
-
-
-@router.post("/api/poster/scrape-covers")
-def api_scrape_covers(body: ScrapeCoversRequest):
-    """为缺失封面的视频抽取首帧生成 jpg；folder 空=根目录+全部一级子文件夹。"""
-    cfg = get_current_config()
-    root = resolve_poster_root(cfg)
-    folder = body.folder.strip()
-    if folder:
-        directory = resolve_media_folder(root, folder)
-        if directory is None:
-            return JSONResponse({"ok": False, "error": "无效文件夹"}, status_code=400)
-        targets = [directory]
-    else:
-        targets = [root] + [root / f["folder"] for f in _media_folders(root) if f["folder"]]
-    started = start_scrape_job(targets)
-    if started:
-        append_log(f"已触发封面刮削：{folder or '全部文件夹'}")
-    return JSONResponse({"ok": True, "started": started})
-
-
-@router.get("/api/poster/scrape-covers/status")
-def api_scrape_status():
-    """返回封面刮削作业进度，供前端轮询。"""
-    return JSONResponse({"ok": True, **scrape_status()})

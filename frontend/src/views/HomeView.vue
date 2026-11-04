@@ -17,6 +17,7 @@ const proxy = ref('')
 const autoDownloadEnabled = ref(true)
 const scheduleCron = ref('0 3 * * *')
 const rankingRange = ref('daily')
+const openApiKey = ref('')
 
 const dirValid = ref<boolean | null>(null)
 const dirError = ref('')
@@ -59,6 +60,7 @@ function populateForm() {
   autoDownloadEnabled.value = config.auto_download_enabled !== false
   scheduleCron.value = config.schedule_cron || '0 3 * * *'
   rankingRange.value = config.ranking_range || 'daily'
+  openApiKey.value = config.open_api_key || ''
 }
 
 async function validateDir() {
@@ -134,6 +136,7 @@ async function saveAll() {
       schedule_cron: scheduleCron.value.trim() || '0 3 * * *',
       max_daily_downloads: count,
       ranking_range: rankingRange.value || 'daily',
+      open_api_key: openApiKey.value.trim(),
     })
     if (quickSaveTimer !== null) {
       window.clearTimeout(quickSaveTimer)
@@ -294,6 +297,16 @@ onBeforeUnmount(() => {
             />
           </div>
         </div>
+        <div class="field field-span-3">
+          <div class="field-label">
+            <span>开放下载 Key</span>
+            <span
+              class="field-hint"
+              title="外部调用 POST /api/open/download 时需携带该 key；留空则关闭该接口。"
+            >?</span>
+          </div>
+          <el-input v-model="openApiKey" placeholder="留空则关闭对外开放下载接口" />
+        </div>
       </div>
     </el-card>
 
@@ -365,6 +378,10 @@ onBeforeUnmount(() => {
 
 .field-span-2 {
   grid-column: span 2;
+}
+
+.field-span-3 {
+  grid-column: span 3;
 }
 
 .field-label {

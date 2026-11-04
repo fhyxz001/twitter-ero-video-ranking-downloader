@@ -39,7 +39,7 @@ if errorlevel 1 (
 
 :have_venv
 rem ===== 2. Python 依赖 =====
-"%PY%" -c "import fastapi,uvicorn,requests,curl_cffi,PIL,apscheduler,multipart" >nul 2>&1
+"%PY%" -c "import fastapi,uvicorn,requests,PIL,apscheduler,multipart" >nul 2>&1
 if errorlevel 1 (
     echo  [环境] 安装 Python 依赖（首次较慢）...
     "%PY%" -m pip install -r requirements.txt
@@ -55,18 +55,7 @@ if errorlevel 1 (
     "%PY%" -m pip install watchfiles -q
 )
 
-rem ===== 3. ffmpeg 检查 =====
-set "FFMPEG_OK=1"
-where ffmpeg >nul 2>&1 || set "FFMPEG_OK=0"
-where ffprobe >nul 2>&1 || set "FFMPEG_OK=0"
-if "%FFMPEG_OK%"=="0" (
-    echo  [提示] 未检测到 ffmpeg / ffprobe。
-    echo         视频时长会显示为 --:--，封面刮削、时长探测不可用。
-    echo         如需要：到 ffmpeg.org 下载，解压后把 bin 目录加入 PATH，重开本脚本。
-    echo.
-)
-
-rem ===== 4. 配置检查 =====
+rem ===== 3. 配置检查 =====
 if not exist config.json goto :cfg_missing
 "%PY%" -c "import json,sys,pathlib; p=pathlib.Path('config.json'); c=json.loads(p.read_text(encoding='utf-8')); sys.exit(0 if str(c.get('download_root',''))=='/data/downloads' else 1)" >nul 2>&1
 if errorlevel 1 goto :menu
@@ -86,7 +75,7 @@ goto :cfg_reset
 "%PY%" -c "import json,pathlib,shutil; p=pathlib.Path('config.json'); c=json.loads(p.read_text(encoding='utf-8')) if p.exists() else {}; shutil.copy(p,'config.json.nas.bak') if p.exists() else None; pathlib.Path('downloads').mkdir(exist_ok=True); out={'download_root':str(pathlib.Path('downloads').resolve()).replace('\\','/'),'poster_root':'','proxy':'','auto_download_enabled':c.get('auto_download_enabled',True),'schedule_cron':c.get('schedule_cron','0 3 * * *'),'max_daily_downloads':c.get('max_daily_downloads',2),'ranking_range':c.get('ranking_range','daily'),'waterfall_per_page':c.get('waterfall_per_page',10)}; p.write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8'); print(' [配置] 已写入本地调试配置，download_root = ' + out['download_root'])"
 echo.
 
-rem ===== 5. 启动菜单 =====
+rem ===== 4. 启动菜单 =====
 :menu
 set "MODE=%1"
 if not "%MODE%"=="" goto :dispatch

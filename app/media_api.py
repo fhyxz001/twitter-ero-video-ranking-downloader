@@ -1,13 +1,12 @@
 """pektino.com /api/media 客户端与条目规整。"""
 import hashlib
 import json
-import re
 import time
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
-from curl_cffi import requests
+import requests
 
 from app.config import MEDIA_API_URL, RANKING_RANGE_PARAMS, REQUEST_TIMEOUT
 
@@ -71,11 +70,18 @@ def normalize_media_item(raw: object) -> Optional[dict]:
     }
 
 
-def _friendly_curl_error(exc: Exception) -> str:
-    """把 curl 连接类错误翻译成带排查提示的信息（curl: (35) TLS被重置 等）。"""
+def _friendly_request_error(exc: Exception) -> str:
+    """把连接类错误翻译成带排查提示的信息，避免设置页只看到原始异常。"""
     msg = str(exc)[:300]
-    match = re.search(r"curl: \((\d+)\)", msg)
-    if match and match.group(1) in {"6", "7", "28", "35", "56"}:
+    if isinstance(
+        exc,
+        (
+            requests.exceptions.ProxyError,
+            requests.exceptions.SSLError,
+            requests.exceptions.Timeout,
+            requests.exceptions.ConnectionError,
+        ),
+    ):
         hint = (
             "无法连通 pektino.com：请检查设置里的 HTTP 代理是否为部署环境可访问的地址"
             "（容器内不要写 127.0.0.1），或当前网络到该站点的连接被阻断了"
@@ -106,12 +112,11 @@ def probe_source(proxies: Optional[Dict[str, str]], timeout: int = PROBE_TIMEOUT
             headers={"Accept": "application/json", "User-Agent": USER_AGENT},
             timeout=timeout,
             proxies=proxies or None,
-            impersonate="chrome",
         )
     except Exception as exc:
         elapsed = int((time.monotonic() - started) * 1000)
         return {"ok": False, "status": None, "elapsed_ms": elapsed, "items": None,
-                "error": _friendly_curl_error(exc)}
+                "error": _friendly_request_error(exc)}
 
     elapsed = int((time.monotonic() - started) * 1000)
     if resp.status_code != 200:
@@ -157,10 +162,9 @@ def fetch_pektino_media(
             headers=headers,
             timeout=REQUEST_TIMEOUT,
             proxies=proxies,
-            impersonate="chrome",
         )
     except Exception as exc:
-        raise ValueError(_friendly_curl_error(exc)) from exc
+        raise ValueError(_friendly_request_error(exc)) from exc
     resp.raise_for_status()
     raw_text = resp.text.strip()
     if not raw_text:

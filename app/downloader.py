@@ -54,8 +54,8 @@ def download_binary(
     target_path: Path,
     proxies: Optional[Dict[str, str]],
     attempts: int = DOWNLOAD_ATTEMPTS,
-) -> bool:
-    """流式下载文件到本地，失败自动重试。"""
+) -> Tuple[bool, str]:
+    """流式下载文件到本地，失败自动重试。返回 (是否成功, 失败原因)。"""
     last_error: Exception = ValueError("未尝试下载")
     for attempt in range(1, max(1, attempts) + 1):
         try:
@@ -67,14 +67,14 @@ def download_binary(
                         if chunk:
                             f.write(chunk)
                 tmp_path.replace(target_path)
-            return True
+            return True, ""
         except Exception as exc:
             last_error = exc
             if attempt < attempts:
                 time.sleep(RETRY_INTERVAL_SECONDS)
     append_log(f"下载失败 {url} -> {target_path.name}，错误：{last_error}")
     _cleanup_partial(target_path)
-    return False
+    return False, str(last_error)[:300]
 
 
 def _cleanup_partial(target_path: Path) -> None:
@@ -98,10 +98,10 @@ def _download_one(
     video_path = target_dir / f"{video_id}{video_ext}"
     thumb_path = target_dir / f"{video_id}{thumb_ext}"
 
-    ok_video = download_binary(session, video_url, video_path, proxies)
+    ok_video, _ = download_binary(session, video_url, video_path, proxies)
     ok_thumb = True
     if ok_video and thumbnail_url:
-        ok_thumb = download_binary(session, thumbnail_url, thumb_path, proxies, attempts=1)
+        ok_thumb, _ = download_binary(session, thumbnail_url, thumb_path, proxies, attempts=1)
 
     if ok_video and ok_thumb:
         append_log(f"下载完成：{target_dir.name}/{video_path.name}")

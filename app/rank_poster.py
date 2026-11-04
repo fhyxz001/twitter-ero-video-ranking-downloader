@@ -12,7 +12,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from curl_cffi import requests as curl_requests
+import requests
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 from app.logging_utils import append_log
@@ -183,11 +183,10 @@ def _download_one(url: str, proxies) -> Optional[Image.Image]:
     if not url:
         return None
     try:
-        resp = curl_requests.get(
+        resp = requests.get(
             url,
             timeout=THUMB_TIMEOUT,
             proxies=proxies or None,
-            impersonate="chrome",
         )
         if resp.status_code != 200 or not resp.content:
             return None

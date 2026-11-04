@@ -45,6 +45,8 @@ DEFAULT_CONFIG: Dict[str, object] = {
     "max_daily_downloads": 10,
     "ranking_range": "daily",
     "waterfall_per_page": 10,
+    # 对外开放下载接口的 key，留空表示该接口未启用
+    "open_api_key": "912bdbc4a3354d5d86843309e3bc52b7",
 }
 CONFIG_KEYS = tuple(DEFAULT_CONFIG.keys())
 
@@ -95,6 +97,8 @@ def validate_config(raw: Dict[str, object]) -> Dict[str, object]:
     if waterfall_per_page not in ALLOWED_WATERFALL_PAGE_SIZES:
         waterfall_per_page = 10
     cfg["waterfall_per_page"] = waterfall_per_page
+
+    cfg["open_api_key"] = str(cfg.get("open_api_key", "") or "").strip()
 
     return cfg
 
