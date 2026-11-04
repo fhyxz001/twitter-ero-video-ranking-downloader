@@ -17,10 +17,28 @@ body {
   min-height: 100vh;
 }
 
+.layout-task {
+  height: 100vh;
+}
+
+.layout-task .el-main {
+  min-height: 0;
+}
+
+.el-main.task-main {
+  padding: 0;
+  overflow: hidden;
+}
+
 .app-container {
   max-width: var(--app-max-width);
   margin: 0 auto;
   padding: 16px;
+}
+
+.app-container.task-container {
+  height: 100%;
+  padding: 12px 16px;
 }
 
 .page-title {
@@ -240,28 +258,12 @@ body {
   gap: 4px;
 }
 
-/* 状态条 */
-.status-strip {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 8px;
-  margin-bottom: 16px;
-}
-.status-strip .item {
-  padding: 10px 12px;
-  background: var(--el-bg-color);
-  border: 1px solid var(--el-border-color);
-  border-radius: 6px;
-}
-.status-strip .label {
-  font-size: 11px;
-  color: var(--el-text-color-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-.status-strip .value {
-  font-size: 14px;
-  font-weight: 600;
+@media (max-width: 900px) {
+  .el-main.task-main {
+    overflow: auto;
+  }
+
+  .app-container.task-container {
+    height: auto;
+  }
 }

@@ -10,7 +10,7 @@ from app.config import VUE_DIST, get_current_config
 from app.downloader import scheduler, update_schedule
 from app.logging_utils import append_log
 from app.paths import STATIC_PATH
-from app.routes import poster, system, waterfall
+from app.routes import poster, rank_poster, system, waterfall
 
 
 @asynccontextmanager
@@ -58,6 +58,7 @@ async def add_cache_headers(request, call_next):
 app.include_router(system.router)
 app.include_router(waterfall.router)
 app.include_router(poster.router)
+app.include_router(rank_poster.router)
 
 
 # ── SPA 兜底路由（必须放在所有 API 路由之后） ──

@@ -16,10 +16,15 @@ dist/
 
 # Configuration
 config.json
+config.json.nas.bak
+
+# Local debug downloads (start-debug.bat)
+downloads/
 
 # Runtime caches
 .thumb_cache/
 .duration_cache.json
+.rank_poster_cache/
 
 # Local IDE
 .vscode/

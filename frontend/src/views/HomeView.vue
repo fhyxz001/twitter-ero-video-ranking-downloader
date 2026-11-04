@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useConfigStore } from '@/stores/config'
 import { useStatusStore } from '@/stores/status'
-import { api } from '@/api'
+import { api, type CheckProxyResponse } from '@/api'
 import LogPanel from '@/components/LogPanel.vue'
 
 const configStore = useConfigStore()
@@ -12,15 +12,54 @@ const statusStore = useStatusStore()
 const downloadRoot = ref('')
 const downloadRootDirty = ref(false)
 const maxDailyDownloads = ref(10)
+const posterRoot = ref('')
+const proxy = ref('')
+const autoDownloadEnabled = ref(true)
+const scheduleCron = ref('0 3 * * *')
+const rankingRange = ref('daily')
+
 const dirValid = ref<boolean | null>(null)
 const dirError = ref('')
+const saving = ref(false)
+const checking = ref(false)
+const checkResult = ref<CheckProxyResponse | null>(null)
 let quickSaveTimer: number | null = null
 
-const autoEnabled = computed(() => configStore.config?.auto_download_enabled !== false)
 const isRunning = computed(() => statusStore.runtimeState.is_running)
-const nextRun = computed(() =>
-  autoEnabled.value ? configStore.config?.schedule_cron || '未知' : '未开启'
-)
+
+const dirStatusText = computed(() => {
+  if (dirValid.value === null) return '检测中…'
+  return dirValid.value ? '有效' : '无效'
+})
+
+const dirStatusClass = computed(() => {
+  if (dirValid.value === null) return ''
+  return dirValid.value ? 'is-ok' : 'is-fail'
+})
+
+const proxyStatusText = computed(() => {
+  const result = checkResult.value
+  if (!result) return ''
+  return result.proxy.ok ? `正常 ${result.proxy.elapsed_ms ?? 0}ms` : '失败'
+})
+
+const proxyStatusTitle = computed(() => {
+  const result = checkResult.value
+  if (!result) return ''
+  return result.proxy.ok ? `HTTP ${result.proxy.status ?? 200}` : result.proxy.error || '未知错误'
+})
+
+function populateForm() {
+  const config = configStore.config
+  if (!config) return
+  downloadRoot.value = config.download_root || ''
+  maxDailyDownloads.value = config.max_daily_downloads || 10
+  posterRoot.value = config.poster_root || ''
+  proxy.value = config.proxy || ''
+  autoDownloadEnabled.value = config.auto_download_enabled !== false
+  scheduleCron.value = config.schedule_cron || '0 3 * * *'
+  rankingRange.value = config.ranking_range || 'daily'
+}
 
 async function validateDir() {
   const dir = downloadRoot.value.trim()
@@ -30,9 +69,9 @@ async function validateDir() {
     return
   }
   try {
-    const r = await api.checkDir(dir)
-    dirValid.value = r.ok
-    dirError.value = r.ok ? '' : r.error || '目录无效'
+    const result = await api.checkDir(dir)
+    dirValid.value = result.ok
+    dirError.value = result.ok ? '' : result.error || '目录无效'
   } catch {
     dirValid.value = false
     dirError.value = '无法验证'
@@ -51,9 +90,9 @@ function scheduleQuickSave(delay = 0) {
   }
   quickSaveTimer = window.setTimeout(async () => {
     if (!downloadRootDirty.value) return
-    const snap = downloadRoot.value
-    const r = await configStore.saveQuickDownloadRoot(snap)
-    if (r.ok && downloadRoot.value === snap) {
+    const snapshot = downloadRoot.value
+    const result = await configStore.saveQuickDownloadRoot(snapshot.trim())
+    if (result.ok && downloadRoot.value === snapshot) {
       downloadRootDirty.value = false
     }
   }, delay)
@@ -65,35 +104,48 @@ async function flushQuickSave() {
     quickSaveTimer = null
   }
   if (!downloadRootDirty.value) return true
-  const r = await configStore.saveQuickDownloadRoot(downloadRoot.value)
-  if (r.ok) {
+  const result = await configStore.saveQuickDownloadRoot(downloadRoot.value.trim())
+  if (result.ok) {
     downloadRootDirty.value = false
     return true
   }
   return false
 }
 
-async function saveMaxDaily() {
-  const v = Number(maxDailyDownloads.value)
-  if (!Number.isInteger(v) || v < 1) {
+async function saveAll() {
+  const count = Number(maxDailyDownloads.value)
+  if (!Number.isInteger(count) || count < 1) {
     ElMessage.error('每次下载数量上限必须大于等于 1')
     return
   }
-  const c = configStore.config!
+  const config = configStore.config
+  if (!config) {
+    ElMessage.warning('配置尚未加载，请稍后重试')
+    return
+  }
+
+  saving.value = true
   try {
     await configStore.save({
-      download_root: downloadRoot.value,
-      poster_root: c.poster_root || '',
-      proxy: c.proxy || '',
-      auto_download_enabled: c.auto_download_enabled !== false,
-      schedule_cron: c.schedule_cron || '0 3 * * *',
-      max_daily_downloads: v,
-      ranking_range: c.ranking_range || 'daily',
+      download_root: downloadRoot.value.trim(),
+      poster_root: posterRoot.value.trim(),
+      proxy: proxy.value.trim(),
+      auto_download_enabled: autoDownloadEnabled.value,
+      schedule_cron: scheduleCron.value.trim() || '0 3 * * *',
+      max_daily_downloads: count,
+      ranking_range: rankingRange.value || 'daily',
     })
+    if (quickSaveTimer !== null) {
+      window.clearTimeout(quickSaveTimer)
+      quickSaveTimer = null
+    }
+    downloadRootDirty.value = false
     await statusStore.refresh()
-    ElMessage.success('保存成功')
+    ElMessage.success('设置已保存')
   } catch {
-    // handled by interceptor
+    // axios interceptor already shows error
+  } finally {
+    saving.value = false
   }
 }
 
@@ -104,110 +156,313 @@ async function runNow() {
     return
   }
   try {
-    const r = await api.runNow()
-    if (!r.ok) {
-      ElMessage.error(r.message || '启动失败')
-    } else if (r.message) {
-      ElMessage.info(r.message)
+    const result = await api.runNow()
+    if (!result.ok) {
+      ElMessage.error(result.message || '启动失败')
+    } else if (result.message) {
+      ElMessage.info(result.message)
     }
     await statusStore.refresh()
   } catch {
-    // handled
+    // axios interceptor already shows error
   }
 }
 
+async function checkProxy() {
+  checking.value = true
+  checkResult.value = null
+  try {
+    checkResult.value = await api.checkProxy(proxy.value.trim())
+  } catch {
+    // axios interceptor already shows error
+  } finally {
+    checking.value = false
+  }
+}
+
+watch(proxy, () => {
+  checkResult.value = null
+})
+
 onMounted(async () => {
   await configStore.load()
-  if (configStore.config) {
-    downloadRoot.value = configStore.config.download_root || ''
-    maxDailyDownloads.value = configStore.config.max_daily_downloads || 10
-  }
+  populateForm()
   validateDir()
 })
 
-watch(() => configStore.config, (c) => {
-  if (c) {
-    downloadRoot.value = c.download_root || ''
-    maxDailyDownloads.value = c.max_daily_downloads || 10
+onBeforeUnmount(() => {
+  if (quickSaveTimer !== null) {
+    window.clearTimeout(quickSaveTimer)
   }
 })
 </script>
 
 <template>
-  <div>
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-      <h1 class="page-title" style="margin: 0;">任务</h1>
-      <el-button type="primary" :loading="isRunning" @click="runNow">
-        <template v-if="!isRunning">▶</template>
-        立即执行
-      </el-button>
-    </div>
-
-    <!-- 状态条 -->
-    <div class="status-strip">
-      <div class="item">
-        <div class="label">定时服务</div>
-        <div class="value">{{ autoEnabled ? '已开启' : '已关闭' }}</div>
-      </div>
-      <div class="item">
-        <div class="label">运行状态</div>
-        <div class="value" :style="{ color: isRunning ? 'var(--el-color-success)' : 'inherit' }">
-          {{ isRunning ? '运行中' : '空闲' }}
-        </div>
-      </div>
-      <div class="item">
-        <div class="label">上次执行</div>
-        <div class="value">{{ statusStore.runtimeState.last_run_time || '暂无' }}</div>
-      </div>
-      <div class="item">
-        <div class="label">下次计划</div>
-        <div class="value muted">{{ nextRun }}</div>
-      </div>
-      <div class="item">
-        <div class="label">下载目录</div>
-        <div class="value" :style="{ color: dirValid === false ? 'var(--el-color-danger)' : dirValid ? 'var(--el-color-success)' : 'inherit' }">
-          {{ dirValid === null ? '检测中…' : dirValid ? '有效' : '无效' }}
-        </div>
-        <div class="muted" style="margin-top: 2px; font-size: 11px;">{{ downloadRoot }}</div>
+  <div class="task-page">
+    <div class="task-header">
+      <h1 class="page-title">任务</h1>
+      <div class="header-actions">
+        <el-button :loading="saving" @click="saveAll">保存设置</el-button>
+        <el-button type="primary" :loading="isRunning" @click="runNow">
+          <template v-if="!isRunning">▶</template>
+          立即执行
+        </el-button>
       </div>
     </div>
 
-    <!-- 下载设置 -->
-    <el-row :gutter="16">
-      <el-col :xs="24" :md="24">
-        <el-card>
-          <template #header>
-            <span style="font-weight: 600;">下载设置</span>
-          </template>
-          <el-form label-width="auto">
-            <el-form-item>
-              <template #label>
-                <span style="font-size: 13px;">视频下载根目录</span>
-              </template>
-              <div style="display: flex; gap: 8px; width: 100%;">
-                <el-input v-model="downloadRoot" @input="onDownloadRootInput" />
-              </div>
-              <div v-if="dirError" class="muted" style="color: var(--el-color-danger); margin-top: 4px;">
-                {{ dirError }}
-              </div>
-            </el-form-item>
-            <el-form-item>
-              <template #label>
-                <span style="font-size: 13px;">每次下载数量上限</span>
-              </template>
-              <div style="display: flex; gap: 8px; width: 100%;">
-                <el-input-number v-model="maxDailyDownloads" :min="1" />
-                <el-button type="primary" @click="saveMaxDaily">保存</el-button>
-              </div>
-            </el-form-item>
-          </el-form>
-        </el-card>
-      </el-col>
-    </el-row>
+    <el-card class="settings-card" shadow="never">
+      <template #header>
+        <div class="card-header">
+          <span class="card-title">任务设置</span>
+          <span class="muted">修改后点击右上角“保存设置”生效</span>
+        </div>
+      </template>
 
-    <!-- 日志面板 -->
-    <div style="margin-top: 16px;">
+      <div class="settings-grid">
+        <div class="field field-span-2">
+          <div class="field-label">
+            <span>视频下载根目录</span>
+            <span class="field-status" :class="dirStatusClass" :title="dirError">{{ dirStatusText }}</span>
+          </div>
+          <el-input
+            v-model="downloadRoot"
+            placeholder="如 D:\Downloads 或 /data/downloads"
+            @input="onDownloadRootInput"
+          />
+        </div>
+
+        <div class="field">
+          <div class="field-label">每次下载数量上限</div>
+          <el-input-number
+            v-model="maxDailyDownloads"
+            :min="1"
+            :step="1"
+            controls-position="right"
+            style="width: 100%"
+          />
+        </div>
+
+        <div class="field field-span-2">
+          <div class="field-label">HTTP 代理</div>
+          <div class="inline-control">
+            <el-input v-model="proxy" placeholder="http://127.0.0.1:7890（留空直连）" />
+            <el-button :loading="checking" @click="checkProxy">检测连接</el-button>
+            <span
+              v-if="checkResult"
+              class="probe-status"
+              :class="checkResult.proxy.ok ? 'is-ok' : 'is-fail'"
+              :title="proxyStatusTitle"
+            >
+              {{ proxyStatusText }}
+            </span>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">排行榜范围</div>
+          <el-select v-model="rankingRange" style="width: 100%">
+            <el-option label="日榜" value="daily" />
+            <el-option label="周榜" value="weekly" />
+            <el-option label="月榜" value="monthly" />
+            <el-option label="总榜" value="all" />
+          </el-select>
+        </div>
+
+        <div class="field field-span-2">
+          <div class="field-label">
+            <span>媒体根目录</span>
+            <span
+              class="field-hint"
+              title="本地视频从该目录扫描视频与 .strm 引用；留空时使用视频下载根目录。同名图片文件将作为对应条目的封面。"
+            >?</span>
+          </div>
+          <el-input v-model="posterRoot" placeholder="留空则使用视频下载根目录" />
+        </div>
+
+        <div class="field">
+          <div class="field-label">
+            <span>定时下载</span>
+            <span class="field-hint" title="标准 5 位 cron，如 0 3 * * * 表示每天 3:00">?</span>
+          </div>
+          <div class="inline-control">
+            <el-switch v-model="autoDownloadEnabled" />
+            <el-input
+              v-model="scheduleCron"
+              class="cron-input"
+              placeholder="0 3 * * *"
+              :disabled="!autoDownloadEnabled"
+            />
+          </div>
+        </div>
+      </div>
+    </el-card>
+
+    <div class="log-area">
       <LogPanel />
     </div>
   </div>
 </template>
+
+<style scoped>
+.task-page {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.task-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.task-header .page-title {
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-card {
+  flex-shrink: 0;
+}
+
+.settings-card :deep(.el-card__header) {
+  padding: 10px 16px;
+}
+
+.settings-card :deep(.el-card__body) {
+  padding: 14px 16px;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.card-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+
+.field {
+  min-width: 0;
+}
+
+.field-span-2 {
+  grid-column: span 2;
+}
+
+.field-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--el-text-color-secondary);
+}
+
+.field-status {
+  font-size: 11px;
+}
+
+.field-status.is-ok {
+  color: var(--el-color-success);
+}
+
+.field-status.is-fail {
+  color: var(--el-color-danger);
+}
+
+.field-hint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 50%;
+  font-size: 11px;
+  line-height: 1;
+  cursor: help;
+}
+
+.inline-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.inline-control .el-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.cron-input {
+  flex: 1;
+}
+
+.probe-status {
+  flex-shrink: 0;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.probe-status.is-ok {
+  color: var(--el-color-success);
+}
+
+.probe-status.is-fail {
+  color: var(--el-color-danger);
+}
+
+.log-area {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.log-area > * {
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .task-page {
+    height: auto;
+    overflow: visible;
+  }
+
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .field-span-2 {
+    grid-column: span 1;
+  }
+
+  .card-header .muted {
+    display: none;
+  }
+
+  .log-area {
+    flex: none;
+    height: 360px;
+  }
+}
+</style>

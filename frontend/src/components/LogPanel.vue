@@ -34,7 +34,7 @@ async function copyLogs() {
 </script>
 
 <template>
-  <el-card>
+  <el-card class="log-card" :class="{ 'is-collapsed': collapsed }">
     <template #header>
       <div
         style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;"
@@ -65,3 +65,41 @@ async function copyLogs() {
     </div>
   </el-card>
 </template>
+
+<style scoped>
+.log-card {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.log-card.is-collapsed {
+  height: auto;
+}
+
+.log-card :deep(.el-card__header) {
+  padding: 10px 14px;
+}
+
+.log-card :deep(.el-card__body) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+}
+
+.log-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.log-panel pre {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+}
+</style>
