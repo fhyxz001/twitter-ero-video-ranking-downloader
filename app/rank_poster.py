@@ -1,4 +1,4 @@
-"""排行榜海报拼图：拉取榜单封面，生成单列 10 张一组、带序号和内边距的图片。
+"""排行榜海报拼图：拉取榜单封面，生成每行 2 张、每组 5 行、带序号和内边距的图片。
 
 同一档位（day/week/month/year）的榜单快照会短时间缓存，图片接口与链接
 接口共用同一份快照，保证图上序号与下载链接一一对应。
@@ -31,13 +31,13 @@ TYPE_TO_RANGE = {
 }
 RANGE_LABELS = {"daily": "日榜", "weekly": "周榜", "monthly": "月榜", "all": "总榜"}
 
-COLS = 1
-ROWS = 10
+COLS = 2
+ROWS = 5
 GROUP_SIZE = COLS * ROWS
 CELL_W = 288
 CELL_H = 512
-PAD = 16  # 画布内边距：封面与边缘、封面之间的间距
-LAYOUT_VERSION = 2  # 布局变更时递增，使旧布局的缓存图失效
+PAD = 16  # 画布内边距：图片与边缘、图片之间的间距
+LAYOUT_VERSION = 4  # 布局变更时递增，使旧布局的缓存图失效
 MAX_GROUPS = 10
 
 SNAPSHOT_TTL = 600  # 榜单快照缓存秒数
@@ -142,27 +142,37 @@ def get_or_create_collage(range_key: str, groups: int, items: List[dict]) -> Pat
 
 
 def render_collage(groups: int, items: List[dict]) -> Image.Image:
-    """按单列纵向拼接（每组 10 张），封面四周留内边距，编号全局连续。"""
-    cell_block = CELL_H + PAD
-    width = CELL_W + PAD * 2
-    height = PAD + groups * ROWS * cell_block
-    canvas = Image.new("RGB", (width, height), (16, 16, 18))
-
+    """每行 2 张、每组 5 行纵向拼接：图片完整缩放不裁剪，保留原始宽高比，
+    单张限宽 CELL_W、限高 CELL_H，行高取该行较高的图片，编号全局连续。"""
     proxies = _build_proxies()
     urls = [str(item.get("thumbnail", "")).strip() for item in items]
     thumbnails = _download_thumbnails(urls, proxies)
 
-    for idx in range(min(len(items), groups * GROUP_SIZE)):
-        left = PAD
-        top = PAD + idx * cell_block
-        thumbnail = thumbnails[idx]
-        cell = (
-            ImageOps.fit(thumbnail, (CELL_W, CELL_H), Image.LANCZOS)
-            if thumbnail is not None
-            else _get_placeholder()
-        )
-        canvas.paste(cell, (left, top))
-        _draw_index(canvas, idx + 1, left, top)
+    cells: List[Image.Image] = []
+    for thumbnail in thumbnails[: groups * GROUP_SIZE]:
+        if thumbnail is not None:
+            cells.append(ImageOps.contain(thumbnail, (CELL_W, CELL_H), Image.LANCZOS))
+        else:
+            cells.append(_get_placeholder())
+
+    # 按每行 COLS 张分行，行高取该行最高图片
+    rows = [cells[i : i + COLS] for i in range(0, len(cells), COLS)]
+    row_heights = [max(cell.height for cell in row) for row in rows]
+
+    width = COLS * CELL_W + PAD * (COLS + 1)
+    height = PAD + sum(h + PAD for h in row_heights)
+    canvas = Image.new("RGB", (width, height), (16, 16, 18))
+
+    top = PAD
+    idx = 0
+    for row, row_h in zip(rows, row_heights):
+        for col, cell in enumerate(row):
+            left = PAD + col * (CELL_W + PAD) + (CELL_W - cell.width) // 2
+            cell_top = top + (row_h - cell.height) // 2
+            canvas.paste(cell, (left, cell_top))
+            _draw_index(canvas, idx + 1, left, cell_top)
+            idx += 1
+        top += row_h + PAD
 
     return canvas
 
